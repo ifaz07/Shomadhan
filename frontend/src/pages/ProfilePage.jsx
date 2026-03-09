@@ -10,17 +10,16 @@ import {
   Shield,
   ShieldCheck,
   ShieldX,
-  Upload,
   Camera,
   Save,
   Loader2,
   Building2,
   Briefcase,
   CreditCard,
-  CheckCircle2,
   Clock,
-  FileText,
+  ArrowRight,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -42,19 +41,7 @@ const ProfilePage = () => {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState({});
 
-  // ─── Verification state ────────────────────────────────────────
-  const [verDocType, setVerDocType] = useState('nid');
-  const [verDocNumber, setVerDocNumber] = useState('');
-  const [verFile, setVerFile] = useState(null);
-  const [verLoading, setVerLoading] = useState(false);
-
   const verificationStatus = user?.verificationDoc?.status || 'none';
-
-  const DOC_TYPES = [
-    { value: 'nid',              label: t('docNid')      },
-    { value: 'passport',         label: t('docPassport') },
-    { value: 'birth_certificate',label: t('docBirth')    },
-  ];
 
   // ─── Password change handler ───────────────────────────────────
   const handlePasswordChange = async (e) => {
@@ -84,27 +71,6 @@ const ProfilePage = () => {
       toast.error(error.response?.data?.message || 'Failed to update password');
     } finally {
       setPasswordLoading(false);
-    }
-  };
-
-  // ─── Verification submit handler ───────────────────────────────
-  const handleVerificationSubmit = async (e) => {
-    e.preventDefault();
-    if (!verDocNumber.trim()) { toast.error('Please enter your document number'); return; }
-    if (!verFile)              { toast.error('Please upload your document'); return; }
-
-    setVerLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append('docType', verDocType);
-      formData.append('documentNumber', verDocNumber);
-      formData.append('file', verFile);
-      await api.post('/auth/verify', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      toast.success("Verification document submitted! We'll review it shortly.");
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Verification submission failed');
-    } finally {
-      setVerLoading(false);
     }
   };
 
@@ -292,75 +258,14 @@ const ProfilePage = () => {
             <VerificationStatus />
 
             {(verificationStatus === 'none' || verificationStatus === 'rejected') && (
-              <form onSubmit={handleVerificationSubmit} className="mt-6 space-y-4">
-                {/* Doc type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('documentType')}</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {DOC_TYPES.map((doc) => (
-                      <button
-                        key={doc.value}
-                        type="button"
-                        onClick={() => setVerDocType(doc.value)}
-                        className={`p-3 rounded-xl border-2 text-center transition-all text-xs font-medium ${
-                          verDocType === doc.value
-                            ? 'border-teal-500 bg-teal-50 text-teal-700'
-                            : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                        }`}
-                      >
-                        {doc.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Doc number */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('documentNumber')}</label>
-                  <div className="relative">
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-                      <FileText size={18} />
-                    </div>
-                    <input
-                      type="text"
-                      value={verDocNumber}
-                      onChange={(e) => setVerDocNumber(e.target.value)}
-                      placeholder={verDocType === 'nid' ? 'e.g. 1234567890' : verDocType === 'passport' ? 'e.g. AB1234567' : 'e.g. BC-2000-12345'}
-                      className="input-field pl-11"
-                    />
-                  </div>
-                </div>
-
-                {/* File upload */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('uploadDocument')}</label>
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50 hover:bg-gray-100 hover:border-gray-300 transition-all cursor-pointer">
-                    {verFile ? (
-                      <div className="flex items-center gap-2 text-teal-600">
-                        <CheckCircle2 size={20} />
-                        <span className="text-sm font-medium">{verFile.name}</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-2 text-gray-400">
-                        <Upload size={28} />
-                        <span className="text-xs">{t('uploadHint')}</span>
-                      </div>
-                    )}
-                    <input type="file" accept="image/*,.pdf" onChange={(e) => setVerFile(e.target.files[0])} className="hidden" />
-                  </label>
-                </div>
-
-                <motion.button
-                  type="submit"
-                  disabled={verLoading}
-                  className="btn-primary w-full flex items-center justify-center gap-2"
-                  whileHover={{ scale: verLoading ? 1 : 1.01 }}
-                  whileTap={{ scale: verLoading ? 1 : 0.99 }}
-                >
-                  {verLoading ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
-                  <span>{verLoading ? t('submitting') : t('submitVerification')}</span>
-                </motion.button>
-              </form>
+              <Link
+                to="/verify"
+                className="mt-6 flex items-center justify-center gap-2 btn-primary w-full"
+              >
+                <ShieldCheck size={18} />
+                <span>{t('submitVerification')}</span>
+                <ArrowRight size={18} />
+              </Link>
             )}
           </motion.div>
         )}
