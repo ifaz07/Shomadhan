@@ -50,6 +50,7 @@ export const translations = {
 
     // ── Sidebar ──────────────────────────────────────────────────────
     dashboard: 'Dashboard',
+    submitComplaint: 'Submit Complaint',
     myProfile: 'My Profile',
     notifications: 'Notifications',
     myComplaints: 'My Complaints',
@@ -182,6 +183,7 @@ export const translations = {
 
     // ── Sidebar ──────────────────────────────────────────────────────
     dashboard: 'ড্যাশবোর্ড',
+    submitComplaint: 'অভিযোগ জমা দিন',
     myProfile: 'আমার প্রোফাইল',
     notifications: 'বিজ্ঞপ্তি',
     myComplaints: 'আমার অভিযোগ',
