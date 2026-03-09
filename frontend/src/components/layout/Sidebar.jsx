@@ -13,6 +13,7 @@ import {
   FileText,
   BarChart3,
   MessageSquare,
+  PlusCircle,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
