@@ -13,6 +13,11 @@ import {
   Loader2,
   CheckCircle2,
   Shield,
+  Building2,
+  BadgeCheck,
+  Briefcase,
+  CreditCard,
+  Users,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AuthLayout from '../components/auth/AuthLayout';
@@ -20,15 +25,38 @@ import SocialButtons from '../components/auth/SocialButtons';
 import PasswordStrength from '../components/auth/PasswordStrength';
 import { useAuth } from '../context/AuthContext';
 
-// ─── Multi-step signup: Step 1 = basic info, Step 2 = password ───────
+// ─── Department options ──────────────────────────────────────────────
+const DEPARTMENTS = [
+  { value: 'public_works', label: 'Public Works' },
+  { value: 'water_authority', label: 'Water Authority' },
+  { value: 'electricity', label: 'Electricity Dept' },
+  { value: 'sanitation', label: 'Sanitation Dept' },
+  { value: 'public_safety', label: 'Public Safety Dept' },
+  { value: 'animal_control', label: 'Animal Control' },
+  { value: 'health', label: 'Health Dept' },
+  { value: 'transport', label: 'Transport Dept' },
+  { value: 'environment', label: 'Environment Dept' },
+  { value: 'other', label: 'Other' },
+];
+
+// ─── Multi-step signup ───────────────────────────────────────────────
+// Citizen:         Step 1 (role) → Step 2 (basic info) → Step 3 (password)
+// Public Servant:  Step 1 (role) → Step 2 (basic + govt info) → Step 3 (password)
 const SignupPage = () => {
   const { register } = useAuth();
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
+    role: '', // 'citizen' or 'department_officer'
     name: '',
     email: '',
     phone: '',
+    // Public servant extras
+    department: '',
+    employeeId: '',
+    governmentEmail: '',
+    designation: '',
+    // Password step
     password: '',
     confirmPassword: '',
     agreeTerms: false,
@@ -39,8 +67,11 @@ const SignupPage = () => {
   const [errors, setErrors] = useState({});
   const [focusedField, setFocusedField] = useState(null);
 
-  // ─── Client-side validation per step ─────────────────────────────
-  const validateStep1 = () => {
+  const isPublicServant = formData.role === 'department_officer';
+  const totalSteps = 3;
+
+  // ─── Validation per step ─────────────────────────────────────────
+  const validateStep2 = () => {
     const newErrors = {};
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
@@ -55,16 +86,27 @@ const SignupPage = () => {
     if (formData.phone && !/^(\+880|0)?1[3-9]\d{8}$/.test(formData.phone)) {
       newErrors.phone = 'Please enter a valid BD phone number';
     }
+    // Public servant extra fields
+    if (isPublicServant) {
+      if (!formData.department) newErrors.department = 'Department is required';
+      if (!formData.employeeId.trim()) newErrors.employeeId = 'Employee ID is required';
+      if (!formData.governmentEmail.trim()) {
+        newErrors.governmentEmail = 'Government email is required';
+      } else if (!/^\S+@\S+\.\S+$/.test(formData.governmentEmail)) {
+        newErrors.governmentEmail = 'Please enter a valid email';
+      }
+      if (!formData.designation.trim()) newErrors.designation = 'Designation is required';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const validateStep2 = () => {
+  const validateStep3 = () => {
     const newErrors = {};
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
+      newErrors.password = 'Must be at least 8 characters';
     } else if (!/(?=.*[a-z])/.test(formData.password)) {
       newErrors.password = 'Must contain a lowercase letter';
     } else if (!/(?=.*[A-Z])/.test(formData.password)) {
@@ -93,29 +135,41 @@ const SignupPage = () => {
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   // ─── Step navigation ─────────────────────────────────────────────
-  const goToStep2 = () => {
-    if (validateStep1()) setStep(2);
+  const selectRole = (role) => {
+    setFormData((prev) => ({ ...prev, role }));
+    setErrors({});
+    setStep(2);
+  };
+
+  const goToStep3 = () => {
+    if (validateStep2()) setStep(3);
   };
 
   // ─── Submit registration ─────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateStep2()) return;
+    if (!validateStep3()) return;
 
     setIsLoading(true);
     try {
-      await register({
+      const payload = {
         name: formData.name,
         email: formData.email,
         phone: formData.phone || undefined,
         password: formData.password,
-      });
+      };
+      if (isPublicServant) {
+        payload.role = 'department_officer';
+        payload.department = formData.department;
+        payload.employeeId = formData.employeeId;
+        payload.governmentEmail = formData.governmentEmail;
+        payload.designation = formData.designation;
+      }
+      await register(payload);
     } catch (error) {
       const msg =
         error.response?.data?.message || 'Registration failed. Please try again.';
@@ -127,9 +181,8 @@ const SignupPage = () => {
           serverErrors[err.field] = err.message;
         });
         setErrors(serverErrors);
-        // If error is on step-1 fields, go back
-        if (serverErrors.name || serverErrors.email || serverErrors.phone) {
-          setStep(1);
+        if (serverErrors.name || serverErrors.email || serverErrors.phone || serverErrors.department) {
+          setStep(2);
         }
       }
     } finally {
@@ -137,7 +190,7 @@ const SignupPage = () => {
     }
   };
 
-  // ─── Render input with icon ──────────────────────────────────────
+  // ─── Render input helper ─────────────────────────────────────────
   const renderInput = ({ name, label, type = 'text', icon: Icon, placeholder, autoComplete, isPassword, showToggle, toggleFn, optional }) => (
     <div>
       <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -190,7 +243,7 @@ const SignupPage = () => {
   // ─── Step indicator ──────────────────────────────────────────────
   const StepIndicator = () => (
     <div className="flex items-center justify-center gap-2 mb-6">
-      {[1, 2].map((s) => (
+      {[1, 2, 3].map((s) => (
         <div key={s} className="flex items-center gap-2">
           <motion.div
             className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors duration-300 ${
@@ -205,9 +258,9 @@ const SignupPage = () => {
           >
             {s < step ? <CheckCircle2 size={16} /> : s}
           </motion.div>
-          {s < 2 && (
-            <div className={`w-12 h-0.5 rounded-full transition-colors duration-500 ${
-              step > 1 ? 'bg-teal-500' : 'bg-gray-200'
+          {s < totalSteps && (
+            <div className={`w-8 sm:w-12 h-0.5 rounded-full transition-colors duration-500 ${
+              step > s ? 'bg-teal-500' : 'bg-gray-200'
             }`} />
           )}
         </div>
@@ -232,20 +285,19 @@ const SignupPage = () => {
 
       {/* ─── Card ──────────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8 sm:p-10">
-        {/* Header */}
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Create your account</h2>
           <p className="text-gray-500 mt-1 text-sm">
-            {step === 1
-              ? 'Start by entering your basic information'
-              : 'Set a secure password for your account'}
+            {step === 1 && 'Choose how you want to use Somadhan'}
+            {step === 2 && (isPublicServant ? 'Enter your personal & official details' : 'Enter your basic information')}
+            {step === 3 && 'Set a secure password for your account'}
           </p>
         </div>
 
         <StepIndicator />
 
-        {/* ─── Step 1: Social + Basic Info ──────────────────────── */}
         <AnimatePresence mode="wait">
+          {/* ─── Step 1: Role Selection ──────────────────────────── */}
           {step === 1 && (
             <motion.div
               key="step1"
@@ -253,21 +305,86 @@ const SignupPage = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.3 }}
+              className="space-y-4"
             >
               <SocialButtons />
 
-              <div className="relative my-6">
+              <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200" />
                 </div>
                 <div className="relative flex justify-center text-xs">
                   <span className="bg-white px-3 text-gray-400 uppercase tracking-wider">
-                    or sign up with email
+                    or choose your role
                   </span>
                 </div>
               </div>
 
-              <div className="space-y-4">
+              {/* Role Cards */}
+              <div className="grid grid-cols-1 gap-3">
+                {/* Citizen Card */}
+                <motion.button
+                  type="button"
+                  onClick={() => selectRole('citizen')}
+                  className="group relative flex items-center gap-4 p-5 rounded-xl border-2 border-gray-200 bg-white text-left hover:border-teal-400 hover:bg-teal-50/50 transition-all duration-200"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                >
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-100 to-teal-200 flex items-center justify-center flex-shrink-0 group-hover:from-teal-200 group-hover:to-teal-300 transition-colors">
+                    <Users size={22} className="text-teal-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">Citizen</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Report issues, track complaints, and upvote community problems
+                    </p>
+                  </div>
+                  <ArrowRight size={18} className="text-gray-300 group-hover:text-teal-500 transition-colors" />
+                </motion.button>
+
+                {/* Public Servant Card */}
+                <motion.button
+                  type="button"
+                  onClick={() => selectRole('department_officer')}
+                  className="group relative flex items-center gap-4 p-5 rounded-xl border-2 border-gray-200 bg-white text-left hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-200"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                >
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center flex-shrink-0 group-hover:from-blue-200 group-hover:to-blue-300 transition-colors">
+                    <Building2 size={22} className="text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">Public Servant</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Manage and resolve department-assigned complaints
+                    </p>
+                  </div>
+                  <ArrowRight size={18} className="text-gray-300 group-hover:text-blue-500 transition-colors" />
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ─── Step 2: Basic Info (+ Public Servant extras) ───── */}
+          {step === 2 && (
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              {/* Role badge */}
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium mb-5 ${
+                isPublicServant
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-teal-100 text-teal-700'
+              }`}>
+                {isPublicServant ? <Building2 size={13} /> : <Users size={13} />}
+                {isPublicServant ? 'Public Servant' : 'Citizen'}
+              </div>
+
+              <div className="space-y-3.5">
                 {renderInput({
                   name: 'name',
                   label: 'Full name',
@@ -293,31 +410,111 @@ const SignupPage = () => {
                   optional: true,
                 })}
 
-                <motion.button
-                  type="button"
-                  onClick={goToStep2}
-                  className="btn-primary w-full flex items-center justify-center gap-2 mt-2"
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                >
-                  <span>Continue</span>
-                  <ArrowRight size={18} />
-                </motion.button>
+                {/* ─── Public Servant Extra Fields ─────────────────── */}
+                {isPublicServant && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="space-y-3.5 pt-2 border-t border-gray-100"
+                  >
+                    <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">
+                      Official Details
+                    </p>
+
+                    {/* Department Dropdown */}
+                    <div>
+                      <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Department
+                      </label>
+                      <div className="relative">
+                        <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 ${
+                          focusedField === 'department' ? 'text-teal-500' : 'text-gray-400'
+                        }`}>
+                          <Building2 size={18} />
+                        </div>
+                        <select
+                          id="department"
+                          name="department"
+                          value={formData.department}
+                          onChange={handleChange}
+                          onFocus={() => setFocusedField('department')}
+                          onBlur={() => setFocusedField(null)}
+                          className={`input-field pl-11 appearance-none cursor-pointer ${errors.department ? 'input-error' : ''}`}
+                        >
+                          <option value="">Select your department</option>
+                          {DEPARTMENTS.map((d) => (
+                            <option key={d.value} value={d.value}>{d.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <AnimatePresence>
+                        {errors.department && (
+                          <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="text-red-500 text-xs mt-1.5">
+                            {errors.department}
+                          </motion.p>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {renderInput({
+                      name: 'employeeId',
+                      label: 'Employee ID',
+                      icon: CreditCard,
+                      placeholder: 'e.g. GOV-2024-1234',
+                    })}
+                    {renderInput({
+                      name: 'governmentEmail',
+                      label: 'Government Email',
+                      type: 'email',
+                      icon: BadgeCheck,
+                      placeholder: 'you@govt.bd',
+                    })}
+                    {renderInput({
+                      name: 'designation',
+                      label: 'Designation / Rank',
+                      icon: Briefcase,
+                      placeholder: 'e.g. Junior Engineer, Inspector',
+                    })}
+                  </motion.div>
+                )}
+
+                {/* Navigation buttons */}
+                <div className="flex gap-3 pt-2">
+                  <motion.button
+                    type="button"
+                    onClick={() => { setStep(1); setErrors({}); }}
+                    className="flex items-center justify-center gap-1.5 px-5 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-all"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                  >
+                    <ArrowLeft size={16} />
+                    <span>Back</span>
+                  </motion.button>
+                  <motion.button
+                    type="button"
+                    onClick={goToStep3}
+                    className="btn-primary flex-1 flex items-center justify-center gap-2"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                  >
+                    <span>Continue</span>
+                    <ArrowRight size={18} />
+                  </motion.button>
+                </div>
               </div>
             </motion.div>
           )}
 
-          {/* ─── Step 2: Password + Terms ───────────────────────── */}
-          {step === 2 && (
+          {/* ─── Step 3: Password + Terms ───────────────────────── */}
+          {step === 3 && (
             <motion.div
-              key="step2"
+              key="step3"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
             >
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                {/* Password */}
                 <div>
                   {renderInput({
                     name: 'password',
@@ -332,7 +529,6 @@ const SignupPage = () => {
                   <PasswordStrength password={formData.password} />
                 </div>
 
-                {/* Confirm Password */}
                 {renderInput({
                   name: 'confirmPassword',
                   label: 'Confirm password',
@@ -367,12 +563,7 @@ const SignupPage = () => {
                   </label>
                   <AnimatePresence>
                     {errors.agreeTerms && (
-                      <motion.p
-                        initial={{ opacity: 0, y: -5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -5 }}
-                        className="text-red-500 text-xs mt-1.5 ml-6"
-                      >
+                      <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="text-red-500 text-xs mt-1.5 ml-6">
                         {errors.agreeTerms}
                       </motion.p>
                     )}
@@ -388,9 +579,9 @@ const SignupPage = () => {
                 >
                   <Shield size={18} className="text-teal-600 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-teal-700 leading-relaxed">
-                    <strong>Profile verification</strong> — To file complaints, you'll need
-                    to verify your identity with a NID, Passport, or Birth Certificate.
-                    You can do this after creating your account.
+                    <strong>Profile verification</strong> — To file complaints, verify
+                    your identity with a NID, Passport, or Birth Certificate from your
+                    profile after signing up.
                   </p>
                 </motion.div>
 
@@ -398,7 +589,7 @@ const SignupPage = () => {
                 <div className="flex gap-3 pt-1">
                   <motion.button
                     type="button"
-                    onClick={() => setStep(1)}
+                    onClick={() => setStep(2)}
                     className="flex items-center justify-center gap-1.5 px-5 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-all"
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
@@ -435,16 +626,12 @@ const SignupPage = () => {
         {/* Sign in link */}
         <p className="text-center text-sm text-gray-500 mt-6">
           Already have an account?{' '}
-          <Link
-            to="/login"
-            className="text-teal-600 hover:text-teal-700 font-semibold transition-colors"
-          >
+          <Link to="/login" className="text-teal-600 hover:text-teal-700 font-semibold transition-colors">
             Sign in
           </Link>
         </p>
       </div>
 
-      {/* Footer */}
       <p className="text-center text-xs text-white/30 mt-6">
         © 2026 সমাধান (Somadhan). All rights reserved.
       </p>

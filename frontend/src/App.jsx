@@ -2,10 +2,26 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import DashboardPage from './pages/DashboardPage';
+import ProfilePage from './pages/ProfilePage';
 import { useAuth } from './context/AuthContext';
 
+// ─── Protected route wrapper ─────────────────────────────────────────
+const ProtectedRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+};
+
+// ─── Guest route wrapper (redirect to dashboard if logged in) ────────
+const GuestRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (user) return <Navigate to="/dashboard" replace />;
+  return children;
+};
+
 function App() {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
 
   if (loading) {
     return (
@@ -32,31 +48,18 @@ function App() {
         }}
       />
       <Routes>
-        <Route
-          path="/login"
-          element={!user ? <LoginPage /> : <Navigate to="/dashboard" replace />}
-        />
-        <Route
-          path="/signup"
-          element={!user ? <SignupPage /> : <Navigate to="/dashboard" replace />}
-        />
-        <Route
-          path="/dashboard"
-          element={
-            user ? (
-              <div className="min-h-screen auth-bg flex items-center justify-center">
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 text-center">
-                  <h1 className="text-3xl font-bold text-white mb-2">
-                    স্বাগতম, {user.name}!
-                  </h1>
-                  <p className="text-white/60">Dashboard coming soon...</p>
-                </div>
-              </div>
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
+        {/* ─── Auth Pages (guest only) ──────────────────────────── */}
+        <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+        <Route path="/signup" element={<GuestRoute><SignupPage /></GuestRoute>} />
+
+        {/* ─── Protected Pages ──────────────────────────────────── */}
+        <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+
+        {/* ─── Placeholder routes (will be built later) ─────────── */}
+        <Route path="/notifications" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+
+        {/* ─── Fallback ─────────────────────────────────────────── */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </>

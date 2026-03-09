@@ -42,7 +42,7 @@ const register = async (req, res, next) => {
       });
     }
 
-    const { name, email, password, phone } = req.body;
+    const { name, email, password, phone, role, department, employeeId, governmentEmail, designation } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -53,13 +53,19 @@ const register = async (req, res, next) => {
       });
     }
 
-    // Create user (default role = citizen)
-    const user = await User.create({
-      name,
-      email,
-      password,
-      phone,
-    });
+    // Build user data — only include public servant fields if role is department_officer
+    const userData = { name, email, password, phone };
+
+    if (role === 'department_officer') {
+      userData.role = 'department_officer';
+      userData.department = department;
+      userData.employeeId = employeeId;
+      userData.governmentEmail = governmentEmail;
+      userData.designation = designation;
+    }
+    // Note: 'admin' and 'mayor' roles cannot be self-assigned via signup
+
+    const user = await User.create(userData);
 
     sendTokenResponse(user, 201, res);
   } catch (error) {
@@ -137,4 +143,45 @@ const getMe = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, logout, getMe };
+// ─── PUT /api/v1/auth/change-password ─────────────────────────────────
+const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide current and new password.',
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters.',
+      });
+    }
+
+    const user = await User.findById(req.user.id).select('+password');
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect.',
+      });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Password updated successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, logout, getMe, changePassword };

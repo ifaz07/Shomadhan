@@ -24,6 +24,35 @@ const registerValidator = [
     .optional()
     .trim()
     .matches(/^(\+880|0)?1[3-9]\d{8}$/).withMessage('Please provide a valid BD phone number'),
+
+  // ─── Public Servant conditional validations ────────────────────
+  body('role')
+    .optional()
+    .isIn(['citizen', 'department_officer']).withMessage('Invalid role selection'),
+
+  body('department')
+    .if(body('role').equals('department_officer'))
+    .notEmpty().withMessage('Department is required for public servants')
+    .isIn([
+      'public_works', 'water_authority', 'electricity', 'sanitation',
+      'public_safety', 'animal_control', 'health', 'transport', 'environment', 'other',
+    ]).withMessage('Invalid department'),
+
+  body('employeeId')
+    .if(body('role').equals('department_officer'))
+    .notEmpty().withMessage('Employee ID is required for public servants')
+    .trim(),
+
+  body('governmentEmail')
+    .if(body('role').equals('department_officer'))
+    .notEmpty().withMessage('Government email is required')
+    .isEmail().withMessage('Please provide a valid government email'),
+
+  body('designation')
+    .if(body('role').equals('department_officer'))
+    .notEmpty().withMessage('Designation is required')
+    .trim()
+    .isLength({ max: 100 }).withMessage('Designation cannot exceed 100 characters'),
 ];
 
 const loginValidator = [

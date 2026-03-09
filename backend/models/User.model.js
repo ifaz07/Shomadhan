@@ -40,13 +40,44 @@ const userSchema = new mongoose.Schema(
       default: '',
     },
 
-    // ─── Identity Verification (separate from signup) ────────────
+    // ─── Public Servant Fields (only for department_officer role) ───
+    department: {
+      type: String,
+      enum: [
+        'public_works',
+        'water_authority',
+        'electricity',
+        'sanitation',
+        'public_safety',
+        'animal_control',
+        'health',
+        'transport',
+        'environment',
+        'other',
+      ],
+    },
+    employeeId: {
+      type: String,
+      trim: true,
+    },
+    governmentEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+    designation: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Designation cannot exceed 100 characters'],
+    },
+
+    // ─── Identity Verification (separate from signup) ──────────────
     isVerified: {
       type: Boolean,
       default: false,
     },
     verificationDoc: {
-      type: {
+      docType: {
         type: String,
         enum: ['nid', 'passport', 'birth_certificate'],
       },
@@ -56,9 +87,10 @@ const userSchema = new mongoose.Schema(
       verifiedAt: Date,
       status: {
         type: String,
-        enum: ['pending', 'approved', 'rejected'],
-        default: 'pending',
+        enum: ['none', 'pending', 'approved', 'rejected'],
+        default: 'none',
       },
+      rejectionReason: String,
     },
 
     // ─── OAuth Providers ─────────────────────────────────────────
