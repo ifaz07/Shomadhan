@@ -4,6 +4,8 @@ import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import DashboardPage from './pages/DashboardPage';
 import ProfilePage from './pages/ProfilePage';
+import ComplaintPage from './pages/ComplaintPage';
+import VerificationPage from './pages/VerificationPage';
 import { useAuth } from './context/AuthContext';
 
 // ─── Protected route wrapper ─────────────────────────────────────────
@@ -54,6 +56,8 @@ function App() {
 
         {/* ─── Protected Pages ──────────────────────────────────── */}
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/submit-complaint" element={<ProtectedRoute><ComplaintPage /></ProtectedRoute>} />
+        <Route path="/verify" element={<ProtectedRoute><VerificationPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
         {/* ─── Placeholder routes (will be built later) ─────────── */}

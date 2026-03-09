@@ -14,6 +14,7 @@ import {
   FileText,
   BarChart3,
   MessageSquare,
+  PlusCircle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -25,6 +26,7 @@ const Sidebar = () => {
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/submit-complaint', label: 'Submit Complaint', icon: PlusCircle },
     { path: '/profile', label: 'My Profile', icon: User },
     { path: '/notifications', label: 'Notifications', icon: Bell, badge: 3 },
     // These are placeholders for future modules
@@ -49,9 +51,9 @@ const Sidebar = () => {
 
   const verBadge = getVerificationBadge();
 
-  // Desktop sidebar content
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full">
+  // Desktop sidebar content helper to avoid duplication
+  const renderSidebarContent = () => (
+    <div className="flex flex-col h-full overflow-hidden">
       {/* ─── Logo area ──────────────────────────────────────────── */}
       <div className="p-5 border-b border-gray-100">
         <div className="flex items-center gap-3">
@@ -59,7 +61,11 @@ const Sidebar = () => {
             <span className="text-lg font-bold text-white font-bengali">স</span>
           </div>
           {!isCollapsed && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+            >
               <h1 className="text-lg font-bold text-gray-900 font-bengali">সমাধান</h1>
               <p className="text-[10px] text-gray-400 -mt-0.5">Somadhan</p>
             </motion.div>
@@ -90,7 +96,7 @@ const Sidebar = () => {
       </div>
 
       {/* ─── Navigation ─────────────────────────────────────────── */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
@@ -175,7 +181,7 @@ const Sidebar = () => {
               >
                 <X size={20} className="text-gray-500" />
               </button>
-              <SidebarContent />
+              {renderSidebarContent()}
             </motion.div>
           </>
         )}
@@ -187,7 +193,7 @@ const Sidebar = () => {
           isCollapsed ? 'w-20' : 'w-72'
         }`}
       >
-        <SidebarContent />
+        {renderSidebarContent()}
         {/* Collapse toggle */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}

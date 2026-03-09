@@ -7,17 +7,25 @@ const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+const path = require('path');
 const authRoutes = require('./routes/auth.routes');
+const complaintRoutes = require('./routes/complaint.routes');
 const { errorHandler } = require('./middleware/error.middleware');
 
 const app = express();
 
 // ─── Security & Parsing Middleware ───────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: false, // For serving images/videos
+}));
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Static folder for uploaded evidence
+app.use('/uploads/evidence', express.static(path.join(__dirname, 'uploads/evidence')));
+app.use('/uploads/verification', express.static(path.join(__dirname, 'uploads/verification')));
 
 // CORS — allow frontend origin
 app.use(cors({
@@ -34,6 +42,7 @@ const authLimiter = rateLimit({
 
 // ─── Routes ──────────────────────────────────────────────────────────
 app.use('/api/v1/auth', authLimiter, authRoutes);
+app.use('/api/v1/complaints', complaintRoutes);
 
 // Health check
 app.get('/api/v1/health', (req, res) => {

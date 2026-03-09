@@ -43,6 +43,22 @@ export const authAPI = {
   login: (data) => api.post('/auth/login', data),
   logout: () => api.post('/auth/logout'),
   getMe: () => api.get('/auth/me'),
+  verify: (formData) => api.put('/auth/verify', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
+};
+
+// ─── Complaint API calls ──────────────────────────────────────────────
+export const complaintAPI = {
+  create: (formData) => api.post('/complaints', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
+  getAll: () => api.get('/complaints'),
+  getOne: (id) => api.get(`/complaints/${id}`),
 };
 
 export default api;

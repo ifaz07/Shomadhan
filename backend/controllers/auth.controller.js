@@ -184,4 +184,59 @@ const changePassword = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, logout, getMe, changePassword };
+// ─── PUT /api/v1/auth/verify ──────────────────────────────────────────
+const verifyAccount = async (req, res, next) => {
+  try {
+    const { docType, documentNumber } = req.body;
+
+    if (!docType || !documentNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide document type and number.',
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please upload a copy of your document.',
+      });
+    }
+
+    // Digit validation
+    if (docType === 'nid' && documentNumber.length !== 10) {
+      return res.status(400).json({ success: false, message: 'NID must be exactly 10 digits.' });
+    }
+    if (docType === 'birth_certificate' && documentNumber.length !== 17) {
+      return toast.error('Birth Certificate number must be exactly 17 digits.');
+    }
+    if (docType === 'passport' && documentNumber.length !== 9) {
+      return res.status(400).json({ success: false, message: 'Passport number must be exactly 9 characters.' });
+    }
+
+    const user = await User.findById(req.user.id);
+    user.isVerified = true;
+    user.verificationDoc = {
+      docType,
+      documentNumber,
+      fileUrl: `/uploads/verification/${req.file.filename}`,
+      status: 'approved',
+      submittedAt: new Date(),
+      verifiedAt: new Date(),
+    };
+
+    // Ensure Mongoose detects the object change
+    user.markModified('verificationDoc');
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Account verified successfully!',
+      data: { user },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, logout, getMe, changePassword, verifyAccount };
