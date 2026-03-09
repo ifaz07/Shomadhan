@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base Styles ──────────────────────────────────────────────────── */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', 'Noto Sans Bengali', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
+}
+
+/* ─── Utility Classes ──────────────────────────────────────────────── */
+@layer components {
+  .glass-card {
+    @apply bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-xl;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-teal-500 to-blue-600 text-white font-semibold
+           py-3 px-6 rounded-xl hover:from-teal-600 hover:to-blue-700
+           transition-all duration-300 shadow-lg hover:shadow-xl
+           hover:-translate-y-0.5 active:translate-y-0
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0;
+  }
+
+  .btn-social {
+    @apply flex items-center justify-center gap-3 w-full py-3 px-4
+           rounded-xl border-2 border-gray-200 bg-white text-gray-700
+           font-medium hover:border-gray-300 hover:bg-gray-50
+           transition-all duration-200 hover:shadow-md;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl border-2 border-gray-200
+           bg-white/80 backdrop-blur-sm text-gray-800
+           placeholder-gray-400 focus:border-teal-500 focus:ring-2
+           focus:ring-teal-500/20 focus:outline-none transition-all duration-200;
+  }
+
+  .input-error {
+    @apply border-red-400 focus:border-red-500 focus:ring-red-500/20;
+  }
+
+  .auth-bg {
+    background: linear-gradient(135deg, #0c4a6e 0%, #155e75 25%, #164e63 50%, #1e3a5f 75%, #1e293b 100%);
+  }
+}
