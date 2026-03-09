@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   User,
@@ -9,67 +9,90 @@ import {
   X,
   ChevronLeft,
   ShieldCheck,
-  Settings,
   Bell,
   FileText,
   BarChart3,
   MessageSquare,
-  PlusCircle,
-} from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+} from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/LanguageContext";
+import LanguageToggle from "../LanguageToggle";
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/submit-complaint', label: 'Submit Complaint', icon: PlusCircle },
-    { path: '/profile', label: 'My Profile', icon: User },
-    { path: '/notifications', label: 'Notifications', icon: Bell, badge: 3 },
-    // These are placeholders for future modules
-    { path: '/my-complaints', label: 'My Complaints', icon: FileText, disabled: true },
-    { path: '/analytics', label: 'Analytics', icon: BarChart3, disabled: true },
-    { path: '/feedback', label: 'Feedback', icon: MessageSquare, disabled: true },
+    { path: "/dashboard", label: t("dashboard"), icon: LayoutDashboard },
+    {
+      path: "/submit-complaint",
+      label: t("submitComplaint"),
+      icon: PlusCircle,
+    },
+    { path: "/profile", label: t("myProfile"), icon: User },
+    { path: "/notifications", label: t("notifications"), icon: Bell, badge: 3 },
+    {
+      path: "/my-complaints",
+      label: t("myComplaints"),
+      icon: FileText,
+      disabled: true,
+    },
+    {
+      path: "/analytics",
+      label: t("analytics"),
+      icon: BarChart3,
+      disabled: true,
+    },
+    {
+      path: "/feedback",
+      label: t("feedback"),
+      icon: MessageSquare,
+      disabled: true,
+    },
   ];
 
   const isActive = (path) => location.pathname === path;
 
   // Verification status badge
   const getVerificationBadge = () => {
-    const status = user?.verificationDoc?.status || 'none';
+    const status = user?.verificationDoc?.status || "none";
     const map = {
-      none: { color: 'bg-gray-100 text-gray-500', label: 'Not Verified' },
-      pending: { color: 'bg-yellow-100 text-yellow-700', label: 'Pending' },
-      approved: { color: 'bg-green-100 text-green-700', label: 'Verified' },
-      rejected: { color: 'bg-red-100 text-red-700', label: 'Rejected' },
+      none: { color: "bg-gray-100 text-gray-500", label: "Not Verified" },
+      pending: { color: "bg-yellow-100 text-yellow-700", label: "Pending" },
+      approved: { color: "bg-green-100 text-green-700", label: "Verified" },
+      rejected: { color: "bg-red-100 text-red-700", label: "Rejected" },
     };
     return map[status];
   };
 
   const verBadge = getVerificationBadge();
 
-  // Desktop sidebar content helper to avoid duplication
-  const renderSidebarContent = () => (
-    <div className="flex flex-col h-full overflow-hidden">
+  // Desktop sidebar content
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full">
       {/* ─── Logo area ──────────────────────────────────────────── */}
       <div className="p-5 border-b border-gray-100">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center flex-shrink-0">
-            <span className="text-lg font-bold text-white font-bengali">স</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center flex-shrink-0">
+              <span className="text-lg font-bold text-white font-bengali">
+                স
+              </span>
+            </div>
+            {!isCollapsed && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <h1 className="text-lg font-bold text-gray-900 font-bengali">
+                  সমাধান
+                </h1>
+                <p className="text-[10px] text-gray-400 -mt-0.5">Somadhan</p>
+              </motion.div>
+            )}
           </div>
-          {!isCollapsed && (
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.2 }}
-            >
-              <h1 className="text-lg font-bold text-gray-900 font-bengali">সমাধান</h1>
-              <p className="text-[10px] text-gray-400 -mt-0.5">Somadhan</p>
-            </motion.div>
-          )}
+          {/* Language toggle — top-right, above the role/user section */}
+          {!isCollapsed && <LanguageToggle variant="light" />}
         </div>
       </div>
 
@@ -78,14 +101,18 @@ const Sidebar = () => {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-100 to-blue-100 flex items-center justify-center flex-shrink-0">
             <span className="text-sm font-bold text-teal-700">
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              {user?.name?.charAt(0)?.toUpperCase() || "U"}
             </span>
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">{user?.name}</p>
+              <p className="text-sm font-semibold text-gray-900 truncate">
+                {user?.name}
+              </p>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${verBadge.color}`}>
+                <span
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${verBadge.color}`}
+                >
                   {user?.isVerified && <ShieldCheck size={10} />}
                   {verBadge.label}
                 </span>
@@ -96,21 +123,23 @@ const Sidebar = () => {
       </div>
 
       {/* ─── Navigation ─────────────────────────────────────────── */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar">
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
           return (
             <Link
               key={item.path}
-              to={item.disabled ? '#' : item.path}
-              onClick={() => { if (!item.disabled) setIsOpen(false); }}
+              to={item.disabled ? "#" : item.path}
+              onClick={() => {
+                if (!item.disabled) setIsOpen(false);
+              }}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative ${
                 item.disabled
-                  ? 'text-gray-300 cursor-not-allowed'
+                  ? "text-gray-300 cursor-not-allowed"
                   : active
-                  ? 'bg-gradient-to-r from-teal-50 to-blue-50 text-teal-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? "bg-gradient-to-r from-teal-50 to-blue-50 text-teal-700"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               }`}
             >
               {active && (
@@ -119,7 +148,7 @@ const Sidebar = () => {
                   className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-teal-500 rounded-r-full"
                 />
               )}
-              <Icon size={18} className={active ? 'text-teal-600' : ''} />
+              <Icon size={18} className={active ? "text-teal-600" : ""} />
               {!isCollapsed && <span>{item.label}</span>}
               {!isCollapsed && item.badge && (
                 <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
@@ -127,7 +156,9 @@ const Sidebar = () => {
                 </span>
               )}
               {!isCollapsed && item.disabled && (
-                <span className="ml-auto text-[10px] text-gray-300 bg-gray-50 px-1.5 py-0.5 rounded">Soon</span>
+                <span className="ml-auto text-[10px] text-gray-300 bg-gray-50 px-1.5 py-0.5 rounded">
+                  {t("soon")}
+                </span>
               )}
             </Link>
           );
@@ -141,7 +172,7 @@ const Sidebar = () => {
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all w-full"
         >
           <LogOut size={18} />
-          {!isCollapsed && <span>Sign out</span>}
+          {!isCollapsed && <span>{t("signOut")}</span>}
         </button>
       </div>
     </div>
@@ -172,7 +203,7 @@ const Sidebar = () => {
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="lg:hidden fixed left-0 top-0 bottom-0 w-72 bg-white shadow-2xl z-50"
             >
               <button
@@ -181,7 +212,7 @@ const Sidebar = () => {
               >
                 <X size={20} className="text-gray-500" />
               </button>
-              {renderSidebarContent()}
+              <SidebarContent />
             </motion.div>
           </>
         )}
@@ -190,10 +221,10 @@ const Sidebar = () => {
       {/* ─── Desktop sidebar ──────────────────────────────────────── */}
       <motion.aside
         className={`hidden lg:flex flex-col bg-white border-r border-gray-100 h-screen sticky top-0 transition-all duration-300 ${
-          isCollapsed ? 'w-20' : 'w-72'
+          isCollapsed ? "w-20" : "w-72"
         }`}
       >
-        {renderSidebarContent()}
+        <SidebarContent />
         {/* Collapse toggle */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
@@ -201,7 +232,7 @@ const Sidebar = () => {
         >
           <ChevronLeft
             size={14}
-            className={`text-gray-500 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`}
+            className={`text-gray-500 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""}`}
           />
         </button>
       </motion.aside>

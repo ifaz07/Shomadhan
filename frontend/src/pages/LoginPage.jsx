@@ -6,9 +6,11 @@ import toast from 'react-hot-toast';
 import AuthLayout from '../components/auth/AuthLayout';
 import SocialButtons from '../components/auth/SocialButtons';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const LoginPage = () => {
   const { login } = useAuth();
+  const { t } = useLanguage();
 
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -87,10 +89,8 @@ const LoginPage = () => {
       <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8 sm:p-10">
         {/* Header */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">Welcome back</h2>
-          <p className="text-gray-500 mt-1 text-sm">
-            Sign in to continue to your dashboard
-          </p>
+          <h2 className="text-2xl font-bold text-gray-900">{t('welcomeBack')}</h2>
+          <p className="text-gray-500 mt-1 text-sm">{t('signInContinue')}</p>
         </div>
 
         {/* Social Login */}
@@ -103,7 +103,7 @@ const LoginPage = () => {
           </div>
           <div className="relative flex justify-center text-xs">
             <span className="bg-white px-3 text-gray-400 uppercase tracking-wider">
-              or sign in with email
+              {t('orSignInEmail')}
             </span>
           </div>
         </div>
@@ -113,7 +113,7 @@ const LoginPage = () => {
           {/* Email Field */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
-              Email address
+              {t('emailAddress')}
             </label>
             <div className="relative">
               <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 ${
@@ -152,13 +152,13 @@ const LoginPage = () => {
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
+                {t('password')}
               </label>
               <button
                 type="button"
                 className="text-xs text-teal-600 hover:text-teal-700 font-medium transition-colors"
               >
-                Forgot password?
+                {t('forgotPassword')}
               </button>
             </div>
             <div className="relative">
@@ -209,7 +209,7 @@ const LoginPage = () => {
               className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
             />
             <label htmlFor="remember" className="ml-2 text-sm text-gray-600 cursor-pointer">
-              Keep me signed in
+              {t('keepSignedIn')}
             </label>
           </div>
 
@@ -224,11 +224,11 @@ const LoginPage = () => {
             {isLoading ? (
               <>
                 <Loader2 size={20} className="animate-spin" />
-                <span>Signing in...</span>
+                <span>{t('signingIn')}</span>
               </>
             ) : (
               <>
-                <span>Sign In</span>
+                <span>{t('signIn')}</span>
                 <ArrowRight size={18} />
               </>
             )}
@@ -237,20 +237,18 @@ const LoginPage = () => {
 
         {/* Sign up link */}
         <p className="text-center text-sm text-gray-500 mt-6">
-          Don't have an account?{' '}
+          {t('noAccount')}{' '}
           <Link
             to="/signup"
             className="text-teal-600 hover:text-teal-700 font-semibold transition-colors"
           >
-            Create one
+            {t('createOne')}
           </Link>
         </p>
       </div>
 
       {/* Footer */}
-      <p className="text-center text-xs text-white/30 mt-6">
-        © 2026 সমাধান (Somadhan). All rights reserved.
-      </p>
+      <p className="text-center text-xs text-white/30 mt-6">{t('copyright')}</p>
     </AuthLayout>
   );
 };
