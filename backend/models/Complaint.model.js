@@ -74,6 +74,17 @@ const complaintSchema = new mongoose.Schema(
         },
       },
     ],
+    nlpAnalysis: {
+      suggestedCategory: { type: String },
+      suggestedDepartment: {
+        name: { type: String },
+        key: { type: String },
+      },
+      keywords: [{ type: String }],
+      confidence: { type: Number },
+      source: { type: String }, // 'huggingface' | 'rule-based'
+      analyzedAt: { type: Date },
+    },
   },
   { timestamps: true }
 );

@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Plus, 
-  Image as ImageIcon, 
-  Video, 
-  Mic, 
-  X, 
-  Upload, 
-  Send, 
+import {
+  Plus,
+  Image as ImageIcon,
+  Video,
+  Mic,
+  X,
+  Upload,
+  Send,
   Info,
   MapPin,
   CheckCircle2,
@@ -17,6 +17,9 @@ import {
   Search,
   Loader2,
   ShieldCheck,
+  Sparkles,
+  Tag,
+  Building2,
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -101,6 +104,8 @@ const ComplaintPage = () => {
   const [mapPosition, setMapPosition] = useState(null); // [lat, lng]
   const [isLocating, setIsLocating] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [nlpSuggestion, setNlpSuggestion] = useState(null);
   const fileInputRef = useRef(null);
 
   if (!user?.isVerified) {
@@ -203,6 +208,33 @@ const ComplaintPage = () => {
       toast.error('Error searching for location');
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const analyzeWithNLP = async () => {
+    if (!formData.title.trim() || !formData.description.trim()) {
+      toast.error('Please enter both title and description before analyzing');
+      return;
+    }
+    setIsAnalyzing(true);
+    setNlpSuggestion(null);
+    try {
+      const response = await complaintAPI.analyze(formData.title, formData.description);
+      if (response.data.success) {
+        setNlpSuggestion(response.data.data);
+        toast.success('AI analysis complete!');
+      }
+    } catch (error) {
+      toast.error('Analysis failed. Please try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const applySuggestion = () => {
+    if (nlpSuggestion?.category) {
+      setFormData(prev => ({ ...prev, category: nlpSuggestion.category }));
+      toast.success(`Category set to "${nlpSuggestion.category}"`);
     }
   };
 
@@ -382,8 +414,98 @@ const ComplaintPage = () => {
                 placeholder="Explain the issue in detail..."
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none resize-none"
               />
+              <button
+                type="button"
+                onClick={analyzeWithNLP}
+                disabled={isAnalyzing}
+                className="mt-2 flex items-center gap-2 px-4 py-2 bg-violet-50 text-violet-700 border border-violet-200 rounded-xl text-sm font-semibold hover:bg-violet-100 transition-all disabled:opacity-50"
+              >
+                {isAnalyzing ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <Sparkles size={15} />
+                )}
+                {isAnalyzing ? 'Analyzing...' : 'AI Auto-Classify'}
+              </button>
             </motion.div>
           </div>
+
+          {/* ─── NLP Suggestion Panel ───────────────────────────────── */}
+          <AnimatePresence>
+            {nlpSuggestion && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="bg-violet-50 border border-violet-200 rounded-2xl p-5 space-y-4"
+              >
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-violet-900 flex items-center gap-2">
+                    <Sparkles size={16} className="text-violet-500" />
+                    AI Classification Result
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => setNlpSuggestion(null)}
+                    className="text-violet-400 hover:text-violet-600"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-white rounded-xl p-4 border border-violet-100">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 mb-2">
+                      <Tag size={13} />
+                      SUGGESTED CATEGORY
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg font-bold text-gray-900">{nlpSuggestion.category}</span>
+                      <div className="w-24 h-2 rounded-full bg-gray-100 overflow-hidden">
+                        <div
+                          className="h-full bg-violet-500 rounded-full transition-all"
+                          style={{ width: `${Math.round(nlpSuggestion.confidence * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl p-4 border border-violet-100">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 mb-2">
+                      <Building2 size={13} />
+                      RESPONSIBLE DEPARTMENT
+                    </div>
+                    <span className="text-lg font-bold text-gray-900">{nlpSuggestion.department.name}</span>
+                  </div>
+                </div>
+
+                {nlpSuggestion.keywords?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 mb-2">EXTRACTED KEYWORDS</p>
+                    <div className="flex flex-wrap gap-2">
+                      {nlpSuggestion.keywords.map((kw) => (
+                        <span
+                          key={kw}
+                          className="px-3 py-1 bg-white border border-violet-200 text-violet-700 rounded-full text-xs font-medium"
+                        >
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={applySuggestion}
+                  className="w-full py-2 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 transition-all flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 size={16} />
+                  Apply Suggested Category
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* ─── Location Section ───────────────────────────────────── */}
           <motion.div 

@@ -1,6 +1,7 @@
 const Complaint = require('../models/Complaint.model');
 const User = require('../models/User.model');
 const crypto = require('crypto');
+const { classifyComplaint } = require('../services/nlpService');
 
 // Helper: Generate unique ticket ID (e.g., SOM-2024-ABC12)
 const generateTicketId = () => {
@@ -53,11 +54,56 @@ const createComplaint = async (req, res, next) => {
       status: 'pending', // Explicitly set initial status
     };
 
+    // Run NLP classification in the background (non-blocking)
+    let nlpAnalysis = null;
+    try {
+      const nlp = await classifyComplaint(title, description);
+      nlpAnalysis = {
+        suggestedCategory: nlp.category,
+        suggestedDepartment: nlp.department,
+        keywords: nlp.keywords,
+        confidence: nlp.confidence,
+        source: nlp.source,
+        analyzedAt: new Date(),
+      };
+    } catch (nlpErr) {
+      console.warn('[NLP] Classification skipped:', nlpErr.message);
+    }
+
+    if (nlpAnalysis) {
+      complaintData.nlpAnalysis = nlpAnalysis;
+    }
+
     const complaint = await Complaint.create(complaintData);
 
     res.status(201).json({
       success: true,
       data: complaint,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Analyze complaint text with NLP (preview before submission)
+// @route   POST /api/v1/complaints/analyze
+// @access  Private
+const analyzeComplaint = async (req, res, next) => {
+  try {
+    const { title, description } = req.body;
+
+    if (!title || !description) {
+      return res.status(400).json({
+        success: false,
+        message: 'Both title and description are required for analysis',
+      });
+    }
+
+    const result = await classifyComplaint(title, description);
+
+    res.status(200).json({
+      success: true,
+      data: result,
     });
   } catch (error) {
     next(error);
@@ -186,6 +232,7 @@ const getComplaint = async (req, res, next) => {
 
 module.exports = {
   createComplaint,
+  analyzeComplaint,
   getComplaints,
   getComplaint,
   updateComplaint,

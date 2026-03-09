@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -57,6 +57,7 @@ export const complaintAPI = {
       'Content-Type': 'multipart/form-data',
     },
   }),
+  analyze: (title, description) => api.post('/complaints/analyze', { title, description }),
   getAll: () => api.get('/complaints'),
   getOne: (id) => api.get(`/complaints/${id}`),
 };

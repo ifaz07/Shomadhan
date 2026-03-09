@@ -58,7 +58,7 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // ─── Database Connection & Server Start ──────────────────────────────
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 mongoose
   .connect(process.env.MONGODB_URI)
