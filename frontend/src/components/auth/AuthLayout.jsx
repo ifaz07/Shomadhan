@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import LanguageToggle from '../LanguageToggle';
 
 // ─── Floating decorative shapes for the background ───────────────────
 const FloatingShapes = () => (
@@ -91,6 +92,12 @@ const AuthLayout = ({ children }) => {
   return (
     <div className="min-h-screen auth-bg flex relative">
       <FloatingShapes />
+
+      {/* Language toggle — fixed top-right corner */}
+      <div className="fixed top-4 right-4 z-50">
+        <LanguageToggle variant="dark" />
+      </div>
+
       <BrandingPanel />
 
       {/* Right side — form area */}

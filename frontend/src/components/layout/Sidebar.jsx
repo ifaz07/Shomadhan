@@ -9,28 +9,30 @@ import {
   X,
   ChevronLeft,
   ShieldCheck,
-  Settings,
   Bell,
   FileText,
   BarChart3,
   MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
+import LanguageToggle from '../LanguageToggle';
+
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/profile', label: 'My Profile', icon: User },
-    { path: '/notifications', label: 'Notifications', icon: Bell, badge: 3 },
-    // These are placeholders for future modules
-    { path: '/my-complaints', label: 'My Complaints', icon: FileText, disabled: true },
-    { path: '/analytics', label: 'Analytics', icon: BarChart3, disabled: true },
-    { path: '/feedback', label: 'Feedback', icon: MessageSquare, disabled: true },
+    { path: '/dashboard', label: t('dashboard'), icon: LayoutDashboard },
+    { path: '/profile', label: t('myProfile'), icon: User },
+    { path: '/notifications', label: t('notifications'), icon: Bell, badge: 3 },
+    { path: '/my-complaints', label: t('myComplaints'), icon: FileText, disabled: true },
+    { path: '/analytics', label: t('analytics'), icon: BarChart3, disabled: true },
+    { path: '/feedback', label: t('feedback'), icon: MessageSquare, disabled: true },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -54,16 +56,20 @@ const Sidebar = () => {
     <div className="flex flex-col h-full">
       {/* ─── Logo area ──────────────────────────────────────────── */}
       <div className="p-5 border-b border-gray-100">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center flex-shrink-0">
-            <span className="text-lg font-bold text-white font-bengali">স</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center flex-shrink-0">
+              <span className="text-lg font-bold text-white font-bengali">স</span>
+            </div>
+            {!isCollapsed && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <h1 className="text-lg font-bold text-gray-900 font-bengali">সমাধান</h1>
+                <p className="text-[10px] text-gray-400 -mt-0.5">Somadhan</p>
+              </motion.div>
+            )}
           </div>
-          {!isCollapsed && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <h1 className="text-lg font-bold text-gray-900 font-bengali">সমাধান</h1>
-              <p className="text-[10px] text-gray-400 -mt-0.5">Somadhan</p>
-            </motion.div>
-          )}
+          {/* Language toggle — top-right, above the role/user section */}
+          {!isCollapsed && <LanguageToggle variant="light" />}
         </div>
       </div>
 
@@ -121,7 +127,7 @@ const Sidebar = () => {
                 </span>
               )}
               {!isCollapsed && item.disabled && (
-                <span className="ml-auto text-[10px] text-gray-300 bg-gray-50 px-1.5 py-0.5 rounded">Soon</span>
+                <span className="ml-auto text-[10px] text-gray-300 bg-gray-50 px-1.5 py-0.5 rounded">{t('soon')}</span>
               )}
             </Link>
           );
@@ -135,7 +141,7 @@ const Sidebar = () => {
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all w-full"
         >
           <LogOut size={18} />
-          {!isCollapsed && <span>Sign out</span>}
+          {!isCollapsed && <span>{t('signOut')}</span>}
         </button>
       </div>
     </div>

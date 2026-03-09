@@ -24,6 +24,7 @@ import AuthLayout from '../components/auth/AuthLayout';
 import SocialButtons from '../components/auth/SocialButtons';
 import PasswordStrength from '../components/auth/PasswordStrength';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 // ─── Department options ──────────────────────────────────────────────
 const DEPARTMENTS = [
@@ -44,6 +45,7 @@ const DEPARTMENTS = [
 // Public Servant:  Step 1 (role) → Step 2 (basic + govt info) → Step 3 (password)
 const SignupPage = () => {
   const { register } = useAuth();
+  const { t } = useLanguage();
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -195,7 +197,7 @@ const SignupPage = () => {
     <div>
       <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1.5">
         {label}
-        {optional && <span className="text-gray-400 font-normal ml-1">(optional)</span>}
+        {optional && <span className="text-gray-400 font-normal ml-1">({t('optional')})</span>}
       </label>
       <div className="relative">
         <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 ${
@@ -286,11 +288,11 @@ const SignupPage = () => {
       {/* ─── Card ──────────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8 sm:p-10">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Create your account</h2>
+          <h2 className="text-2xl font-bold text-gray-900">{t('createAccount')}</h2>
           <p className="text-gray-500 mt-1 text-sm">
-            {step === 1 && 'Choose how you want to use Somadhan'}
-            {step === 2 && (isPublicServant ? 'Enter your personal & official details' : 'Enter your basic information')}
-            {step === 3 && 'Set a secure password for your account'}
+            {step === 1 && t('chooseRole')}
+            {step === 2 && (isPublicServant ? t('enterPersonalDetails') : t('enterBasicInfo'))}
+            {step === 3 && t('setPassword')}
           </p>
         </div>
 
@@ -315,7 +317,7 @@ const SignupPage = () => {
                 </div>
                 <div className="relative flex justify-center text-xs">
                   <span className="bg-white px-3 text-gray-400 uppercase tracking-wider">
-                    or choose your role
+                    {t('orChooseRole')}
                   </span>
                 </div>
               </div>
@@ -334,10 +336,8 @@ const SignupPage = () => {
                     <Users size={22} className="text-teal-600" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">Citizen</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Report issues, track complaints, and upvote community problems
-                    </p>
+                    <h3 className="font-semibold text-gray-900">{t('citizen')}</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">{t('citizenDesc')}</p>
                   </div>
                   <ArrowRight size={18} className="text-gray-300 group-hover:text-teal-500 transition-colors" />
                 </motion.button>
@@ -354,10 +354,8 @@ const SignupPage = () => {
                     <Building2 size={22} className="text-blue-600" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">Public Servant</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Manage and resolve department-assigned complaints
-                    </p>
+                    <h3 className="font-semibold text-gray-900">{t('publicServant')}</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">{t('publicServantDesc')}</p>
                   </div>
                   <ArrowRight size={18} className="text-gray-300 group-hover:text-blue-500 transition-colors" />
                 </motion.button>
@@ -381,20 +379,20 @@ const SignupPage = () => {
                   : 'bg-teal-100 text-teal-700'
               }`}>
                 {isPublicServant ? <Building2 size={13} /> : <Users size={13} />}
-                {isPublicServant ? 'Public Servant' : 'Citizen'}
+                {isPublicServant ? t('publicServant') : t('citizen')}
               </div>
 
               <div className="space-y-3.5">
                 {renderInput({
                   name: 'name',
-                  label: 'Full name',
+                  label: t('fullName'),
                   icon: User,
                   placeholder: 'e.g. Rafiq Ahmed',
                   autoComplete: 'name',
                 })}
                 {renderInput({
                   name: 'email',
-                  label: 'Email address',
+                  label: t('emailAddress'),
                   type: 'email',
                   icon: Mail,
                   placeholder: 'you@example.com',
@@ -402,7 +400,7 @@ const SignupPage = () => {
                 })}
                 {renderInput({
                   name: 'phone',
-                  label: 'Phone number',
+                  label: t('phoneNumber'),
                   type: 'tel',
                   icon: Phone,
                   placeholder: '+880 1XXXXXXXXX',
@@ -418,13 +416,13 @@ const SignupPage = () => {
                     className="space-y-3.5 pt-2 border-t border-gray-100"
                   >
                     <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">
-                      Official Details
+                      {t('officialDetails')}
                     </p>
 
                     {/* Department Dropdown */}
                     <div>
                       <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Department
+                        {t('department')}
                       </label>
                       <div className="relative">
                         <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 ${
@@ -441,7 +439,7 @@ const SignupPage = () => {
                           onBlur={() => setFocusedField(null)}
                           className={`input-field pl-11 appearance-none cursor-pointer ${errors.department ? 'input-error' : ''}`}
                         >
-                          <option value="">Select your department</option>
+                          <option value="">{t('selectDepartment')}</option>
                           {DEPARTMENTS.map((d) => (
                             <option key={d.value} value={d.value}>{d.label}</option>
                           ))}
@@ -458,20 +456,20 @@ const SignupPage = () => {
 
                     {renderInput({
                       name: 'employeeId',
-                      label: 'Employee ID',
+                      label: t('employeeId'),
                       icon: CreditCard,
                       placeholder: 'e.g. GOV-2024-1234',
                     })}
                     {renderInput({
                       name: 'governmentEmail',
-                      label: 'Government Email',
+                      label: t('governmentEmail'),
                       type: 'email',
                       icon: BadgeCheck,
                       placeholder: 'you@govt.bd',
                     })}
                     {renderInput({
                       name: 'designation',
-                      label: 'Designation / Rank',
+                      label: t('designation'),
                       icon: Briefcase,
                       placeholder: 'e.g. Junior Engineer, Inspector',
                     })}
@@ -488,7 +486,7 @@ const SignupPage = () => {
                     whileTap={{ scale: 0.99 }}
                   >
                     <ArrowLeft size={16} />
-                    <span>Back</span>
+                    <span>{t('back')}</span>
                   </motion.button>
                   <motion.button
                     type="button"
@@ -497,7 +495,7 @@ const SignupPage = () => {
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                   >
-                    <span>Continue</span>
+                    <span>{t('continue')}</span>
                     <ArrowRight size={18} />
                   </motion.button>
                 </div>
@@ -518,7 +516,7 @@ const SignupPage = () => {
                 <div>
                   {renderInput({
                     name: 'password',
-                    label: 'Password',
+                    label: t('password'),
                     icon: Lock,
                     placeholder: 'Create a strong password',
                     autoComplete: 'new-password',
@@ -531,7 +529,7 @@ const SignupPage = () => {
 
                 {renderInput({
                   name: 'confirmPassword',
-                  label: 'Confirm password',
+                  label: t('confirmPassword'),
                   icon: Shield,
                   placeholder: 'Re-enter your password',
                   autoComplete: 'new-password',
@@ -551,13 +549,13 @@ const SignupPage = () => {
                       className="w-4 h-4 mt-0.5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
                     />
                     <span className="text-sm text-gray-600 leading-tight">
-                      I agree to the{' '}
+                      {t('agreeTerms')}{' '}
                       <button type="button" className="text-teal-600 hover:text-teal-700 font-medium underline">
-                        Terms of Service
+                        {t('termsOfService')}
                       </button>{' '}
-                      and{' '}
+                      {t('and')}{' '}
                       <button type="button" className="text-teal-600 hover:text-teal-700 font-medium underline">
-                        Privacy Policy
+                        {t('privacyPolicy')}
                       </button>
                     </span>
                   </label>
@@ -579,9 +577,7 @@ const SignupPage = () => {
                 >
                   <Shield size={18} className="text-teal-600 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-teal-700 leading-relaxed">
-                    <strong>Profile verification</strong> — To file complaints, verify
-                    your identity with a NID, Passport, or Birth Certificate from your
-                    profile after signing up.
+                    <strong>{t('profileVerification')}</strong> — {t('verificationNotice')}
                   </p>
                 </motion.div>
 
@@ -595,7 +591,7 @@ const SignupPage = () => {
                     whileTap={{ scale: 0.99 }}
                   >
                     <ArrowLeft size={16} />
-                    <span>Back</span>
+                    <span>{t('back')}</span>
                   </motion.button>
 
                   <motion.button
@@ -608,11 +604,11 @@ const SignupPage = () => {
                     {isLoading ? (
                       <>
                         <Loader2 size={20} className="animate-spin" />
-                        <span>Creating account...</span>
+                        <span>{t('creatingAccount')}</span>
                       </>
                     ) : (
                       <>
-                        <span>Create Account</span>
+                        <span>{t('createAccount')}</span>
                         <ArrowRight size={18} />
                       </>
                     )}
@@ -625,16 +621,14 @@ const SignupPage = () => {
 
         {/* Sign in link */}
         <p className="text-center text-sm text-gray-500 mt-6">
-          Already have an account?{' '}
+          {t('alreadyHaveAccount')}{' '}
           <Link to="/login" className="text-teal-600 hover:text-teal-700 font-semibold transition-colors">
-            Sign in
+            {t('signInLink')}
           </Link>
         </p>
       </div>
 
-      <p className="text-center text-xs text-white/30 mt-6">
-        © 2026 সমাধান (Somadhan). All rights reserved.
-      </p>
+      <p className="text-center text-xs text-white/30 mt-6">{t('copyright')}</p>
     </AuthLayout>
   );
 };
