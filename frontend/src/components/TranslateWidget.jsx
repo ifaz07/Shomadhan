@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Languages, Loader2, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import T from './T';
 
 /**
  * Drop this next to any complaint description textarea.
@@ -14,7 +15,7 @@ import { useLanguage } from '../context/LanguageContext';
  *   toLang     – target language code, defaults to opposite of current UI lang
  */
 const TranslateWidget = ({ text, fromLang, toLang }) => {
-  const { language, translateText, t } = useLanguage();
+  const { language, translateText } = useLanguage();
   const [translated, setTranslated] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -46,7 +47,7 @@ const TranslateWidget = ({ text, fromLang, toLang }) => {
         ) : (
           <Languages size={13} />
         )}
-        {loading ? t('translating') : t('translateBtn')}
+        {loading ? <T en="Translating..." /> : <T en="Translate" />}
         {tgt === 'bn' ? ' → বাংলা' : ' → English'}
       </button>
 
@@ -67,12 +68,12 @@ const TranslateWidget = ({ text, fromLang, toLang }) => {
               <X size={14} />
             </button>
             <p className="text-[11px] font-semibold text-teal-600 uppercase tracking-wider mb-1">
-              {t('translationLabel')}
+              <T en="Translation" />
             </p>
             <p className={`text-sm text-gray-700 leading-relaxed pr-5 ${tgt === 'bn' ? 'font-bengali' : ''}`}>
               {translated}
             </p>
-            <p className="text-[10px] text-teal-400 mt-1.5">{t('translationHint')}</p>
+            <p className="text-[10px] text-teal-400 mt-1.5"><T en="Auto-translated to English" /></p>
           </motion.div>
         )}
       </AnimatePresence>

@@ -22,16 +22,14 @@ import {
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { useLanguage } from '../context/LanguageContext';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import api from '../services/api';
+import T from '../components/T';
 
 const ProfilePage = () => {
   const { user } = useAuth();
-  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('profile');
 
-  // ─── Password change state ─────────────────────────────────────
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -43,13 +41,12 @@ const ProfilePage = () => {
 
   const verificationStatus = user?.verificationDoc?.status || 'none';
 
-  // ─── Password change handler ───────────────────────────────────
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!passwordData.currentPassword) errs.currentPassword = t('currentPassword') + ' is required';
+    if (!passwordData.currentPassword) errs.currentPassword = 'Current Password is required';
     if (!passwordData.newPassword) {
-      errs.newPassword = t('newPassword') + ' is required';
+      errs.newPassword = 'New Password is required';
     } else if (passwordData.newPassword.length < 8) {
       errs.newPassword = 'Must be at least 8 characters';
     }
@@ -77,10 +74,20 @@ const ProfilePage = () => {
   // ─── Verification status banner ────────────────────────────────
   const VerificationStatus = () => {
     const statusMap = {
-      none:     { icon: Shield,      color: 'text-gray-400',   bg: 'bg-gray-50 border-gray-200',     label: t('verNone'),     desc: t('verNoneDesc')    },
-      pending:  { icon: Clock,       color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-200', label: t('verPending'),  desc: t('verPendingDesc') },
-      approved: { icon: ShieldCheck, color: 'text-green-600',  bg: 'bg-green-50 border-green-200',   label: t('verApproved'), desc: t('verApprovedDesc')},
-      rejected: { icon: ShieldX,     color: 'text-red-600',    bg: 'bg-red-50 border-red-200',       label: t('verRejected'), desc: user?.verificationDoc?.rejectionReason || t('verRejectedDefault') },
+      none:     { icon: Shield,      color: 'text-gray-400',   bg: 'bg-gray-50 border-gray-200',
+        label: <T en="Not Verified" />,
+        desc:  <T en="Submit your identity document to get verified and start filing complaints." /> },
+      pending:  { icon: Clock,       color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-200',
+        label: <T en="Verification Pending" />,
+        desc:  <T en="Your document is under review. This usually takes 1-2 business days." /> },
+      approved: { icon: ShieldCheck, color: 'text-green-600',  bg: 'bg-green-50 border-green-200',
+        label: <T en="Verified" />,
+        desc:  <T en="Your identity has been verified. You can now submit complaints." /> },
+      rejected: { icon: ShieldX,     color: 'text-red-600',    bg: 'bg-red-50 border-red-200',
+        label: <T en="Verification Rejected" />,
+        desc:  user?.verificationDoc?.rejectionReason
+          ? <T en={user.verificationDoc.rejectionReason} />
+          : <T en="Your document was rejected. Please resubmit with a valid document." /> },
     };
     const s = statusMap[verificationStatus];
     const Icon = s.icon;
@@ -126,15 +133,15 @@ const ProfilePage = () => {
   );
 
   const tabs = [
-    { id: 'profile',      label: t('tabProfile'),      icon: User   },
-    { id: 'security',     label: t('tabSecurity'),     icon: Lock   },
-    { id: 'verification', label: t('tabVerification'), icon: Shield },
+    { id: 'profile',      label: <T en="Profile" />,      icon: User   },
+    { id: 'security',     label: <T en="Security" />,     icon: Lock   },
+    { id: 'verification', label: <T en="Verification" />, icon: Shield },
   ];
 
   return (
     <DashboardLayout>
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('myProfileTitle')}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-6"><T en="My Profile" /></h1>
       </motion.div>
 
       {/* ─── Tabs ───────────────────────────────────────────────── */}
@@ -169,7 +176,6 @@ const ProfilePage = () => {
             exit={{ opacity: 0, x: 10 }}
             className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 max-w-2xl"
           >
-            {/* Avatar */}
             <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
               <div className="relative">
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-teal-100 to-blue-100 flex items-center justify-center">
@@ -187,25 +193,26 @@ const ProfilePage = () => {
                 <span className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded ${
                   user?.role === 'department_officer' ? 'bg-blue-100 text-blue-700' : 'bg-teal-100 text-teal-700'
                 }`}>
-                  {user?.role === 'department_officer' ? t('rolePublicServant') : t('roleCitizen')}
+                  {user?.role === 'department_officer' ? <T en="Public Servant" /> : <T en="Citizen" />}
                 </span>
               </div>
             </div>
 
-            {/* Info Fields */}
             <div className="space-y-4">
-              <InfoRow icon={User}  label={t('fullNameLabel')} value={user?.name} />
-              <InfoRow icon={Mail}  label={t('emailLabel')}    value={user?.email} />
-              <InfoRow icon={Phone} label={t('phoneLabel')}    value={user?.phone || t('notProvided')} muted={!user?.phone} />
+              <InfoRow icon={User}  label={<T en="Full Name" />}  value={user?.name} />
+              <InfoRow icon={Mail}  label={<T en="Email" />}      value={user?.email} />
+              <InfoRow icon={Phone} label={<T en="Phone" />}      value={user?.phone} muted={!user?.phone} emptyLabel={<T en="Not provided" />} />
               {user?.role === 'department_officer' && (
                 <>
                   <div className="border-t border-gray-100 pt-4 mt-4">
-                    <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">{t('officialDetails')}</p>
+                    <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">
+                      <T en="Official Details" />
+                    </p>
                   </div>
-                  <InfoRow icon={Building2} label={t('department')}     value={user?.department?.replace('_', ' ')} />
-                  <InfoRow icon={CreditCard} label={t('employeeId')}    value={user?.employeeId} />
-                  <InfoRow icon={Mail}       label={t('governmentEmail')} value={user?.governmentEmail} />
-                  <InfoRow icon={Briefcase}  label={t('designation')}   value={user?.designation} />
+                  <InfoRow icon={Building2}  label={<T en="Department" />}       value={user?.department?.replace('_', ' ')} />
+                  <InfoRow icon={CreditCard} label={<T en="Employee ID" />}      value={user?.employeeId} />
+                  <InfoRow icon={Mail}       label={<T en="Government Email" />} value={user?.governmentEmail} />
+                  <InfoRow icon={Briefcase}  label={<T en="Designation" />}      value={user?.designation} />
                 </>
               )}
             </div>
@@ -221,13 +228,13 @@ const ProfilePage = () => {
             exit={{ opacity: 0, x: 10 }}
             className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 max-w-2xl"
           >
-            <h3 className="text-lg font-bold text-gray-900 mb-1">{t('changePassword')}</h3>
-            <p className="text-sm text-gray-500 mb-6">{t('changePasswordDesc')}</p>
+            <h3 className="text-lg font-bold text-gray-900 mb-1"><T en="Change Password" /></h3>
+            <p className="text-sm text-gray-500 mb-6"><T en="Update your password to keep your account secure" /></p>
 
             <form onSubmit={handlePasswordChange} className="space-y-4">
-              <PasswordField name="currentPassword" label={t('currentPassword')} placeholder={t('currentPassword')} />
-              <PasswordField name="newPassword"     label={t('newPassword')}     placeholder={t('newPassword')} />
-              <PasswordField name="confirmPassword" label={t('confirmNewPassword')} placeholder={t('confirmNewPassword')} />
+              <PasswordField name="currentPassword" label={<T en="Current Password" />} placeholder="Current password" />
+              <PasswordField name="newPassword"     label={<T en="New Password" />}     placeholder="New password" />
+              <PasswordField name="confirmPassword" label={<T en="Confirm New Password" />} placeholder="Confirm new password" />
 
               <motion.button
                 type="submit"
@@ -237,7 +244,7 @@ const ProfilePage = () => {
                 whileTap={{ scale: passwordLoading ? 1 : 0.99 }}
               >
                 {passwordLoading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                <span>{passwordLoading ? t('updating') : t('updatePassword')}</span>
+                <span>{passwordLoading ? <T en="Updating..." /> : <T en="Update Password" />}</span>
               </motion.button>
             </form>
           </motion.div>
@@ -252,8 +259,10 @@ const ProfilePage = () => {
             exit={{ opacity: 0, x: 10 }}
             className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 max-w-2xl"
           >
-            <h3 className="text-lg font-bold text-gray-900 mb-1">{t('accountVerification')}</h3>
-            <p className="text-sm text-gray-500 mb-6">{t('accountVerificationDesc')}</p>
+            <h3 className="text-lg font-bold text-gray-900 mb-1"><T en="Account Verification" /></h3>
+            <p className="text-sm text-gray-500 mb-6">
+              <T en="Verify your identity to file complaints and participate fully" />
+            </p>
 
             <VerificationStatus />
 
@@ -263,7 +272,7 @@ const ProfilePage = () => {
                 className="mt-6 flex items-center justify-center gap-2 btn-primary w-full"
               >
                 <ShieldCheck size={18} />
-                <span>{t('submitVerification')}</span>
+                <span><T en="Submit for Verification" /></span>
                 <ArrowRight size={18} />
               </Link>
             )}
@@ -275,7 +284,7 @@ const ProfilePage = () => {
 };
 
 // ─── Info Row Component ──────────────────────────────────────────────
-const InfoRow = ({ icon: Icon, label, value, muted }) => (
+const InfoRow = ({ icon: Icon, label, value, muted, emptyLabel }) => (
   <div className="flex items-center gap-3">
     <div className="w-9 h-9 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
       <Icon size={16} className="text-gray-400" />
@@ -283,7 +292,7 @@ const InfoRow = ({ icon: Icon, label, value, muted }) => (
     <div>
       <p className="text-xs text-gray-400">{label}</p>
       <p className={`text-sm font-medium ${muted ? 'text-gray-300 italic' : 'text-gray-900'}`}>
-        {value || '—'}
+        {value || emptyLabel || '—'}
       </p>
     </div>
   </div>

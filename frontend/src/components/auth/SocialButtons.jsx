@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import T from '../T';
 
 // ─── Google icon SVG ─────────────────────────────────────────────────
 const GoogleIcon = () => (
@@ -53,7 +54,7 @@ const SocialButtons = () => {
         whileTap={{ scale: 0.99 }}
       >
         <GoogleIcon />
-        <span>Continue with Google</span>
+        <span><T en="Continue with Google" /></span>
       </motion.button>
 
       <motion.button
@@ -64,7 +65,7 @@ const SocialButtons = () => {
         whileTap={{ scale: 0.99 }}
       >
         <FacebookIcon />
-        <span>Continue with Facebook</span>
+        <span><T en="Continue with Facebook" /></span>
       </motion.button>
     </div>
   );
