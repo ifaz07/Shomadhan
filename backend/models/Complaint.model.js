@@ -85,6 +85,14 @@ const complaintSchema = new mongoose.Schema(
       source: { type: String }, // 'huggingface' | 'rule-based'
       analyzedAt: { type: Date },
     },
+    spamCheck: {
+      isDuplicate: { type: Boolean, default: false },
+      similarTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Complaint' },
+      originalTicketId: { type: String },
+      similarity: { type: Number },       // 0–1 similarity score
+      method: { type: String },           // 'semantic' | 'keyword'
+      checkedAt: { type: Date },
+    },
   },
   { timestamps: true }
 );

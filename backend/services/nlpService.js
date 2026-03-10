@@ -181,4 +181,4 @@ async function classifyComplaint(title, description) {
   };
 }
 
-module.exports = { classifyComplaint };
+module.exports = { classifyComplaint, extractKeywords };

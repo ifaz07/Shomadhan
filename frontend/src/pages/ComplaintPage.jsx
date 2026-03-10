@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus,
-  Image as ImageIcon,
   Video,
   Mic,
   X,
@@ -20,6 +18,7 @@ import {
   Sparkles,
   Tag,
   Building2,
+  Copy,
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -106,6 +105,7 @@ const ComplaintPage = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [nlpSuggestion, setNlpSuggestion] = useState(null);
+  const [spamWarning, setSpamWarning] = useState(null); // { ticketId, similarity, method }
   const fileInputRef = useRef(null);
 
   if (!user?.isVerified) {
@@ -292,22 +292,20 @@ const ComplaintPage = () => {
     try {
       const response = await complaintAPI.create(data);
       if (response.data.success) {
+        setSpamWarning(null);
         toast.success('Complaint submitted successfully!');
-        // Reset form
-        setFormData({
-          title: '',
-          category: '',
-          description: '',
-          location: '',
-          isAnonymous: false,
-        });
+        setFormData({ title: '', category: '', description: '', location: '', isAnonymous: false });
         setFiles([]);
         setPreviews([]);
         setMapPosition(null);
       }
     } catch (error) {
       console.error('Submission error:', error);
-      toast.error(error.response?.data?.message || 'Failed to submit complaint');
+      if (error.response?.status === 409 && error.response.data?.duplicate) {
+        setSpamWarning(error.response.data.duplicate);
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to submit complaint');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -691,6 +689,55 @@ const ComplaintPage = () => {
               </div>
             </div>
           </motion.div>
+
+          {/* ─── Spam / Duplicate Warning ───────────────────────────── */}
+          <AnimatePresence>
+            {spamWarning && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="bg-red-50 border border-red-200 rounded-2xl p-5"
+              >
+                <div className="flex items-start gap-3">
+                  <AlertCircle size={20} className="text-red-500 mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-red-900">Duplicate Complaint Detected</p>
+                    <p className="text-sm text-red-700 mt-1">
+                      A similar complaint from the same area was already submitted within the last 24 hours.
+                      Please check the existing ticket before submitting again.
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2 bg-white border border-red-200 rounded-lg px-3 py-1.5">
+                        <span className="text-xs text-gray-500 font-medium">Existing ticket</span>
+                        <span className="text-sm font-bold text-gray-900 font-mono">{spamWarning.ticketId}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(spamWarning.ticketId);
+                            toast.success('Ticket ID copied');
+                          }}
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          <Copy size={13} />
+                        </button>
+                      </div>
+                      <span className="text-xs text-red-600 font-medium bg-red-100 px-2 py-1 rounded-full">
+                        {Math.round(spamWarning.similarity * 100)}% similar · {spamWarning.method}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSpamWarning(null)}
+                    className="text-red-400 hover:text-red-600 shrink-0"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* ─── Submit Button ──────────────────────────────────────── */}
           <motion.div variants={itemVariants} className="pt-4">

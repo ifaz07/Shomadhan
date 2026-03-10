@@ -1,7 +1,7 @@
 const Complaint = require('../models/Complaint.model');
-const User = require('../models/User.model');
 const crypto = require('crypto');
 const { classifyComplaint } = require('../services/nlpService');
+const { checkForDuplicates } = require('../services/spamDetectionService');
 
 // Helper: Generate unique ticket ID (e.g., SOM-2024-ABC12)
 const generateTicketId = () => {
@@ -54,7 +54,35 @@ const createComplaint = async (req, res, next) => {
       status: 'pending', // Explicitly set initial status
     };
 
-    // Run NLP classification in the background (non-blocking)
+    // ── Spam / duplicate detection ─────────────────────────────────────────
+    try {
+      const spam = await checkForDuplicates(
+        title,
+        description,
+        complaintData.latitude,
+        complaintData.longitude,
+        complaintData.user  // null for anonymous → spam check skipped
+      );
+
+      if (spam.isSpam) {
+        return res.status(409).json({
+          success: false,
+          message:
+            'A similar complaint from the same area was already submitted within the last 24 hours. ' +
+            'Please check the existing ticket before submitting again.',
+          duplicate: {
+            ticketId: spam.originalTicketId,
+            similarity: spam.similarity,
+            method: spam.method,
+          },
+        });
+      }
+    } catch (spamErr) {
+      // Non-blocking — log and continue if spam check itself fails
+      console.warn('[SpamDetection] Check skipped:', spamErr.message);
+    }
+
+    // ── NLP classification ────────────────────────────────────────────────
     let nlpAnalysis = null;
     try {
       const nlp = await classifyComplaint(title, description);
