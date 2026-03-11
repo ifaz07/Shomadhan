@@ -452,30 +452,34 @@ const ComplaintPage = () => {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="bg-white rounded-xl p-4 border border-violet-100">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 mb-2">
-                      <Tag size={13} />
-                      <T en="SUGGESTED CATEGORY" />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg font-bold text-gray-900">{nlpSuggestion.category}</span>
-                      <div className="w-24 h-2 rounded-full bg-gray-100 overflow-hidden">
-                        <div
-                          className="h-full bg-violet-500 rounded-full transition-all"
-                          style={{ width: `${Math.round(nlpSuggestion.confidence * 100)}%` }}
-                        />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+                    <Tag size={13} />
+                    <T en="TOP SUGGESTED CATEGORIES" />
+                  </div>
+                  {(nlpSuggestion.topCategories || [{ category: nlpSuggestion.category, confidence: nlpSuggestion.confidence, department: nlpSuggestion.department }]).map((item, idx) => (
+                    <div key={item.category} className="bg-white rounded-xl p-4 border border-violet-100 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-violet-400">#{idx + 1}</span>
+                        <div>
+                          <span className="text-base font-bold text-gray-900">{item.category}</span>
+                          <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+                            <Building2 size={11} />
+                            {item.department.name}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className="text-xs font-semibold text-violet-600">{Math.round(item.confidence * 100)}%</span>
+                        <div className="w-20 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                          <div
+                            className="h-full bg-violet-500 rounded-full transition-all"
+                            style={{ width: `${Math.round(item.confidence * 100)}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="bg-white rounded-xl p-4 border border-violet-100">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 mb-2">
-                      <Building2 size={13} />
-                      <T en="RESPONSIBLE DEPARTMENT" />
-                    </div>
-                    <span className="text-lg font-bold text-gray-900">{nlpSuggestion.department.name}</span>
-                  </div>
+                  ))}
                 </div>
 
                 {nlpSuggestion.keywords?.length > 0 && (

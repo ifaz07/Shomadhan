@@ -97,7 +97,21 @@ function ruleBasedClassify(text) {
   const category = best || 'Other';
   const confidence = bestScore > 0 ? Math.min(0.5 + bestScore * 0.1, 0.85) : 0.3;
 
-  return { category, confidence, source: 'rule-based' };
+  // Build top2 from rule scores
+  const allScores = rules
+    .map(rule => ({ category: rule.category, score: rule.keywords.filter(kw => lower.includes(kw)).length }))
+    .filter(r => r.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  const top2 = allScores.slice(0, 2).map(r => ({
+    category: r.category,
+    confidence: Math.min(0.5 + r.score * 0.1, 0.85),
+  }));
+
+  if (top2.length === 0) top2.push({ category: 'Other', confidence: 0.3 });
+  if (top2.length === 1) top2.push({ category: 'Other', confidence: 0.3 });
+
+  return { category, confidence, top2, source: 'rule-based' };
 }
 
 /**
@@ -128,11 +142,12 @@ async function callHuggingFaceAPI(text) {
 
   // Response is an array sorted by score descending: [{label, score}, ...]
   const sorted = Array.isArray(result) ? result : result.labels.map((l, i) => ({ label: l, score: result.scores[i] }));
-  const topLabel = sorted[0].label;
-  const topScore = sorted[0].score;
-  const category = LABEL_TO_CATEGORY[topLabel] || 'Other';
+  const top2 = sorted.slice(0, 2).map(item => ({
+    category: LABEL_TO_CATEGORY[item.label] || 'Other',
+    confidence: item.score,
+  }));
 
-  return { category, confidence: topScore, source: 'huggingface' };
+  return { category: top2[0].category, confidence: top2[0].confidence, top2, source: 'huggingface' };
 }
 
 /**
@@ -160,7 +175,7 @@ async function classifyComplaint(title, description) {
     classificationResult = ruleBasedClassify(text);
   }
 
-  const { category, confidence, source } = classificationResult;
+  const { category, confidence, top2, source } = classificationResult;
   const department = CATEGORY_TO_DEPARTMENT[category] || CATEGORY_TO_DEPARTMENT.Other;
 
   return {
@@ -169,6 +184,11 @@ async function classifyComplaint(title, description) {
     keywords,
     confidence: Math.round(confidence * 100) / 100,
     source,
+    topCategories: top2.map(t => ({
+      category: t.category,
+      confidence: Math.round(t.confidence * 100) / 100,
+      department: CATEGORY_TO_DEPARTMENT[t.category] || CATEGORY_TO_DEPARTMENT.Other,
+    })),
   };
 }
 
