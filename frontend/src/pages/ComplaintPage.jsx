@@ -27,6 +27,7 @@ import { Link } from 'react-router-dom';
 import { complaintAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/layout/DashboardLayout';
+import T from '../components/T';
 
 // Fix for default marker icons in Leaflet with React
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -124,15 +125,15 @@ const ComplaintPage = () => {
             <div className="w-20 h-20 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-6">
               <ShieldCheck size={40} className="text-yellow-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Account Verification Required</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4"><T en="Account Verification Required" /></h2>
             <p className="text-gray-600 mb-8 leading-relaxed">
-              To submit complaints and help improve our community, you need to verify your account with a valid document (NID, Birth Certificate, or Passport).
+              <T en="To submit complaints and help improve our community, you need to verify your account with a valid document (NID, Birth Certificate, or Passport)." />
             </p>
             <Link
               to="/verify"
               className="inline-flex items-center gap-2 bg-teal-500 text-white px-8 py-3 rounded-xl font-bold hover:bg-teal-600 transition-all shadow-lg shadow-teal-500/20"
             >
-              Verify My Account
+              <T en="Verify My Account" />
             </Link>
           </motion.div>
         </div>
@@ -334,15 +335,15 @@ const ComplaintPage = () => {
             animate={{ opacity: 1, x: 0 }}
             className="text-3xl font-bold text-gray-900"
           >
-            Submit Complaint
+            <T en="Submit Complaint" />
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
             className="text-gray-500 mt-2"
           >
-            Provide details about the issue and upload supporting evidence to help us resolve it.
+            <T en="Provide details about the issue and upload supporting evidence to help us resolve it." />
           </motion.p>
         </header>
 
@@ -358,7 +359,7 @@ const ComplaintPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <motion.div variants={itemVariants} className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                  Complaint Title
+                  <T en="Complaint Title" />
                 </label>
                 <input
                   required
@@ -377,7 +378,7 @@ const ComplaintPage = () => {
 
               <motion.div variants={itemVariants} className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700">
-                  Category
+                  <T en="Category" />
                 </label>
                 <select
                   required
@@ -400,7 +401,7 @@ const ComplaintPage = () => {
 
             <motion.div variants={itemVariants} className="space-y-2">
               <label className="text-sm font-semibold text-gray-700">
-                Detailed Description
+                <T en="Detailed Description" />
               </label>
               <textarea
                 required
@@ -423,7 +424,7 @@ const ComplaintPage = () => {
                 ) : (
                   <Sparkles size={15} />
                 )}
-                {isAnalyzing ? 'Analyzing...' : 'AI Auto-Classify'}
+                {isAnalyzing ? <T en="Analyzing..." /> : <T en="AI Auto-Classify" />}
               </button>
             </motion.div>
           </div>
@@ -440,7 +441,7 @@ const ComplaintPage = () => {
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-bold text-violet-900 flex items-center gap-2">
                     <Sparkles size={16} className="text-violet-500" />
-                    AI Classification Result
+                    <T en="AI Classification Result" />
                   </h4>
                   <button
                     type="button"
@@ -455,7 +456,7 @@ const ComplaintPage = () => {
                   <div className="bg-white rounded-xl p-4 border border-violet-100">
                     <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 mb-2">
                       <Tag size={13} />
-                      SUGGESTED CATEGORY
+                      <T en="SUGGESTED CATEGORY" />
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-lg font-bold text-gray-900">{nlpSuggestion.category}</span>
@@ -471,7 +472,7 @@ const ComplaintPage = () => {
                   <div className="bg-white rounded-xl p-4 border border-violet-100">
                     <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 mb-2">
                       <Building2 size={13} />
-                      RESPONSIBLE DEPARTMENT
+                      <T en="RESPONSIBLE DEPARTMENT" />
                     </div>
                     <span className="text-lg font-bold text-gray-900">{nlpSuggestion.department.name}</span>
                   </div>
@@ -479,7 +480,7 @@ const ComplaintPage = () => {
 
                 {nlpSuggestion.keywords?.length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold text-gray-500 mb-2">EXTRACTED KEYWORDS</p>
+                    <p className="text-xs font-semibold text-gray-500 mb-2"><T en="EXTRACTED KEYWORDS" /></p>
                     <div className="flex flex-wrap gap-2">
                       {nlpSuggestion.keywords.map((kw) => (
                         <span
@@ -499,7 +500,7 @@ const ComplaintPage = () => {
                   className="w-full py-2 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 transition-all flex items-center justify-center gap-2"
                 >
                   <CheckCircle2 size={16} />
-                  Apply Suggested Category
+                  <T en="Apply Suggested Category" />
                 </button>
               </motion.div>
             )}
@@ -514,9 +515,9 @@ const ComplaintPage = () => {
               <div>
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   <MapPin className="text-teal-500" size={20} />
-                  Incident Location
+                  <T en="Incident Location" />
                 </h3>
-                <p className="text-sm text-gray-500 mt-1">Search an area or pin it on the map</p>
+                <p className="text-sm text-gray-500 mt-1"><T en="Search an area or pin it on the map" /></p>
               </div>
               
               <div className="flex gap-2">
@@ -531,7 +532,7 @@ const ComplaintPage = () => {
                   ) : (
                     <Navigation size={16} />
                   )}
-                  {isLocating ? 'Locating...' : 'My Location'}
+                  {isLocating ? <T en="Locating..." /> : <T en="My Location" />}
                 </button>
               </div>
             </div>
@@ -578,7 +579,7 @@ const ComplaintPage = () => {
                 
                 <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm flex items-center gap-2 text-[10px] font-medium text-gray-600">
                   <MousePointer2 size={12} className="text-teal-500" />
-                  Click to pin exact location
+                  <T en="Click to pin exact location" />
                 </div>
               </div>
             </div>
@@ -590,8 +591,8 @@ const ComplaintPage = () => {
             className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-700">Supporting Evidence</h3>
-              <span className="text-xs text-gray-400">Max 5 files (Images, Video, Audio)</span>
+              <h3 className="text-sm font-semibold text-gray-700"><T en="Supporting Evidence" /></h3>
+              <span className="text-xs text-gray-400"><T en="Max 5 files (Images, Video, Audio)" /></span>
             </div>
 
             <div 
@@ -602,8 +603,8 @@ const ComplaintPage = () => {
                 <Upload className="text-gray-400 group-hover:text-teal-500" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-700">Click to upload or drag and drop</p>
-                <p className="text-xs text-gray-400 mt-1">PNG, JPG, MP4, MP3 up to 10MB each</p>
+                <p className="text-sm font-medium text-gray-700"><T en="Click to upload or drag and drop" /></p>
+                <p className="text-xs text-gray-400 mt-1"><T en="PNG, JPG, MP4, MP3 up to 10MB each" /></p>
               </div>
               <input
                 type="file"
@@ -671,7 +672,7 @@ const ComplaintPage = () => {
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-teal-900">Submit Anonymously</h4>
+                  <h4 className="font-semibold text-teal-900"><T en="Submit Anonymously" /></h4>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
@@ -684,7 +685,7 @@ const ComplaintPage = () => {
                   </label>
                 </div>
                 <p className="text-sm text-teal-700 mt-1">
-                  Your identity will be hidden from the authorities and other users. However, we'll still be able to track the complaint status.
+                  <T en="Your identity will be hidden from the authorities and other users. However, we'll still be able to track the complaint status." />
                 </p>
               </div>
             </div>
@@ -702,14 +703,13 @@ const ComplaintPage = () => {
                 <div className="flex items-start gap-3">
                   <AlertCircle size={20} className="text-red-500 mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-red-900">Duplicate Complaint Detected</p>
+                    <p className="text-sm font-bold text-red-900"><T en="Duplicate Complaint Detected" /></p>
                     <p className="text-sm text-red-700 mt-1">
-                      A similar complaint from the same area was already submitted within the last 24 hours.
-                      Please check the existing ticket before submitting again.
+                      <T en="A similar complaint from the same area was already submitted within the last 24 hours. Please check the existing ticket before submitting again." />
                     </p>
                     <div className="mt-3 flex flex-wrap items-center gap-3">
                       <div className="flex items-center gap-2 bg-white border border-red-200 rounded-lg px-3 py-1.5">
-                        <span className="text-xs text-gray-500 font-medium">Existing ticket</span>
+                        <span className="text-xs text-gray-500 font-medium"><T en="Existing ticket" /></span>
                         <span className="text-sm font-bold text-gray-900 font-mono">{spamWarning.ticketId}</span>
                         <button
                           type="button"
@@ -753,12 +753,12 @@ const ComplaintPage = () => {
               {isSubmitting ? (
                 <>
                   <Loader2 size={20} className="animate-spin" />
-                  Submitting...
+                  <T en="Submitting..." />
                 </>
               ) : (
                 <>
                   <Send size={20} />
-                  Submit Complaint
+                  <T en="Submit Complaint" />
                 </>
               )}
             </button>

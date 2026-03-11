@@ -1,15 +1,4 @@
-/**
- * Spam Detection Service
- *
- * Flags a new complaint as a duplicate/spam when ALL three conditions are met:
- *  1. A similar complaint was submitted within the last 24 hours
- *  2. The new complaint originates from within RADIUS_KM of that complaint
- *  3. Text similarity (semantic via HF embeddings, or Jaccard keyword fallback)
- *     exceeds SIMILARITY_THRESHOLD
- *
- * API used: HF Inference — sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
- *   (multilingual, handles Bengali-transliterated text too)
- */
+
 
 const Complaint = require('../models/Complaint.model');
 

@@ -1,9 +1,3 @@
-/**
- * NLP Service: Classifies civic complaints using Hugging Face Inference API
- * - Zero-shot classification to detect issue category
- * - Keyword extraction (rule-based, no extra dependencies)
- * - Department routing based on detected category
- */
 
 const HF_API_URL = 'https://router.huggingface.co/hf-inference/models/facebook/bart-large-mnli';
 const HF_API_KEY = process.env.HUGGINGFACE_API_KEY;
@@ -54,10 +48,7 @@ const STOPWORDS = new Set([
   'weeks','months','already','still','now','here','there','get','got',
 ]);
 
-/**
- * Extract meaningful keywords from text.
- * Returns top keywords sorted by frequency.
- */
+
 function extractKeywords(text, maxKeywords = 8) {
   const words = text
     .toLowerCase()
