@@ -6,11 +6,10 @@ import toast from 'react-hot-toast';
 import AuthLayout from '../components/auth/AuthLayout';
 import SocialButtons from '../components/auth/SocialButtons';
 import { useAuth } from '../context/AuthContext';
-import { useLanguage } from '../context/LanguageContext';
+import T from '../components/T';
 
 const LoginPage = () => {
   const { login } = useAuth();
-  const { t } = useLanguage();
 
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -33,17 +32,12 @@ const LoginPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // ─── Handle input changes ────────────────────────────────────────
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear field error on type
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  // ─── Submit login ────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
@@ -52,11 +46,8 @@ const LoginPage = () => {
     try {
       await login(formData);
     } catch (error) {
-      const msg =
-        error.response?.data?.message || 'Login failed. Please try again.';
+      const msg = error.response?.data?.message || 'Login failed. Please try again.';
       toast.error(msg);
-
-      // Map server validation errors to fields
       if (error.response?.data?.errors) {
         const serverErrors = {};
         error.response.data.errors.forEach((err) => {
@@ -87,33 +78,29 @@ const LoginPage = () => {
 
       {/* ─── Card ──────────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8 sm:p-10">
-        {/* Header */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">{t('welcomeBack')}</h2>
-          <p className="text-gray-500 mt-1 text-sm">{t('signInContinue')}</p>
+          <h2 className="text-2xl font-bold text-gray-900"><T en="Welcome back" /></h2>
+          <p className="text-gray-500 mt-1 text-sm"><T en="Sign in to continue to your dashboard" /></p>
         </div>
 
-        {/* Social Login */}
         <SocialButtons />
 
-        {/* Divider */}
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-200" />
           </div>
           <div className="relative flex justify-center text-xs">
             <span className="bg-white px-3 text-gray-400 uppercase tracking-wider">
-              {t('orSignInEmail')}
+              <T en="or sign in with email" />
             </span>
           </div>
         </div>
 
-        {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-5" noValidate>
           {/* Email Field */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
-              {t('emailAddress')}
+              <T en="Email address" />
             </label>
             <div className="relative">
               <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 ${
@@ -140,7 +127,7 @@ const LoginPage = () => {
                   initial={{ opacity: 0, y: -5 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -5 }}
-                  className="text-red-500 text-xs mt-1.5 flex items-center gap-1"
+                  className="text-red-500 text-xs mt-1.5"
                 >
                   {errors.email}
                 </motion.p>
@@ -152,13 +139,10 @@ const LoginPage = () => {
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                {t('password')}
+                <T en="Password" />
               </label>
-              <button
-                type="button"
-                className="text-xs text-teal-600 hover:text-teal-700 font-medium transition-colors"
-              >
-                {t('forgotPassword')}
+              <button type="button" className="text-xs text-teal-600 hover:text-teal-700 font-medium transition-colors">
+                <T en="Forgot password?" />
               </button>
             </div>
             <div className="relative">
@@ -209,11 +193,11 @@ const LoginPage = () => {
               className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
             />
             <label htmlFor="remember" className="ml-2 text-sm text-gray-600 cursor-pointer">
-              {t('keepSignedIn')}
+              <T en="Keep me signed in" />
             </label>
           </div>
 
-          {/* Submit Button */}
+          {/* Submit */}
           <motion.button
             type="submit"
             disabled={isLoading}
@@ -224,31 +208,28 @@ const LoginPage = () => {
             {isLoading ? (
               <>
                 <Loader2 size={20} className="animate-spin" />
-                <span>{t('signingIn')}</span>
+                <span><T en="Signing in..." /></span>
               </>
             ) : (
               <>
-                <span>{t('signIn')}</span>
+                <span><T en="Sign In" /></span>
                 <ArrowRight size={18} />
               </>
             )}
           </motion.button>
         </form>
 
-        {/* Sign up link */}
         <p className="text-center text-sm text-gray-500 mt-6">
-          {t('noAccount')}{' '}
-          <Link
-            to="/signup"
-            className="text-teal-600 hover:text-teal-700 font-semibold transition-colors"
-          >
-            {t('createOne')}
+          <T en="Don't have an account?" />{' '}
+          <Link to="/signup" className="text-teal-600 hover:text-teal-700 font-semibold transition-colors">
+            <T en="Create one" />
           </Link>
         </p>
       </div>
 
-      {/* Footer */}
-      <p className="text-center text-xs text-white/30 mt-6">{t('copyright')}</p>
+      <p className="text-center text-xs text-white/30 mt-6">
+        © 2026 সমাধান (Somadhan). All rights reserved.
+      </p>
     </AuthLayout>
   );
 };

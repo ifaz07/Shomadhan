@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import LanguageToggle from '../LanguageToggle';
+import T from '../T';
 
 // ─── Floating decorative shapes for the background ───────────────────
 const FloatingShapes = () => (
@@ -60,16 +61,15 @@ const BrandingPanel = () => (
       </h1>
       <p className="text-lg text-teal-300 font-semibold mb-2">Somadhan</p>
       <p className="text-white/50 text-sm leading-relaxed mb-10">
-        Smart Civic Issue Tracking & Resolution System. Report issues,
-        track progress, and build a better city — together.
+        <T en="Smart Civic Issue Tracking & Resolution System. Report issues, track progress, and build a better city — together." />
       </p>
 
       {/* Animated stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { value: '10K+', label: 'Issues Resolved' },
-          { value: '50+', label: 'Departments' },
-          { value: '98%', label: 'Citizen Trust' },
+          { value: '10K+', label: <T en="Issues Resolved" /> },
+          { value: '50+',  label: <T en="Departments" /> },
+          { value: '98%',  label: <T en="Citizen Trust" /> },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}

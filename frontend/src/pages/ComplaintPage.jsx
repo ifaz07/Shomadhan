@@ -108,6 +108,10 @@ const ComplaintPage = () => {
   const [spamWarning, setSpamWarning] = useState(null); // { ticketId, similarity, method }
   const fileInputRef = useRef(null);
 
+  const setAddress = useCallback((address) => {
+    setFormData(prev => ({ ...prev, location: address }));
+  }, []);
+
   if (!user?.isVerified) {
     return (
       <DashboardLayout>
@@ -143,10 +147,6 @@ const ComplaintPage = () => {
       [name]: type === 'checkbox' ? checked : value,
     }));
   };
-
-  const setAddress = useCallback((address) => {
-    setFormData(prev => ({ ...prev, location: address }));
-  }, []);
 
   // Prevent "Enter" from submitting the form
   const preventEnterSubmit = (e) => {

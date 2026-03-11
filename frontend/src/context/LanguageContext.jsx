@@ -1,12 +1,12 @@
-import { createContext, useContext, useState, useCallback } from 'react';
-import { translations } from '../translations';
+import { createContext, useContext, useState, useCallback, useRef } from 'react';
 
-const LanguageContext = createContext(null);
+export const LanguageContext = createContext(null);
 
 export const LanguageProvider = ({ children }) => {
   const [language, setLanguage] = useState(
     () => localStorage.getItem('somadhan_lang') || 'en'
   );
+  const cache = useRef({});
 
   const toggleLanguage = () => {
     setLanguage((prev) => {
@@ -16,14 +16,7 @@ export const LanguageProvider = ({ children }) => {
     });
   };
 
-  // Lookup a static UI string by key
-  const t = useCallback(
-    (key) => translations[language]?.[key] ?? translations['en']?.[key] ?? key,
-    [language]
-  );
-
-  // Real-time translation of arbitrary text via MyMemory free API
-  // Usage: await translateText("road is broken", "en", "bn")
+  // Real-time translation via MyMemory free API
   const translateText = useCallback(async (text, from = 'en', to = 'bn') => {
     if (!text?.trim()) return text;
     try {
@@ -39,7 +32,7 @@ export const LanguageProvider = ({ children }) => {
   }, []);
 
   return (
-    <LanguageContext.Provider value={{ language, toggleLanguage, t, translateText }}>
+    <LanguageContext.Provider value={{ language, toggleLanguage, translateText, cache }}>
       {children}
     </LanguageContext.Provider>
   );

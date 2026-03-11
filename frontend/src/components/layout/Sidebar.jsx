@@ -16,62 +16,40 @@ import {
   PlusCircle,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { useLanguage } from "../../context/LanguageContext";
 import LanguageToggle from "../LanguageToggle";
+import T from "../T";
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
-  const { t } = useLanguage();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navItems = [
-    { path: "/dashboard", label: t("dashboard"), icon: LayoutDashboard },
-    {
-      path: "/submit-complaint",
-      label: t("submitComplaint"),
-      icon: PlusCircle,
-    },
-    { path: "/profile", label: t("myProfile"), icon: User },
-    { path: "/notifications", label: t("notifications"), icon: Bell, badge: 3 },
-    {
-      path: "/my-complaints",
-      label: t("myComplaints"),
-      icon: FileText,
-      disabled: true,
-    },
-    {
-      path: "/analytics",
-      label: t("analytics"),
-      icon: BarChart3,
-      disabled: true,
-    },
-    {
-      path: "/feedback",
-      label: t("feedback"),
-      icon: MessageSquare,
-      disabled: true,
-    },
+    { path: "/dashboard",       label: <T en="Dashboard" />,        icon: LayoutDashboard },
+    { path: "/submit-complaint",label: <T en="Submit Complaint" />, icon: PlusCircle },
+    { path: "/profile",         label: <T en="My Profile" />,       icon: User },
+    { path: "/notifications",   label: <T en="Notifications" />,    icon: Bell, badge: 3 },
+    { path: "/my-complaints",   label: <T en="My Complaints" />,    icon: FileText,      disabled: true },
+    { path: "/analytics",       label: <T en="Analytics" />,        icon: BarChart3,     disabled: true },
+    { path: "/feedback",        label: <T en="Feedback" />,         icon: MessageSquare, disabled: true },
   ];
 
   const isActive = (path) => location.pathname === path;
 
-  // Verification status badge
   const getVerificationBadge = () => {
     const status = user?.verificationDoc?.status || "none";
     const map = {
-      none: { color: "bg-gray-100 text-gray-500", label: "Not Verified" },
-      pending: { color: "bg-yellow-100 text-yellow-700", label: "Pending" },
-      approved: { color: "bg-green-100 text-green-700", label: "Verified" },
-      rejected: { color: "bg-red-100 text-red-700", label: "Rejected" },
+      none:     { color: "bg-gray-100 text-gray-500",    label: <T en="Not Verified" /> },
+      pending:  { color: "bg-yellow-100 text-yellow-700",label: <T en="Pending" /> },
+      approved: { color: "bg-green-100 text-green-700",  label: <T en="Verified" /> },
+      rejected: { color: "bg-red-100 text-red-700",      label: <T en="Rejected" /> },
     };
     return map[status];
   };
 
   const verBadge = getVerificationBadge();
 
-  // Desktop sidebar content
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* ─── Logo area ──────────────────────────────────────────── */}
@@ -79,20 +57,15 @@ const Sidebar = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center flex-shrink-0">
-              <span className="text-lg font-bold text-white font-bengali">
-                স
-              </span>
+              <span className="text-lg font-bold text-white font-bengali">স</span>
             </div>
             {!isCollapsed && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <h1 className="text-lg font-bold text-gray-900 font-bengali">
-                  সমাধান
-                </h1>
+                <h1 className="text-lg font-bold text-gray-900 font-bengali">সমাধান</h1>
                 <p className="text-[10px] text-gray-400 -mt-0.5">Somadhan</p>
               </motion.div>
             )}
           </div>
-          {/* Language toggle — top-right, above the role/user section */}
           {!isCollapsed && <LanguageToggle variant="light" />}
         </div>
       </div>
@@ -107,13 +80,9 @@ const Sidebar = () => {
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">
-                {user?.name}
-              </p>
+              <p className="text-sm font-semibold text-gray-900 truncate">{user?.name}</p>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span
-                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${verBadge.color}`}
-                >
+                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${verBadge.color}`}>
                   {user?.isVerified && <ShieldCheck size={10} />}
                   {verBadge.label}
                 </span>
@@ -132,9 +101,7 @@ const Sidebar = () => {
             <Link
               key={item.path}
               to={item.disabled ? "#" : item.path}
-              onClick={() => {
-                if (!item.disabled) setIsOpen(false);
-              }}
+              onClick={() => { if (!item.disabled) setIsOpen(false); }}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative ${
                 item.disabled
                   ? "text-gray-300 cursor-not-allowed"
@@ -158,7 +125,7 @@ const Sidebar = () => {
               )}
               {!isCollapsed && item.disabled && (
                 <span className="ml-auto text-[10px] text-gray-300 bg-gray-50 px-1.5 py-0.5 rounded">
-                  {t("soon")}
+                  <T en="Soon" />
                 </span>
               )}
             </Link>
@@ -173,7 +140,7 @@ const Sidebar = () => {
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all w-full"
         >
           <LogOut size={18} />
-          {!isCollapsed && <span>{t("signOut")}</span>}
+          {!isCollapsed && <span><T en="Sign out" /></span>}
         </button>
       </div>
     </div>
@@ -226,7 +193,6 @@ const Sidebar = () => {
         }`}
       >
         <SidebarContent />
-        {/* Collapse toggle */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="absolute -right-3 top-20 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors"
