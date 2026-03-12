@@ -19,6 +19,9 @@ import {
   Tag,
   Building2,
   Copy,
+  ThumbsUp,
+  AlertTriangle,
+  Users,
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -43,19 +46,19 @@ let DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 const categories = [
-  'Road', 
-  'Waste', 
-  'Electricity', 
-  'Water', 
-  'Safety', 
-  'Environment', 
+  'Road',
+  'Waste',
+  'Electricity',
+  'Water',
+  'Safety',
+  'Environment',
   'Other'
 ];
 
 // Helper to handle map clicks and marker placement
 const LocationMarker = ({ position, setPosition, setAddress }) => {
   const map = useMap();
-  
+
   useMapEvents({
     click(e) {
       const { lat, lng } = e.latlng;
@@ -98,7 +101,7 @@ const ComplaintPage = () => {
     description: '',
     location: '',
     isAnonymous: false,
-    isEmergency: false,
+    emergencyFlag: false,
   });
   const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
@@ -109,11 +112,33 @@ const ComplaintPage = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [nlpSuggestion, setNlpSuggestion] = useState(null);
   const [spamWarning, setSpamWarning] = useState(null); // { ticketId, similarity, method }
+  const [nearbyComplaints, setNearbyComplaints] = useState([]);
+  const [isLoadingNearby, setIsLoadingNearby] = useState(false);
+  const [votingId, setVotingId] = useState(null);
   const fileInputRef = useRef(null);
 
+  // ── Hooks that must be declared before any early return ─────────────
   const setAddress = useCallback((address) => {
     setFormData(prev => ({ ...prev, location: address }));
   }, []);
+
+  const fetchNearbyComplaints = useCallback(async (lat, lng, category) => {
+    setIsLoadingNearby(true);
+    try {
+      const res = await complaintAPI.getNearby(lat, lng, 1, category || '');
+      setNearbyComplaints(res.data.data || []);
+    } catch {
+      setNearbyComplaints([]);
+    } finally {
+      setIsLoadingNearby(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mapPosition) {
+      fetchNearbyComplaints(mapPosition[0], mapPosition[1], formData.category);
+    }
+  }, [mapPosition, formData.category, fetchNearbyComplaints]);
 
   if (!user?.isVerified) {
     return (
@@ -189,14 +214,14 @@ const ComplaintPage = () => {
 
   const searchLocation = async () => {
     if (!formData.location.trim()) return;
-    
+
     setIsSearching(true);
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.location)}&limit=1`
       );
       const data = await response.json();
-      
+
       if (data && data.length > 0) {
         const { lat, lon, display_name } = data[0];
         const newPos = [parseFloat(lat), parseFloat(lon)];
@@ -241,6 +266,25 @@ const ComplaintPage = () => {
     }
   };
 
+  // Vote on a nearby complaint
+  const handleVote = async (id) => {
+    setVotingId(id);
+    try {
+      const res = await complaintAPI.vote(id);
+      setNearbyComplaints(prev =>
+        prev.map(c => c._id === id
+          ? { ...c, voteCount: res.data.voteCount, _userVoted: res.data.voted }
+          : c
+        )
+      );
+      toast.success(res.data.voted ? 'Upvoted!' : 'Vote removed');
+    } catch {
+      toast.error('Failed to vote');
+    } finally {
+      setVotingId(null);
+    }
+  };
+
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
     if (files.length + selectedFiles.length > 5) {
@@ -274,7 +318,7 @@ const ComplaintPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.category) return toast.error('Please select a category');
-    
+
     setIsSubmitting(true);
     const data = new FormData();
     data.append('title', formData.title);
@@ -282,13 +326,13 @@ const ComplaintPage = () => {
     data.append('description', formData.description);
     data.append('location', formData.location);
     data.append('isAnonymous', formData.isAnonymous);
-    data.append('isEmergency', formData.isEmergency);
+    data.append('emergencyFlag', formData.emergencyFlag);
 
     if (mapPosition) {
       data.append('latitude', mapPosition[0]);
       data.append('longitude', mapPosition[1]);
     }
-    
+
     files.forEach(file => {
       data.append('evidence', file);
     });
@@ -298,7 +342,7 @@ const ComplaintPage = () => {
       if (response.data.success) {
         setSpamWarning(null);
         toast.success('Complaint submitted successfully!');
-        setFormData({ title: '', category: '', description: '', location: '', isAnonymous: false, isEmergency: false });
+        setFormData({ title: '', category: '', description: '', location: '', isAnonymous: false, emergencyFlag: false });
         setFiles([]);
         setPreviews([]);
         setMapPosition(null);
@@ -317,8 +361,8 @@ const ComplaintPage = () => {
 
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
       transition: { duration: 0.5, staggerChildren: 0.1 }
     }
@@ -333,7 +377,7 @@ const ComplaintPage = () => {
     <DashboardLayout>
       <div className="max-w-4xl mx-auto py-8 px-4">
         <header className="mb-8">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="text-3xl font-bold text-gray-900"
@@ -350,7 +394,7 @@ const ComplaintPage = () => {
           </motion.p>
         </header>
 
-        <motion.form 
+        <motion.form
           variants={containerVariants}
           initial="hidden"
           animate="visible"
@@ -514,7 +558,7 @@ const ComplaintPage = () => {
           </AnimatePresence>
 
           {/* ─── Location Section ───────────────────────────────────── */}
-          <motion.div 
+          <motion.div
             variants={itemVariants}
             className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8"
           >
@@ -526,7 +570,7 @@ const ComplaintPage = () => {
                 </h3>
                 <p className="text-sm text-gray-500 mt-1"><T en="Search an area or pin it on the map" /></p>
               </div>
-              
+
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -572,9 +616,9 @@ const ComplaintPage = () => {
               </div>
 
               <div className="h-[300px] w-full rounded-2xl overflow-hidden border border-gray-100 relative z-0">
-                <MapContainer 
+                <MapContainer
                   center={mapPosition || [23.8103, 90.4125]} // Default to Dhaka
-                  zoom={13} 
+                  zoom={13}
                   style={{ height: '100%', width: '100%' }}
                 >
                   <TileLayer
@@ -583,7 +627,7 @@ const ComplaintPage = () => {
                   />
                   <LocationMarker position={mapPosition} setPosition={setMapPosition} setAddress={setAddress} />
                 </MapContainer>
-                
+
                 <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm flex items-center gap-2 text-[10px] font-medium text-gray-600">
                   <MousePointer2 size={12} className="text-teal-500" />
                   <T en="Click to pin exact location" />
@@ -600,7 +644,7 @@ const ComplaintPage = () => {
           )}
 
           {/* ─── Evidence Upload ────────────────────────────────────── */}
-          <motion.div 
+          <motion.div
             variants={itemVariants}
             className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8"
           >
@@ -609,7 +653,7 @@ const ComplaintPage = () => {
               <span className="text-xs text-gray-400"><T en="Max 5 files (Images, Video, Audio)" /></span>
             </div>
 
-            <div 
+            <div
               onClick={() => fileInputRef.current.click()}
               className="border-2 border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 hover:border-teal-500/50 hover:bg-teal-50/30 transition-all cursor-pointer group"
             >
@@ -633,14 +677,14 @@ const ComplaintPage = () => {
             {/* Previews */}
             <AnimatePresence>
               {previews.length > 0 && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mt-6"
                 >
                   {previews.map((preview, index) => (
-                    <motion.div 
+                    <motion.div
                       key={index}
                       initial={{ scale: 0.8, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
@@ -657,7 +701,7 @@ const ComplaintPage = () => {
                           <Mic size={32} />
                         </div>
                       )}
-                      
+
                       <button
                         type="button"
                         onClick={() => removeFile(index)}
@@ -676,7 +720,7 @@ const ComplaintPage = () => {
           </motion.div>
 
           {/* ─── Anonymous Submission ───────────────────────────────── */}
-          <motion.div 
+          <motion.div
             variants={itemVariants}
             className="bg-teal-50/50 rounded-2xl p-6 border border-teal-100"
           >
@@ -702,31 +746,97 @@ const ComplaintPage = () => {
                   <T en="Your identity will be hidden from the authorities and other users. However, we'll still be able to track the complaint status." />
                 </p>
               </div>
+            </div>
+          </motion.div>
 
-              {/* Emergency Toggle */}
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          {/* ─── Emergency Flag ─────────────────────────────────────── */}
+          <motion.div
+            variants={itemVariants}
+            className="bg-red-50/60 rounded-2xl p-6 border border-red-100"
+          >
+            <div className="flex items-start gap-4">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <AlertTriangle size={20} className="text-red-600" />
+              </div>
+              <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle size={16} className="text-red-500" />
-                    <span className="text-sm font-semibold text-red-800"><T en="Mark as Emergency" /></span>
-                  </div>
+                  <h4 className="font-semibold text-red-900"><T en="Mark as Emergency" /></h4>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      name="isEmergency"
-                      checked={formData.isEmergency}
+                      name="emergencyFlag"
+                      checked={formData.emergencyFlag}
                       onChange={handleInputChange}
                       className="sr-only peer"
                     />
                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
                   </label>
                 </div>
-                <p className="text-xs text-red-600 mt-1">
-                  <T en="Flag this as an emergency (e.g. fire, injury, flooding). This raises the complaint priority to Critical." />
+                <p className="text-sm text-red-700 mt-1">
+                  <T en="Flag this complaint as an emergency to mark it Critical priority immediately — use only for urgent public safety issues." />
                 </p>
               </div>
             </div>
           </motion.div>
+
+          {/* ─── Nearby Similar Complaints ──────────────────────────── */}
+          <AnimatePresence>
+            {mapPosition && (nearbyComplaints.length > 0 || isLoadingNearby) && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="bg-amber-50 border border-amber-200 rounded-2xl p-5"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <Users size={16} className="text-amber-600" />
+                  <h4 className="text-sm font-bold text-amber-900">
+                    Similar Complaints Nearby (within 1 km)
+                  </h4>
+                  {isLoadingNearby && <Loader2 size={14} className="animate-spin text-amber-500 ml-auto" />}
+                </div>
+                <p className="text-xs text-amber-700 mb-4">
+                  These issues already exist in your area. Consider upvoting them instead of filing a duplicate.
+                </p>
+                <div className="space-y-2">
+                  {nearbyComplaints.slice(0, 5).map((c) => (
+                    <div key={c._id} className="flex items-center gap-3 bg-white border border-amber-100 rounded-xl px-4 py-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                            style={{
+                              background: c.priority === 'Critical' ? '#fee2e2' : c.priority === 'High' ? '#ffedd5' : c.priority === 'Medium' ? '#fef9c3' : '#dcfce7',
+                              color:      c.priority === 'Critical' ? '#dc2626' : c.priority === 'High' ? '#ea580c' : c.priority === 'Medium' ? '#ca8a04' : '#16a34a',
+                            }}
+                          >
+                            ● {c.priority}
+                          </span>
+                          <span className="text-[10px] text-gray-400 font-medium">{c.category}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${c.status === 'resolved' ? 'bg-green-100 text-green-700' : c.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{c.status}</span>
+                        </div>
+                        <p className="text-sm font-medium text-gray-800 mt-0.5 truncate">{c.title}</p>
+                        <p className="text-[11px] text-gray-400 font-mono">{c.ticketId}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleVote(c._id)}
+                        disabled={votingId === c._id}
+                        className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all disabled:opacity-50 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                      >
+                        {votingId === c._id ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <ThumbsUp size={14} className={c._userVoted ? 'fill-amber-500' : ''} />
+                        )}
+                        <span className="text-[10px] font-bold">{c.voteCount}</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* ─── Spam / Duplicate Warning ───────────────────────────── */}
           <AnimatePresence>
@@ -782,8 +892,8 @@ const ComplaintPage = () => {
               type="submit"
               disabled={isSubmitting}
               className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 text-white font-bold text-lg shadow-lg shadow-teal-500/20 transition-all ${
-                isSubmitting 
-                  ? 'bg-gray-400 cursor-not-allowed' 
+                isSubmitting
+                  ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-gradient-to-r from-teal-500 to-blue-600 hover:scale-[1.02] active:scale-[0.98]'
               }`}
             >

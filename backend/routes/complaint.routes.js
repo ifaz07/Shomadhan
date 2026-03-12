@@ -5,13 +5,13 @@ const upload = require('../middleware/upload.middleware');
 const {
   createComplaint,
   analyzeComplaint,
+  voteComplaint,
+  getNearbyComplaints,
+  getHeatmapData,
   getComplaints,
   getComplaint,
   updateComplaint,
   deleteComplaint,
-  getHeatmapData,
-  getNearbyComplaints,
-  upvoteComplaint,
 } = require('../controllers/complaint.controller');
 
 // ── Public routes (NO auth required) ─────────────────────────────────────
@@ -23,9 +23,9 @@ router.get('/nearby', getNearbyComplaints);
 router.post('/analyze', protect, analyzeComplaint);
 router.post('/', protect, upload.array('evidence', 5), createComplaint);
 router.get('/', protect, getComplaints);
+router.post('/:id/vote', protect, voteComplaint);
 router.get('/:id', protect, getComplaint);
 router.put('/:id', protect, updateComplaint);
 router.delete('/:id', protect, deleteComplaint);
-router.post('/:id/vote', protect, upvoteComplaint);
 
 module.exports = router;

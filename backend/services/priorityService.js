@@ -1,88 +1,64 @@
-// ─── Priority Scoring Service ─────────────────────────────────────────────
-// Calculates complaint priority based on keywords, category, emergency flag,
-// vote count, and location sensitivity.
+/**
+ * Priority Service
+ * Automatically determines complaint priority (Low / Medium / High / Critical)
+ * based on: category, emergency flag, vote count, and location sensitivity.
+ */
 
-const KEYWORD_TIERS = {
-  critical: [
-    'fire', 'collapse', 'explosion', 'flood', 'flooding', 'electrocution',
-    'gas leak', 'death', 'died', 'injury', 'injured', 'blood', 'accident',
-    'unconscious', 'emergency', 'burst pipe', 'structural failure',
-  ],
-  high: [
-    'dangerous', 'hazard', 'hazardous', 'open manhole', 'broken wire',
-    'live wire', 'no water', 'blackout', 'power cut', 'toxic', 'sewage',
-    'chemical', 'fallen tree', 'pothole', 'overflow', 'sewage overflow',
-    'contaminated', 'contamination', 'urgent', 'critical',
-  ],
-  medium: [
-    'damaged', 'broken', 'blocked', 'leaking', 'leak', 'overflowing',
-    'dirty', 'smell', 'odor', 'noise', 'crack', 'cracked', 'delay',
-    'not working', 'faulty', 'missing', 'incomplete',
-  ],
+// Categories ranked by inherent severity
+const CATEGORY_BASE_PRIORITY = {
+  Safety:      3,  // Critical baseline
+  Electricity: 2,  // High baseline
+  Water:       2,  // High baseline
+  Road:        1,  // Medium baseline
+  Waste:       1,  // Medium baseline
+  Environment: 1,  // Medium baseline
+  Other:       0,  // Low baseline
 };
 
-const CATEGORY_SCORES = {
-  Safety: 20,
-  Electricity: 15,
-  Water: 15,
-  Road: 10,
-  Environment: 8,
-  Waste: 8,
-  Other: 5,
-};
-
+// Keywords in location string that indicate sensitive sites → +1 level
 const SENSITIVE_LOCATION_KEYWORDS = [
-  'hospital', 'school', 'market', 'bridge', 'station', 'university',
-  'government', 'ministry', 'court', 'airport', 'park', 'mosque', 'temple',
+  'hospital', 'school', 'college', 'university', 'clinic', 'court',
+  'police', 'fire station', 'parliament', 'secretariat', 'military',
+  'bank', 'power plant', 'water treatment', 'market', 'bazar', 'bazaar',
+  'madrasa', 'mosque', 'temple', 'church', 'railway', 'airport', 'bus station',
 ];
 
 /**
- * Calculates priority for a complaint object.
- * @param {Object} complaint - { title, description, category, isEmergency, voteCount, location }
- * @returns {'Low'|'Medium'|'High'|'Critical'}
+ * Convert numeric score → priority label
  */
-function calculatePriority(complaint) {
-  let score = 0;
-  const text = `${complaint.title || ''} ${complaint.description || ''}`.toLowerCase();
-
-  // ── A. Severity keywords (only highest tier counts) ────────────────
-  if (KEYWORD_TIERS.critical.some((kw) => text.includes(kw))) {
-    score += 30;
-  } else if (KEYWORD_TIERS.high.some((kw) => text.includes(kw))) {
-    score += 20;
-  } else if (KEYWORD_TIERS.medium.some((kw) => text.includes(kw))) {
-    score += 10;
-  }
-
-  // ── B. Category base score ─────────────────────────────────────────
-  score += CATEGORY_SCORES[complaint.category] || 5;
-
-  // ── C. Emergency flag ──────────────────────────────────────────────
-  if (complaint.isEmergency) score += 25;
-
-  // ── D. Vote count boost ────────────────────────────────────────────
-  const votes = complaint.voteCount || 0;
-  if (votes >= 50) score += 20;
-  else if (votes >= 20) score += 15;
-  else if (votes >= 10) score += 10;
-  else if (votes >= 5) score += 5;
-
-  // ── E. Location sensitivity (max +10) ─────────────────────────────
-  const locationText = (complaint.location || '').toLowerCase();
-  let locationBonus = 0;
-  for (const kw of SENSITIVE_LOCATION_KEYWORDS) {
-    if (locationText.includes(kw)) {
-      locationBonus += 2;
-      if (locationBonus >= 10) break;
-    }
-  }
-  score += locationBonus;
-
-  // ── Thresholds ─────────────────────────────────────────────────────
-  if (score >= 50) return 'Critical';
-  if (score >= 30) return 'High';
-  if (score >= 15) return 'Medium';
+const scoreToPriority = (score) => {
+  if (score >= 4) return 'Critical';
+  if (score >= 3) return 'High';
+  if (score >= 2) return 'Medium';
   return 'Low';
-}
+};
+
+/**
+ * calculatePriority
+ * @param {object} params
+ * @param {string}  params.category       - Complaint category
+ * @param {boolean} params.emergencyFlag  - Manually flagged as emergency
+ * @param {number}  params.voteCount      - Current upvote count
+ * @param {string}  [params.location]     - Location description string
+ * @returns {string} 'Low' | 'Medium' | 'High' | 'Critical'
+ */
+const calculatePriority = ({ category, emergencyFlag, voteCount, location = '' }) => {
+  let score = CATEGORY_BASE_PRIORITY[category] ?? 0;
+
+  // Emergency flag → immediate Critical
+  if (emergencyFlag) return 'Critical';
+
+  // Location sensitivity check
+  const loc = location.toLowerCase();
+  const isSensitiveLocation = SENSITIVE_LOCATION_KEYWORDS.some((kw) => loc.includes(kw));
+  if (isSensitiveLocation) score += 1;
+
+  // Vote-based boost
+  if (voteCount >= 50)      score += 2;
+  else if (voteCount >= 20) score += 1;
+  else if (voteCount >= 10) score += 0.5;
+
+  return scoreToPriority(score);
+};
 
 module.exports = { calculatePriority };
