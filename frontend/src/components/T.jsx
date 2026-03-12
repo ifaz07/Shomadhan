@@ -3,7 +3,12 @@ import { LanguageContext } from '../context/LanguageContext';
 
 const T = ({ en, children }) => {
   const { language, translateText, cache } = useContext(LanguageContext);
-  const [text, setText] = useState(en || children || '');
+  const key = en || children || '';
+  const [text, setText] = useState(() => {
+    if (language === 'en') return key;
+    const cacheKey = `${key}-${language}`;
+    return cache.current[cacheKey] || key;
+  });
 
   useEffect(() => {
     const getText = async () => {

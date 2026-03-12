@@ -180,7 +180,7 @@ const Sidebar = () => {
               >
                 <X size={20} className="text-gray-500" />
               </button>
-              <SidebarContent />
+              {SidebarContent()}
             </motion.div>
           </>
         )}
@@ -192,7 +192,7 @@ const Sidebar = () => {
           isCollapsed ? "w-20" : "w-72"
         }`}
       >
-        <SidebarContent />
+        {SidebarContent()}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="absolute -right-3 top-20 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors"
