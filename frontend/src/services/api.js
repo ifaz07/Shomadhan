@@ -28,7 +28,6 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      // Only redirect if not already on auth pages
       if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/signup')) {
         window.location.href = '/login';
       }
@@ -44,22 +43,28 @@ export const authAPI = {
   logout: () => api.post('/auth/logout'),
   getMe: () => api.get('/auth/me'),
   verify: (formData) => api.put('/auth/verify', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+    headers: { 'Content-Type': 'multipart/form-data' },
   }),
 };
 
 // ─── Complaint API calls ──────────────────────────────────────────────
 export const complaintAPI = {
   create: (formData) => api.post('/complaints', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+    headers: { 'Content-Type': 'multipart/form-data' },
   }),
   analyze: (title, description) => api.post('/complaints/analyze', { title, description }),
   getAll: () => api.get('/complaints'),
   getOne: (id) => api.get(`/complaints/${id}`),
+
+  // Upvote / un-vote toggle
+  vote: (id) => api.post(`/complaints/${id}/vote`),
+
+  // Nearby complaints for pre-submission duplicate check
+  getNearby: (lat, lng, radiusKm = 1, category = '') =>
+    api.get('/complaints/nearby', { params: { lat, lng, radius: radiusKm, category } }),
+
+  // Heatmap data — all complaints with lat/lng and priority weight
+  getHeatmapData: () => api.get('/complaints/heatmap'),
 };
 
 export default api;

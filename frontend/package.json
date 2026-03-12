@@ -12,6 +12,7 @@
     "axios": "^1.6.7",
     "framer-motion": "^11.0.3",
     "leaflet": "^1.9.4",
+    "leaflet.heat": "^0.2.0",
     "lucide-react": "^0.323.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

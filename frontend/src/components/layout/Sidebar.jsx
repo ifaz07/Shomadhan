@@ -14,6 +14,7 @@ import {
   BarChart3,
   MessageSquare,
   PlusCircle,
+  Map,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -33,6 +34,7 @@ const Sidebar = () => {
       label: t("submitComplaint"),
       icon: PlusCircle,
     },
+    { path: "/heatmap", label: "Heatmap", icon: Map },
     { path: "/profile", label: t("myProfile"), icon: User },
     { path: "/notifications", label: t("notifications"), icon: Bell, badge: 3 },
     {

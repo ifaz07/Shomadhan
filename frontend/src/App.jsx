@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage';
 import ProfilePage from './pages/ProfilePage';
 import ComplaintPage from './pages/ComplaintPage';
 import VerificationPage from './pages/VerificationPage';
+import HeatmapPage from './pages/HeatmapPage';
 import { useAuth } from './context/AuthContext';
 
 // ─── Protected route wrapper ─────────────────────────────────────────
@@ -59,6 +60,8 @@ function App() {
         <Route path="/submit-complaint" element={<ProtectedRoute><ComplaintPage /></ProtectedRoute>} />
         <Route path="/verify" element={<ProtectedRoute><VerificationPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+
+        <Route path="/heatmap" element={<ProtectedRoute><HeatmapPage /></ProtectedRoute>} />
 
         {/* ─── Placeholder routes (will be built later) ─────────── */}
         <Route path="/notifications" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
