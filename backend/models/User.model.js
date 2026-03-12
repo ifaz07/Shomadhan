@@ -21,7 +21,10 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      // Not required for OAuth users (google/facebook)
+      required: function () {
+        return this.authProvider === 'local';
+      },
       minlength: [8, 'Password must be at least 8 characters'],
       select: false, // Never return password in queries by default
     },
@@ -105,6 +108,10 @@ const userSchema = new mongoose.Schema(
     // ─── Reputation & Badges ─────────────────────────────────────
     reputation: { type: Number, default: 0 },
     badges: [{ type: String }],
+
+    // ─── Password Reset ──────────────────────────────────────────
+    resetPasswordToken: { type: String },
+    resetPasswordExpire: { type: Date },
 
     // ─── Account State ───────────────────────────────────────────
     isActive: { type: Boolean, default: true },

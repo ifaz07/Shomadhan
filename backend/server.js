@@ -5,7 +5,10 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
+const session = require('express-session');
+const passport = require('passport');
 require('dotenv').config();
+require('./config/passport'); // Register Google & Facebook strategies
 
 const path = require('path');
 const authRoutes = require('./routes/auth.routes');
@@ -32,6 +35,18 @@ app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true,
 }));
+
+// Session — used only for the OAuth handshake, not for app auth (JWT handles that)
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'oauth-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 10 * 60 * 1000 }, // 10 min, just long enough for OAuth dance
+}));
+
+// Passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Rate limiting — prevent brute-force on auth endpoints
 const authLimiter = rateLimit({

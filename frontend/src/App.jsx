@@ -6,6 +6,9 @@ import DashboardPage from './pages/DashboardPage';
 import ProfilePage from './pages/ProfilePage';
 import ComplaintPage from './pages/ComplaintPage';
 import VerificationPage from './pages/VerificationPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import OAuthCallbackPage from './pages/OAuthCallbackPage';
 import { useAuth } from './context/AuthContext';
 
 // ─── Protected route wrapper ─────────────────────────────────────────
@@ -53,6 +56,11 @@ function App() {
         {/* ─── Auth Pages (guest only) ──────────────────────────── */}
         <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
         <Route path="/signup" element={<GuestRoute><SignupPage /></GuestRoute>} />
+        <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
+        <Route path="/reset-password/:token" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
+
+        {/* ─── OAuth callback (no guard — token arrives here) ───── */}
+        <Route path="/auth/callback" element={<OAuthCallbackPage />} />
 
         {/* ─── Protected Pages ──────────────────────────────────── */}
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
