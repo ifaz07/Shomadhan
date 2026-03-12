@@ -30,18 +30,16 @@ const FacebookIcon = () => (
   </svg>
 );
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+
 // ─── Social login buttons ────────────────────────────────────────────
 const SocialButtons = () => {
-  // TODO: integrate Google OAuth
   const handleGoogleLogin = () => {
-    console.log('Google login triggered');
-    // window.location.href = `${API_BASE_URL}/auth/google`;
+    window.location.href = `${API_BASE_URL}/auth/google`;
   };
 
-  // TODO: integrate Facebook OAuth
   const handleFacebookLogin = () => {
-    console.log('Facebook login triggered');
-    // window.location.href = `${API_BASE_URL}/auth/facebook`;
+    window.location.href = `${API_BASE_URL}/auth/facebook`;
   };
 
   return (

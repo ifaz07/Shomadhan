@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -10,6 +10,7 @@ import T from '../components/T';
 
 const LoginPage = () => {
   const { login } = useAuth();
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -141,7 +142,11 @@ const LoginPage = () => {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 <T en="Password" />
               </label>
-              <button type="button" className="text-xs text-teal-600 hover:text-teal-700 font-medium transition-colors">
+              <button
+                type="button"
+                onClick={() => navigate('/forgot-password')}
+                className="text-xs text-teal-600 hover:text-teal-700 font-medium transition-colors"
+              >
                 <T en="Forgot password?" />
               </button>
             </div>

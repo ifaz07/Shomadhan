@@ -52,6 +52,12 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
+  // Used by OAuthCallbackPage after Google/Facebook login
+  const loginWithToken = async (token) => {
+    localStorage.setItem('token', token);
+    await fetchUser();
+  };
+
   const logout = async () => {
     try {
       await authAPI.logout();
@@ -64,7 +70,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, getMe: fetchUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, loginWithToken, getMe: fetchUser }}>
       {children}
     </AuthContext.Provider>
   );
