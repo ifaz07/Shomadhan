@@ -1,7 +1,8 @@
 const Complaint = require('../models/Complaint.model');
 const crypto = require('crypto');
 const { classifyComplaint } = require('../services/nlpService');
-const { checkForDuplicates } = require('../services/spamDetectionService');
+const { checkForDuplicates, haversineDistance } = require('../services/spamDetectionService');
+const { calculatePriority } = require('../services/priorityService');
 
 // Helper: Generate unique ticket ID (e.g., SOM-2024-ABC12)
 const generateTicketId = () => {
@@ -16,8 +17,8 @@ const generateTicketId = () => {
 // @access  Private (Verified account required)
 const createComplaint = async (req, res, next) => {
   try {
-    const { title, description, category, isAnonymous, location, latitude, longitude } = req.body;
-    
+    const { title, description, category, isAnonymous, location, latitude, longitude, isEmergency } = req.body;
+
     // Check if user is verified
     if (!req.user.isVerified) {
       return res.status(403).json({
@@ -47,12 +48,16 @@ const createComplaint = async (req, res, next) => {
       category,
       evidence,
       isAnonymous: isAnonymous === 'true' || isAnonymous === true,
+      isEmergency: isEmergency === 'true' || isEmergency === true,
       location,
       latitude: latitude ? Number(latitude) : null,
       longitude: longitude ? Number(longitude) : null,
       user: (isAnonymous === 'true' || isAnonymous === true) ? null : req.user?._id,
-      status: 'pending', // Explicitly set initial status
+      status: 'pending',
     };
+
+    // ── Auto-calculate priority ────────────────────────────────────────────
+    complaintData.priority = calculatePriority(complaintData);
 
     // ── Spam / duplicate detection ─────────────────────────────────────────
     try {
@@ -78,7 +83,6 @@ const createComplaint = async (req, res, next) => {
         });
       }
     } catch (spamErr) {
-      // Non-blocking — log and continue if spam check itself fails
       console.warn('[SpamDetection] Check skipped:', spamErr.message);
     }
 
@@ -138,6 +142,141 @@ const analyzeComplaint = async (req, res, next) => {
   }
 };
 
+// @desc    Get heatmap data (lat/lng + intensity) for all complaints with coordinates
+// @route   GET /api/v1/complaints/heatmap
+// @access  Public
+const getHeatmapData = async (req, res, next) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const complaints = await Complaint.find({
+      latitude: { $exists: true, $ne: null },
+      longitude: { $exists: true, $ne: null },
+      createdAt: { $gte: since },
+    }).select('latitude longitude priority');
+
+    const priorityIntensity = { Critical: 1.0, High: 0.7, Medium: 0.4, Low: 0.2 };
+
+    const points = complaints.map((c) => [
+      c.latitude,
+      c.longitude,
+      priorityIntensity[c.priority] || 0.2,
+    ]);
+
+    res.status(200).json({
+      success: true,
+      count: points.length,
+      data: points,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get complaints near a coordinate (for pre-submission awareness)
+// @route   GET /api/v1/complaints/nearby?lat=&lng=&radius=
+// @access  Public
+const getNearbyComplaints = async (req, res, next) => {
+  try {
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    const radiusKm = parseFloat(req.query.radius) || 1.0;
+
+    if (isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({ success: false, message: 'lat and lng are required' });
+    }
+
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const complaints = await Complaint.find({
+      latitude: { $exists: true, $ne: null },
+      longitude: { $exists: true, $ne: null },
+      status: { $ne: 'rejected' },
+      createdAt: { $gte: since },
+    }).select('ticketId title category status priority voteCount latitude longitude createdAt');
+
+    // CPU-side Haversine filter
+    const nearby = complaints
+      .map((c) => ({
+        ...c.toObject(),
+        distance: haversineDistance(lat, lng, c.latitude, c.longitude),
+      }))
+      .filter((c) => c.distance <= radiusKm)
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 10);
+
+    res.status(200).json({
+      success: true,
+      count: nearby.length,
+      data: nearby,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Upvote (or un-vote) a complaint
+// @route   POST /api/v1/complaints/:id/vote
+// @access  Private
+const upvoteComplaint = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { id } = req.params;
+
+    // Check if already voted
+    const existing = await Complaint.findOne({ _id: id, votes: userId });
+
+    let updated;
+    let voted;
+
+    if (!existing) {
+      // Add vote
+      updated = await Complaint.findByIdAndUpdate(
+        id,
+        { $addToSet: { votes: userId }, $inc: { voteCount: 1 } },
+        { new: true }
+      );
+      voted = true;
+    } else {
+      // Remove vote
+      updated = await Complaint.findByIdAndUpdate(
+        id,
+        { $pull: { votes: userId }, $inc: { voteCount: -1 } },
+        { new: true }
+      );
+      // Clamp voteCount to 0
+      if (updated.voteCount < 0) {
+        updated = await Complaint.findByIdAndUpdate(id, { voteCount: 0 }, { new: true });
+      }
+      voted = false;
+    }
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Complaint not found' });
+    }
+
+    // Recalculate priority after vote change
+    const newPriority = calculatePriority(updated);
+    if (newPriority !== updated.priority) {
+      updated = await Complaint.findByIdAndUpdate(
+        id,
+        { priority: newPriority },
+        { new: true }
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      voted,
+      voteCount: updated.voteCount,
+      priority: updated.priority,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Edit a complaint (only within 4 minutes of creation)
 // @route   PUT /api/v1/complaints/:id
 // @access  Private
@@ -149,12 +288,10 @@ const updateComplaint = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Complaint not found' });
     }
 
-    // Authorization check
     if (complaint.user?.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized to edit this complaint' });
     }
 
-    // 4-minute window check (4 * 60 * 1000 ms)
     const timeDiff = Date.now() - new Date(complaint.createdAt).getTime();
     if (timeDiff > 4 * 60 * 1000) {
       return res.status(403).json({
@@ -191,7 +328,6 @@ const deleteComplaint = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Complaint not found' });
     }
 
-    // Authorization check (owner or admin)
     if (req.user.role !== 'admin' && complaint.user?.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this complaint' });
     }
@@ -241,12 +377,8 @@ const getComplaint = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Complaint not found' });
     }
 
-    // Authorization check
     if (req.user.role !== 'admin' && complaint.user?.toString() !== req.user._id.toString()) {
-       if (complaint.isAnonymous) {
-         return res.status(403).json({ success: false, message: 'Not authorized to view this' });
-       }
-       return res.status(403).json({ success: false, message: 'Not authorized to view this' });
+      return res.status(403).json({ success: false, message: 'Not authorized to view this' });
     }
 
     res.status(200).json({
@@ -265,4 +397,7 @@ module.exports = {
   getComplaint,
   updateComplaint,
   deleteComplaint,
+  getHeatmapData,
+  getNearbyComplaints,
+  upvoteComplaint,
 };

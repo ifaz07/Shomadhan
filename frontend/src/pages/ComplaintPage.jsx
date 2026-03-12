@@ -28,6 +28,7 @@ import { complaintAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import T from '../components/T';
+import NearbyComplaints from '../components/NearbyComplaints';
 
 // Fix for default marker icons in Leaflet with React
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -97,6 +98,7 @@ const ComplaintPage = () => {
     description: '',
     location: '',
     isAnonymous: false,
+    isEmergency: false,
   });
   const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
@@ -280,7 +282,8 @@ const ComplaintPage = () => {
     data.append('description', formData.description);
     data.append('location', formData.location);
     data.append('isAnonymous', formData.isAnonymous);
-    
+    data.append('isEmergency', formData.isEmergency);
+
     if (mapPosition) {
       data.append('latitude', mapPosition[0]);
       data.append('longitude', mapPosition[1]);
@@ -295,7 +298,7 @@ const ComplaintPage = () => {
       if (response.data.success) {
         setSpamWarning(null);
         toast.success('Complaint submitted successfully!');
-        setFormData({ title: '', category: '', description: '', location: '', isAnonymous: false });
+        setFormData({ title: '', category: '', description: '', location: '', isAnonymous: false, isEmergency: false });
         setFiles([]);
         setPreviews([]);
         setMapPosition(null);
@@ -589,6 +592,13 @@ const ComplaintPage = () => {
             </div>
           </motion.div>
 
+          {/* ─── Nearby Complaints (pre-submission awareness) ───────── */}
+          {mapPosition && (
+            <motion.div variants={itemVariants}>
+              <NearbyComplaints mapPosition={mapPosition} />
+            </motion.div>
+          )}
+
           {/* ─── Evidence Upload ────────────────────────────────────── */}
           <motion.div 
             variants={itemVariants}
@@ -690,6 +700,29 @@ const ComplaintPage = () => {
                 </div>
                 <p className="text-sm text-teal-700 mt-1">
                   <T en="Your identity will be hidden from the authorities and other users. However, we'll still be able to track the complaint status." />
+                </p>
+              </div>
+
+              {/* Emergency Toggle */}
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle size={16} className="text-red-500" />
+                    <span className="text-sm font-semibold text-red-800"><T en="Mark as Emergency" /></span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="isEmergency"
+                      checked={formData.isEmergency}
+                      onChange={handleInputChange}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                  </label>
+                </div>
+                <p className="text-xs text-red-600 mt-1">
+                  <T en="Flag this as an emergency (e.g. fire, injury, flooding). This raises the complaint priority to Critical." />
                 </p>
               </div>
             </div>

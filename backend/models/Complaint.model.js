@@ -93,6 +93,19 @@ const complaintSchema = new mongoose.Schema(
       method: { type: String },           // 'semantic' | 'keyword'
       checkedAt: { type: Date },
     },
+
+    // ─── Priority & Voting ────────────────────────────────────────
+    priority: {
+      type: String,
+      enum: ['Low', 'Medium', 'High', 'Critical'],
+      default: 'Low',
+    },
+    isEmergency: {
+      type: Boolean,
+      default: false,
+    },
+    votes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    voteCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

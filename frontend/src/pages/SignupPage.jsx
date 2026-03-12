@@ -532,7 +532,9 @@ const SignupPage = () => {
 
                 {renderInput({
                   name: 'confirmPassword',
-                    label: <T en="Confirm password" />,
+                  label: <T en="Confirm password" />,
+                  icon: Lock,
+                  placeholder: 'Repeat your password',
                   autoComplete: 'new-password',
                   isPassword: true,
                   showToggle: showConfirm,

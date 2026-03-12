@@ -60,6 +60,9 @@ export const complaintAPI = {
   analyze: (title, description) => api.post('/complaints/analyze', { title, description }),
   getAll: () => api.get('/complaints'),
   getOne: (id) => api.get(`/complaints/${id}`),
+  getHeatmapData: (days = 30) => api.get(`/complaints/heatmap?days=${days}`),
+  getNearby: (lat, lng, radius = 1.0) => api.get(`/complaints/nearby?lat=${lat}&lng=${lng}&radius=${radius}`),
+  vote: (id) => api.post(`/complaints/${id}/vote`),
 };
 
 export default api;
