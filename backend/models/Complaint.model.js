@@ -11,7 +11,7 @@ const evidenceSchema = new mongoose.Schema({
     required: true,
   },
   publicId: {
-    type: String, // For cloud storage like Cloudinary if used later
+    type: String,
   },
 });
 
@@ -64,6 +64,30 @@ const complaintSchema = new mongoose.Schema(
     longitude: {
       type: Number,
     },
+
+    // ── Priority System ─────────────────────────────────────────────────
+    priority: {
+      type: String,
+      enum: ['Low', 'Medium', 'High', 'Critical'],
+      default: 'Low',
+    },
+    emergencyFlag: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ── Public Voting ────────────────────────────────────────────────────
+    votes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+    voteCount: {
+      type: Number,
+      default: 0,
+    },
+
     history: [
       {
         status: String,
@@ -82,19 +106,37 @@ const complaintSchema = new mongoose.Schema(
       },
       keywords: [{ type: String }],
       confidence: { type: Number },
-      source: { type: String }, // 'huggingface' | 'rule-based'
+      source: { type: String },
       analyzedAt: { type: Date },
     },
     spamCheck: {
       isDuplicate: { type: Boolean, default: false },
       similarTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Complaint' },
       originalTicketId: { type: String },
-      similarity: { type: Number },       // 0–1 similarity score
-      method: { type: String },           // 'semantic' | 'keyword'
+      similarity: { type: Number },
+      method: { type: String },
       checkedAt: { type: Date },
     },
+
+    // ─── Priority & Voting ────────────────────────────────────────
+    priority: {
+      type: String,
+      enum: ['Low', 'Medium', 'High', 'Critical'],
+      default: 'Low',
+    },
+    isEmergency: {
+      type: Boolean,
+      default: false,
+    },
+    votes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    voteCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
+
+// Index for geospatial queries
+complaintSchema.index({ latitude: 1, longitude: 1 });
+complaintSchema.index({ priority: 1 });
+complaintSchema.index({ voteCount: -1 });
 
 module.exports = mongoose.model('Complaint', complaintSchema);

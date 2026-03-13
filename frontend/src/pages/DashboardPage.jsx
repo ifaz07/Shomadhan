@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText,
@@ -9,6 +10,7 @@ import {
   TrendingDown,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { complaintAPI } from '../services/api';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import T from '../components/T';
 
@@ -102,8 +104,19 @@ const DeptCard = ({ dept, index }) => (
 // ─── Dashboard Page ──────────────────────────────────────────────────
 const DashboardPage = () => {
   const { user } = useAuth();
+  const [stats, setStats] = useState({ total: 0, critical: 0, inProgress: 0, resolved: 0 });
 
-  const stats = { total: 0, critical: 0, inProgress: 0, resolved: 0 };
+  useEffect(() => {
+    complaintAPI.getAll().then((res) => {
+      const complaints = res.data.data || [];
+      setStats({
+        total: complaints.length,
+        critical: complaints.filter((c) => c.priority === 'Critical').length,
+        inProgress: complaints.filter((c) => c.status === 'in-progress').length,
+        resolved: complaints.filter((c) => c.status === 'resolved').length,
+      });
+    }).catch(() => {});
+  }, []);
 
   return (
     <DashboardLayout>

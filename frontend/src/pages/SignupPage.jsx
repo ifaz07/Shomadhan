@@ -57,6 +57,7 @@ const SignupPage = () => {
     employeeId: '',
     governmentEmail: '',
     designation: '',
+    nidNumber: '',
     // Password step
     password: '',
     confirmPassword: '',
@@ -97,6 +98,11 @@ const SignupPage = () => {
         newErrors.governmentEmail = 'Please enter a valid email';
       }
       if (!formData.designation.trim()) newErrors.designation = 'Designation is required';
+      if (!formData.nidNumber.trim()) {
+        newErrors.nidNumber = 'NID number is required';
+      } else if (!/^\d{10}$/.test(formData.nidNumber.trim())) {
+        newErrors.nidNumber = 'NID must be exactly 10 digits';
+      }
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -169,6 +175,7 @@ const SignupPage = () => {
         payload.employeeId = formData.employeeId;
         payload.governmentEmail = formData.governmentEmail;
         payload.designation = formData.designation;
+        payload.nidNumber = formData.nidNumber;
       }
       await register(payload);
     } catch (error) {
@@ -476,6 +483,13 @@ const SignupPage = () => {
                       icon: Briefcase,
                       placeholder: 'e.g. Junior Engineer, Inspector',
                     })}
+                    {renderInput({
+                      name: 'nidNumber',
+                      label: <T en="National ID Number (NID)" />,
+                      icon: Shield,
+                      placeholder: '10-digit NID number',
+                      type: 'text',
+                    })}
                   </motion.div>
                 )}
 
@@ -532,7 +546,9 @@ const SignupPage = () => {
 
                 {renderInput({
                   name: 'confirmPassword',
-                    label: <T en="Confirm password" />,
+                  label: <T en="Confirm password" />,
+                  icon: Lock,
+                  placeholder: 'Repeat your password',
                   autoComplete: 'new-password',
                   isPassword: true,
                   showToggle: showConfirm,

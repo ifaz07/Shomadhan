@@ -1,32 +1,31 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/auth.middleware');
+const { protect } = require('../middleware/auth.middleware');
 const upload = require('../middleware/upload.middleware');
 const {
   createComplaint,
   analyzeComplaint,
+  voteComplaint,
+  getNearbyComplaints,
+  getHeatmapData,
   getComplaints,
   getComplaint,
   updateComplaint,
   deleteComplaint,
 } = require('../controllers/complaint.controller');
 
-// NLP analysis preview (before submission)
+// ── Public routes (NO auth required) ─────────────────────────────────────
+// IMPORTANT: Must come BEFORE /:id routes to prevent 'heatmap'/'nearby' matching as an ID
+router.get('/heatmap', getHeatmapData);
+router.get('/nearby', getNearbyComplaints);
+
+// ── Protected routes ──────────────────────────────────────────────────────
 router.post('/analyze', protect, analyzeComplaint);
-
-// Submit complaint - allowed for authenticated users (can choose to be anonymous)
 router.post('/', protect, upload.array('evidence', 5), createComplaint);
-
-// Get complaints (their own or all for admin)
 router.get('/', protect, getComplaints);
-
-// Get single complaint
+router.post('/:id/vote', protect, voteComplaint);
 router.get('/:id', protect, getComplaint);
-
-// Update complaint
 router.put('/:id', protect, updateComplaint);
-
-// Delete complaint
 router.delete('/:id', protect, deleteComplaint);
 
 module.exports = router;

@@ -178,4 +178,4 @@ async function checkForDuplicates(title, description, latitude, longitude, userI
   return { isSpam: false };
 }
 
-module.exports = { checkForDuplicates };
+module.exports = { checkForDuplicates, haversineDistance };

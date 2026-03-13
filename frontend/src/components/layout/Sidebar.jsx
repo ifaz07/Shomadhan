@@ -14,6 +14,7 @@ import {
   BarChart3,
   MessageSquare,
   PlusCircle,
+  Map,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import LanguageToggle from "../LanguageToggle";
@@ -26,13 +27,14 @@ const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navItems = [
-    { path: "/dashboard",       label: <T en="Dashboard" />,        icon: LayoutDashboard },
-    { path: "/submit-complaint",label: <T en="Submit Complaint" />, icon: PlusCircle },
-    { path: "/profile",         label: <T en="My Profile" />,       icon: User },
-    { path: "/notifications",   label: <T en="Notifications" />,    icon: Bell, badge: 3 },
-    { path: "/my-complaints",   label: <T en="My Complaints" />,    icon: FileText,      disabled: true },
-    { path: "/analytics",       label: <T en="Analytics" />,        icon: BarChart3,     disabled: true },
-    { path: "/feedback",        label: <T en="Feedback" />,         icon: MessageSquare, disabled: true },
+    { path: "/dashboard",        label: <T en="Dashboard" />,         icon: LayoutDashboard },
+    { path: "/submit-complaint", label: <T en="Submit Complaint" />,  icon: PlusCircle },
+    { path: "/heatmap",          label: <T en="Complaint Heatmap" />, icon: Map },
+    { path: "/profile",          label: <T en="My Profile" />,        icon: User },
+    { path: "/notifications",    label: <T en="Notifications" />,     icon: Bell, badge: 3 },
+    { path: "/my-complaints",    label: <T en="My Complaints" />,     icon: FileText,      disabled: true },
+    { path: "/analytics",        label: <T en="Analytics" />,         icon: BarChart3,     disabled: true },
+    { path: "/feedback",         label: <T en="Feedback" />,          icon: MessageSquare, disabled: true },
   ];
 
   const isActive = (path) => location.pathname === path;
