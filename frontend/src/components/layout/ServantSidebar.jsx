@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import T from '../T';
+import LanguageToggle from '../LanguageToggle';
 
 const DEPT_DISPLAY = {
   public_works:    'Public Works',
@@ -52,16 +53,19 @@ const ServantSidebar = () => {
     <div className="flex flex-col h-full">
       {/* ─── Logo ─────────────────────────────────────────────── */}
       <div className="p-5 border-b border-gray-100">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-            <Briefcase size={18} className="text-white" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+              <Briefcase size={18} className="text-white" />
+            </div>
+            {!isCollapsed && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <h1 className="text-base font-bold text-gray-900">Somadhan</h1>
+                <p className="text-[10px] text-blue-500 font-semibold -mt-0.5"><T en="Servant Portal" /></p>
+              </motion.div>
+            )}
           </div>
-          {!isCollapsed && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <h1 className="text-base font-bold text-gray-900">Somadhan</h1>
-              <p className="text-[10px] text-blue-500 font-semibold -mt-0.5"><T en="Servant Portal" /></p>
-            </motion.div>
-          )}
+          {!isCollapsed && <LanguageToggle variant="light" />}
         </div>
       </div>
 
