@@ -134,14 +134,12 @@ async function computeSimilarity(text1, text2) {
  * }>}
  */
 async function checkForDuplicates(title, description, latitude, longitude, userId) {
-  // Requires both coordinates AND a known user (anonymous complaints are exempt)
   if (latitude == null || longitude == null || !userId) {
     return { isSpam: false };
   }
 
   const since = new Date(Date.now() - TIME_WINDOW_MS);
 
-  // Only look at THIS user's recent complaints that have location data
   const recentComplaints = await Complaint.find({
     user: userId,
     createdAt: { $gte: since },
@@ -150,7 +148,6 @@ async function checkForDuplicates(title, description, latitude, longitude, userI
     'spamCheck.isDuplicate': { $ne: true },
   }).select('title description latitude longitude ticketId _id');
 
-  // Filter to those within the proximity radius (CPU-side; avoids geospatial index requirement)
   const nearby = recentComplaints.filter(
     (c) => haversineDistance(latitude, longitude, c.latitude, c.longitude) <= RADIUS_KM
   );

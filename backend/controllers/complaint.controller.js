@@ -78,7 +78,6 @@ const createComplaint = async (req, res, next) => {
         });
       }
     } catch (spamErr) {
-      // Non-blocking — log and continue if spam check itself fails
       console.warn('[SpamDetection] Check skipped:', spamErr.message);
     }
 
