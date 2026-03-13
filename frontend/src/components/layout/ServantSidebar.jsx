@@ -12,8 +12,10 @@ import {
   Briefcase,
   Bell,
   ShieldCheck,
+  Map,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import T from '../T';
 
 const DEPT_DISPLAY = {
   public_works:    'Public Works',
@@ -37,10 +39,11 @@ const ServantSidebar = () => {
   const deptLabel = DEPT_DISPLAY[user?.department] || 'Department';
 
   const navItems = [
-    { path: '/servant/dashboard',   label: 'Dashboard',             icon: LayoutDashboard },
-    { path: '/servant/complaints',  label: 'Department Complaints', icon: ClipboardList },
-    { path: '/servant/profile',     label: 'My Profile',            icon: User },
-    { path: '/notifications',       label: 'Notifications',         icon: Bell, badge: 0 },
+    { path: '/servant/dashboard',   labelEn: 'Dashboard',             icon: LayoutDashboard },
+    { path: '/servant/complaints',  labelEn: 'Department Complaints', icon: ClipboardList },
+    { path: '/servant/heatmap',     labelEn: 'Heatmap',               icon: Map },
+    { path: '/servant/profile',     labelEn: 'My Profile',            icon: User },
+    { path: '/notifications',       labelEn: 'Notifications',         icon: Bell, badge: 0 },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -56,7 +59,7 @@ const ServantSidebar = () => {
           {!isCollapsed && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <h1 className="text-base font-bold text-gray-900">Somadhan</h1>
-              <p className="text-[10px] text-blue-500 font-semibold -mt-0.5">Servant Portal</p>
+              <p className="text-[10px] text-blue-500 font-semibold -mt-0.5"><T en="Servant Portal" /></p>
             </motion.div>
           )}
         </div>
@@ -113,7 +116,7 @@ const ServantSidebar = () => {
                 />
               )}
               <Icon size={18} className={active ? 'text-blue-600' : ''} />
-              {!isCollapsed && <span>{item.label}</span>}
+              {!isCollapsed && <span><T en={item.labelEn} /></span>}
               {!isCollapsed && item.badge > 0 && (
                 <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                   {item.badge}
@@ -131,7 +134,7 @@ const ServantSidebar = () => {
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all w-full"
         >
           <LogOut size={18} />
-          {!isCollapsed && <span>Sign out</span>}
+          {!isCollapsed && <span><T en="Sign out" /></span>}
         </button>
       </div>
     </div>

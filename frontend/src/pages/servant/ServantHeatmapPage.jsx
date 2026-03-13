@@ -14,9 +14,9 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import toast from 'react-hot-toast';
-import { complaintAPI } from '../services/api';
-import DashboardLayout from '../components/layout/DashboardLayout';
-import T from '../components/T';
+import { complaintAPI } from '../../services/api';
+import ServantLayout from '../../components/layout/ServantLayout';
+import T from '../../components/T';
 
 // Fix Leaflet default icon
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -36,7 +36,6 @@ const PRIORITY_CONFIG = {
   Low:      { color: '#22c55e', bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-300', dot: 'bg-green-500', label: 'Low' },
 };
 
-// Create a colored circle icon for each priority
 const makePriorityIcon = (priority) => {
   const color = PRIORITY_CONFIG[priority]?.color || '#94a3b8';
   return L.divIcon({
@@ -65,7 +64,7 @@ const makeCriticalIcon = () =>
     iconAnchor: [10, 10],
   });
 
-// ─── Heatmap layer injected via useMap ────────────────────────────────
+// ─── Heatmap layer ────────────────────────────────────────────────────
 const HeatLayer = ({ points, visible }) => {
   const map = useMap();
   const layerRef = useRef(null);
@@ -111,7 +110,7 @@ const StatCard = ({ label, value, color, icon: Icon }) => (
 );
 
 // ─── Main Page ────────────────────────────────────────────────────────
-const HeatmapPage = () => {
+const ServantHeatmapPage = () => {
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(true);
@@ -135,28 +134,26 @@ const HeatmapPage = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  // Filtered points for markers
   const filtered = points.filter((p) => {
     if (priorityFilter !== 'All' && p.priority !== priorityFilter) return false;
     if (categoryFilter !== 'All' && p.category !== categoryFilter) return false;
     return true;
   });
 
-  // Stats
   const counts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
   points.forEach((p) => { if (counts[p.priority] !== undefined) counts[p.priority]++; });
 
   const categories = ['All', 'Road', 'Waste', 'Electricity', 'Water', 'Safety', 'Environment', 'Other'];
 
   return (
-    <DashboardLayout>
+    <ServantLayout>
       <div className="flex flex-col gap-5 p-6">
 
         {/* ── Header ── */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Map size={24} className="text-teal-600" />
+              <Map size={24} className="text-blue-600" />
               <T en="Complaint Heatmap" />
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">
@@ -166,7 +163,7 @@ const HeatmapPage = () => {
           <button
             onClick={fetchData}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl text-sm font-medium hover:bg-teal-700 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             <T en="Refresh" />
@@ -210,20 +207,20 @@ const HeatmapPage = () => {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400"
+            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
           >
-            {categories.map((c) => <option key={c}>{c}</option>)}
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
 
           <div className="w-px h-5 bg-gray-200" />
 
           {/* Layer toggles */}
           <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-600">
-            <input type="checkbox" checked={showHeatmap} onChange={(e) => setShowHeatmap(e.target.checked)} className="accent-teal-600" />
+            <input type="checkbox" checked={showHeatmap} onChange={(e) => setShowHeatmap(e.target.checked)} className="accent-blue-600" />
             <T en="Heatmap overlay" />
           </label>
           <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-600">
-            <input type="checkbox" checked={showMarkers} onChange={(e) => setShowMarkers(e.target.checked)} className="accent-teal-600" />
+            <input type="checkbox" checked={showMarkers} onChange={(e) => setShowMarkers(e.target.checked)} className="accent-blue-600" />
             <T en="Priority markers" />
           </label>
 
@@ -235,7 +232,7 @@ const HeatmapPage = () => {
           {loading && (
             <div className="absolute inset-0 bg-white/80 z-[999] flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
-                <div className="w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin" />
+                <div className="w-10 h-10 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
                 <p className="text-sm text-gray-500"><T en="Loading complaint data…" /></p>
               </div>
             </div>
@@ -246,11 +243,7 @@ const HeatmapPage = () => {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
             />
-
-            {/* Heatmap layer */}
             <HeatLayer points={filtered} visible={showHeatmap} />
-
-            {/* Priority markers */}
             {showMarkers && filtered.map((p, i) => (
               <Marker
                 key={i}
@@ -332,8 +325,8 @@ const HeatmapPage = () => {
           </motion.div>
         )}
       </div>
-    </DashboardLayout>
+    </ServantLayout>
   );
 };
 
-export default HeatmapPage;
+export default ServantHeatmapPage;

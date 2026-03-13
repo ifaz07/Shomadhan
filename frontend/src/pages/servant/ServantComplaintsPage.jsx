@@ -13,6 +13,7 @@ import {
 import toast from 'react-hot-toast';
 import { servantAPI } from '../../services/api';
 import ServantLayout from '../../components/layout/ServantLayout';
+import T from '../../components/T';
 
 const PRIORITY_STYLE = {
   Critical: { bg: 'bg-red-100',    text: 'text-red-700',    border: 'border-red-300',    dot: 'bg-red-500' },
@@ -81,7 +82,7 @@ const StatusModal = ({ complaint, onClose, onUpdated }) => {
         className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md"
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-gray-900">Update Status</h3>
+          <h3 className="font-bold text-gray-900"><T en="Update Status" /></h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X size={18} />
           </button>
@@ -108,7 +109,7 @@ const StatusModal = ({ complaint, onClose, onUpdated }) => {
                   : 'border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
             >
-              {STATUS_LABELS[s]}
+              <T en={STATUS_LABELS[s]} />
             </button>
           ))}
         </div>
@@ -118,6 +119,7 @@ const StatusModal = ({ complaint, onClose, onUpdated }) => {
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Add a note (optional)"
+          // note: placeholder not wrapped in T as it's an attribute, not rendered JSX
           rows={3}
           className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none mb-4"
         />
@@ -127,7 +129,7 @@ const StatusModal = ({ complaint, onClose, onUpdated }) => {
             onClick={onClose}
             className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
           >
-            Cancel
+            <T en="Cancel" />
           </button>
           <button
             onClick={handleSubmit}
@@ -135,7 +137,7 @@ const StatusModal = ({ complaint, onClose, onUpdated }) => {
             className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading && <Loader2 size={14} className="animate-spin" />}
-            Confirm
+            <T en="Confirm" />
           </button>
         </div>
       </motion.div>
@@ -194,11 +196,11 @@ const ComplaintCard = ({ complaint, onUpdateClick }) => {
           className="w-full py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
         >
           <ChevronDown size={14} />
-          Update Status
+          <T en="Update Status" />
         </button>
       ) : (
         <div className={`w-full py-2 rounded-xl text-xs font-semibold text-center ${sStyle.bg} ${sStyle.text}`}>
-          {sStyle.label} — No further action needed
+          <T en={sStyle.label} /> — <T en="No further action needed" />
         </div>
       )}
     </motion.div>
@@ -252,10 +254,10 @@ const ServantComplaintsPage = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <ClipboardList size={22} className="text-blue-600" />
-            Department Complaints
+            <T en="Department Complaints" />
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {total} complaint{total !== 1 ? 's' : ''} in your department
+            {total} <T en="complaint" />{total !== 1 ? <T en="s" /> : ''} <T en="in your department" />
           </p>
         </div>
 
@@ -275,7 +277,7 @@ const ServantComplaintsPage = () => {
                     : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
                 }`}
               >
-                {s === 'all' ? 'All Status' : STATUS_STYLE[s]?.label || s}
+                {s === 'all' ? <T en="All Status" /> : <T en={STATUS_STYLE[s]?.label || s} />}
               </button>
             ))}
           </div>
@@ -298,7 +300,7 @@ const ServantComplaintsPage = () => {
                       : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
                   }`}
                 >
-                  {p === 'all' ? 'All Priority' : p}
+                  {p === 'all' ? <T en="All Priority" /> : <T en={p} />}
                 </button>
               );
             })}
@@ -313,8 +315,8 @@ const ServantComplaintsPage = () => {
         ) : complaints.length === 0 ? (
           <div className="bg-white border border-gray-100 rounded-2xl p-16 text-center text-gray-400">
             <CheckCircle2 size={40} className="mx-auto mb-3 text-green-400" />
-            <p className="font-medium text-gray-600">No complaints found</p>
-            <p className="text-sm mt-1">Try changing the filters above.</p>
+            <p className="font-medium text-gray-600"><T en="No complaints found" /></p>
+            <p className="text-sm mt-1"><T en="Try changing the filters above." /></p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -336,17 +338,17 @@ const ServantComplaintsPage = () => {
               disabled={page === 1}
               className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors"
             >
-              Previous
+              <T en="Previous" />
             </button>
             <span className="text-sm text-gray-500">
-              Page {page} of {totalPages}
+              <T en="Page" /> {page} <T en="of" /> {totalPages}
             </span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
               className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors"
             >
-              Next
+              <T en="Next" />
             </button>
           </div>
         )}

@@ -14,6 +14,7 @@ import {
 import { servantAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import ServantLayout from '../../components/layout/ServantLayout';
+import T from '../../components/T';
 
 const DEPT_DISPLAY = {
   public_works:    'Public Works',
@@ -90,35 +91,35 @@ const ServantDashboardPage = () => {
         {/* ── Header ── */}
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
           <h1 className="text-2xl font-bold text-gray-900">
-            Welcome, {user?.name}
+            <T en="Welcome" />, {user?.name}
           </h1>
           <p className="text-gray-500 mt-1">
-            <span className="font-medium text-blue-600">{deptLabel}</span> Officer · Managing your department's complaints
+            <span className="font-medium text-blue-600">{deptLabel}</span> <T en="Officer · Managing your department's complaints" />
           </p>
         </motion.div>
 
         {/* ── Stats ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
-            label="Total Assigned"
+            label={<T en="Total Assigned" />}
             value={stats?.total ?? 0}
             icon={ClipboardList}
             color={{ border: 'border-gray-200', iconBg: 'bg-gray-100', iconText: 'text-gray-600' }}
           />
           <StatCard
-            label="Pending"
+            label={<T en="Pending" />}
             value={stats?.pending ?? 0}
             icon={Clock}
             color={{ border: 'border-yellow-200', iconBg: 'bg-yellow-50', iconText: 'text-yellow-600' }}
           />
           <StatCard
-            label="In Progress"
+            label={<T en="In Progress" />}
             value={stats?.inProgress ?? 0}
             icon={Flame}
             color={{ border: 'border-blue-200', iconBg: 'bg-blue-50', iconText: 'text-blue-600' }}
           />
           <StatCard
-            label="Resolved"
+            label={<T en="Resolved" />}
             value={stats?.resolved ?? 0}
             icon={CheckCircle2}
             color={{ border: 'border-green-200', iconBg: 'bg-green-50', iconText: 'text-green-600' }}
@@ -136,19 +137,19 @@ const ServantDashboardPage = () => {
             <p className="text-sm text-red-800">
               You have{' '}
               {stats.critical > 0 && (
-                <span className="font-bold text-red-700">{stats.critical} Critical</span>
+                <span className="font-bold text-red-700">{stats.critical} <T en="Critical" /></span>
               )}
-              {stats.critical > 0 && stats.high > 0 && ' and '}
+              {stats.critical > 0 && stats.high > 0 && <> <T en="and" /> </>}
               {stats.high > 0 && (
-                <span className="font-bold text-orange-600">{stats.high} High</span>
+                <span className="font-bold text-orange-600">{stats.high} <T en="High" /></span>
               )}
-              {' '}priority complaint{(stats.critical + stats.high) > 1 ? 's' : ''} that need attention.
+              {' '}<T en="priority complaint" />{(stats.critical + stats.high) > 1 ? <T en="s" /> : ''} <T en="that need attention." />
             </p>
             <Link
               to="/servant/complaints?priority=Critical"
               className="ml-auto shrink-0 text-xs font-semibold text-red-700 underline"
             >
-              View all
+              <T en="View all" />
             </Link>
           </motion.div>
         )}
@@ -156,20 +157,20 @@ const ServantDashboardPage = () => {
         {/* ── Urgent complaints ── */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-gray-800">Urgent Complaints</h2>
+            <h2 className="text-base font-semibold text-gray-800"><T en="Urgent Complaints" /></h2>
             <Link
               to="/servant/complaints"
               className="text-sm text-blue-600 font-medium flex items-center gap-1 hover:underline"
             >
-              View all <ArrowRight size={14} />
+              <T en="View all" /> <ArrowRight size={14} />
             </Link>
           </div>
 
           {!stats?.urgent?.length ? (
             <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center text-gray-400">
               <CheckCircle2 size={36} className="mx-auto mb-3 text-green-400" />
-              <p className="font-medium">No urgent complaints right now</p>
-              <p className="text-sm mt-1">All critical and high priority issues are handled.</p>
+              <p className="font-medium"><T en="No urgent complaints right now" /></p>
+              <p className="text-sm mt-1"><T en="All critical and high priority issues are handled." /></p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -202,7 +203,7 @@ const ServantDashboardPage = () => {
                       to="/servant/complaints"
                       className="text-xs text-blue-600 font-medium hover:underline shrink-0"
                     >
-                      Manage →
+                      <T en="Manage" /> →
                     </Link>
                   </motion.div>
                 );
