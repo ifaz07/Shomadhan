@@ -44,7 +44,7 @@ const register = async (req, res, next) => {
       });
     }
 
-    const { name, email, password, phone, role, department, employeeId, governmentEmail, designation } = req.body;
+    const { name, email, password, phone, role, department, employeeId, governmentEmail, designation, nidNumber } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -59,11 +59,23 @@ const register = async (req, res, next) => {
     const userData = { name, email, password, phone };
 
     if (role === 'department_officer') {
+      if (!nidNumber || String(nidNumber).length !== 10) {
+        return res.status(400).json({ success: false, message: 'NID number must be exactly 10 digits.' });
+      }
       userData.role = 'department_officer';
       userData.department = department;
       userData.employeeId = employeeId;
       userData.governmentEmail = governmentEmail;
       userData.designation = designation;
+      // Auto-verify public servants via their NID at registration
+      userData.isVerified = true;
+      userData.verificationDoc = {
+        docType: 'nid',
+        documentNumber: String(nidNumber),
+        status: 'approved',
+        submittedAt: new Date(),
+        verifiedAt: new Date(),
+      };
     }
     // Note: 'admin' and 'mayor' roles cannot be self-assigned via signup
 
@@ -352,4 +364,32 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, logout, getMe, changePassword, verifyAccount, oauthCallback, forgotPassword, resetPassword };
+// ─── PUT /api/v1/auth/update-phone ────────────────────────────────────
+const updatePhone = async (req, res, next) => {
+  try {
+    const { phone, currentPassword } = req.body;
+
+    if (!phone || !currentPassword) {
+      return res.status(400).json({ success: false, message: 'Phone number and current password are required.' });
+    }
+
+    if (!/^(\+880|0)?1[3-9]\d{8}$/.test(phone)) {
+      return res.status(400).json({ success: false, message: 'Please enter a valid BD phone number.' });
+    }
+
+    const user = await User.findById(req.user.id).select('+password');
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
+    }
+
+    user.phone = phone;
+    await user.save({ validateBeforeSave: false });
+
+    res.json({ success: true, message: 'Phone number updated successfully.', data: { phone } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, logout, getMe, changePassword, verifyAccount, oauthCallback, forgotPassword, resetPassword, updatePhone };

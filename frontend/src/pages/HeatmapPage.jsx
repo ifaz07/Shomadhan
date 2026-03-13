@@ -16,6 +16,7 @@ import 'leaflet/dist/leaflet.css';
 import toast from 'react-hot-toast';
 import { complaintAPI } from '../services/api';
 import DashboardLayout from '../components/layout/DashboardLayout';
+import T from '../components/T';
 
 // Fix Leaflet default icon
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -156,10 +157,10 @@ const HeatmapPage = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <Map size={24} className="text-teal-600" />
-              Complaint Heatmap
+              <T en="Complaint Heatmap" />
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">
-              Visualize complaint intensity and priority zones across the city
+              <T en="Visualize complaint intensity and priority zones across the city" />
             </p>
           </div>
           <button
@@ -168,16 +169,16 @@ const HeatmapPage = () => {
             className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl text-sm font-medium hover:bg-teal-700 transition-colors disabled:opacity-50"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-            Refresh
+            <T en="Refresh" />
           </button>
         </div>
 
         {/* ── Priority Stats ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard label="Critical" value={counts.Critical} color="border-red-300"    icon={AlertTriangle} />
-          <StatCard label="High"     value={counts.High}     color="border-orange-300" icon={Flame} />
-          <StatCard label="Medium"   value={counts.Medium}   color="border-yellow-300" icon={Info} />
-          <StatCard label="Low"      value={counts.Low}      color="border-green-300"  icon={ZoomIn} />
+          <StatCard label={<T en="Critical" />} value={counts.Critical} color="border-red-300"    icon={AlertTriangle} />
+          <StatCard label={<T en="High" />}     value={counts.High}     color="border-orange-300" icon={Flame} />
+          <StatCard label={<T en="Medium" />}   value={counts.Medium}   color="border-yellow-300" icon={Info} />
+          <StatCard label={<T en="Low" />}      value={counts.Low}      color="border-green-300"  icon={ZoomIn} />
         </div>
 
         {/* ── Controls ── */}
@@ -198,7 +199,7 @@ const HeatmapPage = () => {
                     : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
                 }`}
               >
-                {p === 'All' ? 'All Priority' : p}
+                {p === 'All' ? <T en="All Priority" /> : <T en={p} />}
               </button>
             ))}
           </div>
@@ -211,7 +212,7 @@ const HeatmapPage = () => {
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400"
           >
-            {categories.map((c) => <option key={c}>{c}</option>)}
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
 
           <div className="w-px h-5 bg-gray-200" />
@@ -219,14 +220,14 @@ const HeatmapPage = () => {
           {/* Layer toggles */}
           <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-600">
             <input type="checkbox" checked={showHeatmap} onChange={(e) => setShowHeatmap(e.target.checked)} className="accent-teal-600" />
-            Heatmap overlay
+            <T en="Heatmap overlay" />
           </label>
           <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-600">
             <input type="checkbox" checked={showMarkers} onChange={(e) => setShowMarkers(e.target.checked)} className="accent-teal-600" />
-            Priority markers
+            <T en="Priority markers" />
           </label>
 
-          <span className="ml-auto text-xs text-gray-400">{filtered.length} / {points.length} complaints shown</span>
+          <span className="ml-auto text-xs text-gray-400">{filtered.length} / {points.length} <T en="complaints shown" /></span>
         </div>
 
         {/* ── Map ── */}
@@ -235,7 +236,7 @@ const HeatmapPage = () => {
             <div className="absolute inset-0 bg-white/80 z-[999] flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-gray-500">Loading complaint data…</p>
+                <p className="text-sm text-gray-500"><T en="Loading complaint data…" /></p>
               </div>
             </div>
           )}
@@ -276,8 +277,8 @@ const HeatmapPage = () => {
                         p.status === 'resolved' ? 'bg-green-100 text-green-700' :
                         p.status === 'in-progress' ? 'bg-blue-100 text-blue-700' :
                         'bg-gray-100 text-gray-600'
-                      }`}>{p.status}</span>
-                      {p.emergencyFlag && <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700">⚡ Emergency</span>}
+                      }`}><T en={p.status} /></span>
+                      {p.emergencyFlag && <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700">⚡ <T en="Emergency" /></span>}
                     </div>
                   </div>
                 </Popup>
@@ -287,15 +288,15 @@ const HeatmapPage = () => {
 
           {/* Legend */}
           <div className="absolute bottom-4 right-4 z-[500] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 p-3 text-xs">
-            <p className="font-semibold text-gray-700 mb-2">Priority Legend</p>
+            <p className="font-semibold text-gray-700 mb-2"><T en="Priority Legend" /></p>
             {Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => (
               <div key={key} className="flex items-center gap-2 mb-1">
                 <div className={`w-3 h-3 rounded-full ${cfg.dot}`} />
-                <span className="text-gray-600">{cfg.label}</span>
+                <span className="text-gray-600"><T en={cfg.label} /></span>
               </div>
             ))}
             <div className="mt-2 pt-2 border-t border-gray-100">
-              <p className="text-gray-400 text-[10px]">Heatmap: red = high density</p>
+              <p className="text-gray-400 text-[10px]"><T en="Heatmap: red = high density" /></p>
             </div>
           </div>
         </div>
@@ -309,7 +310,7 @@ const HeatmapPage = () => {
           >
             <h3 className="font-semibold text-red-800 flex items-center gap-2 mb-3">
               <AlertTriangle size={16} />
-              High-Incident Zones ({points.filter((p) => p.priority === 'Critical' || p.priority === 'High').length} complaints)
+              <T en="High-Incident Zones" /> ({points.filter((p) => p.priority === 'Critical' || p.priority === 'High').length} <T en="complaints" />)
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {points

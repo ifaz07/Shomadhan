@@ -10,19 +10,34 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import OAuthCallbackPage from './pages/OAuthCallbackPage';
 import HeatmapPage from './pages/HeatmapPage';
+import ServantDashboardPage from './pages/servant/ServantDashboardPage';
+import ServantComplaintsPage from './pages/servant/ServantComplaintsPage';
+import ServantProfilePage from './pages/servant/ServantProfilePage';
 import { useAuth } from './context/AuthContext';
 
-// ─── Protected route wrapper ─────────────────────────────────────────
+// ─── Citizen-only route (redirect servants away) ──────────────────────
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
+  if (user.role === 'department_officer') return <Navigate to="/servant/dashboard" replace />;
   return children;
 };
 
-// ─── Guest route wrapper (redirect to dashboard if logged in) ────────
+// ─── Servant-only route ───────────────────────────────────────────────
+const ServantRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'department_officer') return <Navigate to="/dashboard" replace />;
+  return children;
+};
+
+// ─── Guest route (redirect logged-in users to their dashboard) ────────
 const GuestRoute = ({ children }) => {
   const { user } = useAuth();
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) {
+    if (user.role === 'department_officer') return <Navigate to="/servant/dashboard" replace />;
+    return <Navigate to="/dashboard" replace />;
+  }
   return children;
 };
 
@@ -63,14 +78,19 @@ function App() {
         {/* ─── OAuth callback (no guard — token arrives here) ───── */}
         <Route path="/auth/callback" element={<OAuthCallbackPage />} />
 
-        {/* ─── Protected Pages ──────────────────────────────────── */}
+        {/* ─── Citizen Pages ────────────────────────────────────── */}
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/submit-complaint" element={<ProtectedRoute><ComplaintPage /></ProtectedRoute>} />
         <Route path="/verify" element={<ProtectedRoute><VerificationPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/heatmap" element={<ProtectedRoute><HeatmapPage /></ProtectedRoute>} />
 
-        {/* ─── Placeholder routes (will be built later) ─────────── */}
+        {/* ─── Public Servant Pages ─────────────────────────────── */}
+        <Route path="/servant/dashboard" element={<ServantRoute><ServantDashboardPage /></ServantRoute>} />
+        <Route path="/servant/complaints" element={<ServantRoute><ServantComplaintsPage /></ServantRoute>} />
+        <Route path="/servant/profile" element={<ServantRoute><ServantProfilePage /></ServantRoute>} />
+
+        {/* ─── Shared protected routes ──────────────────────────── */}
         <Route path="/notifications" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
 
         {/* ─── Fallback ─────────────────────────────────────────── */}
