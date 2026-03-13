@@ -3,7 +3,7 @@ const router = express.Router();
 const passport = require('passport');
 const {
   register, login, logout, getMe, changePassword, verifyAccount,
-  oauthCallback, forgotPassword, resetPassword,
+  oauthCallback, forgotPassword, resetPassword, updatePhone,
 } = require('../controllers/auth.controller');
 const { registerValidator, loginValidator } = require('../validators/auth.validator');
 const { protect } = require('../middleware/auth.middleware');
@@ -15,6 +15,7 @@ router.post('/login', loginValidator, login);
 router.post('/logout', logout);
 router.get('/me', protect, getMe);
 router.put('/change-password', protect, changePassword);
+router.put('/update-phone', protect, updatePhone);
 router.put('/verify', protect, verifyUpload.single('file'), verifyAccount);
 
 // ─── Password reset ───────────────────────────────────────────────────

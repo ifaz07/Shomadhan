@@ -13,6 +13,7 @@ require('./config/passport'); // Register Google & Facebook strategies
 const path = require('path');
 const authRoutes = require('./routes/auth.routes');
 const complaintRoutes = require('./routes/complaint.routes');
+const servantRoutes = require('./routes/servant.routes');
 const { errorHandler } = require('./middleware/error.middleware');
 
 const app = express();
@@ -58,6 +59,7 @@ const authLimiter = rateLimit({
 // ─── Routes ──────────────────────────────────────────────────────────
 app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/complaints', complaintRoutes);
+app.use('/api/v1/servant', servantRoutes);
 
 // Health check
 app.get('/api/v1/health', (req, res) => {

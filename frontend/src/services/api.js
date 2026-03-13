@@ -47,6 +47,7 @@ export const authAPI = {
   }),
   forgotPassword: (data) => api.post('/auth/forgot-password', data),
   resetPassword: (token, data) => api.put(`/auth/reset-password/${token}`, data),
+  updatePhone: (data) => api.put('/auth/update-phone', data),
 };
 
 // ─── Complaint API calls ──────────────────────────────────────────────
@@ -67,6 +68,14 @@ export const complaintAPI = {
 
   // Heatmap data — all complaints with lat/lng and priority weight
   getHeatmapData: () => api.get('/complaints/heatmap'),
+};
+
+// ─── Servant (department officer) API calls ───────────────────────────
+export const servantAPI = {
+  getStats: () => api.get('/servant/stats'),
+  getComplaints: (params = {}) => api.get('/servant/complaints', { params }),
+  updateStatus: (id, status, note = '') =>
+    api.put(`/servant/complaints/${id}/status`, { status, note }),
 };
 
 export default api;
