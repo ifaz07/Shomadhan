@@ -323,6 +323,54 @@ const deleteComplaint = async (req, res, next) => {
   }
 };
 
+// @desc    Get citywide aggregated stats (no PII — just counts by dept/status)
+// @route   GET /api/v1/complaints/stats
+// @access  Private
+const getPublicStats = async (req, res, next) => {
+  try {
+    const all = await Complaint.find({ status: { $ne: 'rejected' } }).select('category priority status');
+
+    const CATEGORY_TO_DEPT = {
+      Road:        'public_works',
+      Waste:       'sanitation',
+      Electricity: 'electricity',
+      Water:       'water_authority',
+      Safety:      'public_safety',
+      Environment: 'public_works',
+      Other:       null,
+    };
+
+    const deptStats = {
+      public_works:    { total: 0, critical: 0, pending: 0 },
+      water_authority: { total: 0, critical: 0, pending: 0 },
+      electricity:     { total: 0, critical: 0, pending: 0 },
+      sanitation:      { total: 0, critical: 0, pending: 0 },
+      public_safety:   { total: 0, critical: 0, pending: 0 },
+      animal_control:  { total: 0, critical: 0, pending: 0 },
+    };
+
+    let total = 0, critical = 0, inProgress = 0, resolved = 0;
+
+    all.forEach((c) => {
+      total++;
+      if (c.priority === 'Critical') critical++;
+      if (c.status === 'in-progress') inProgress++;
+      if (c.status === 'resolved') resolved++;
+
+      const deptKey = CATEGORY_TO_DEPT[c.category];
+      if (deptKey && deptStats[deptKey]) {
+        deptStats[deptKey].total++;
+        if (c.priority === 'Critical') deptStats[deptKey].critical++;
+        if (c.status === 'pending' || c.status === 'in-progress') deptStats[deptKey].pending++;
+      }
+    });
+
+    res.status(200).json({ success: true, data: { total, critical, inProgress, resolved, departments: deptStats } });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get all complaints (admin or for users who submitted them)
 // @route   GET /api/v1/complaints
 // @access  Private
@@ -363,6 +411,7 @@ module.exports = {
   voteComplaint,
   getHeatmapData,
   getNearbyComplaints,
+  getPublicStats,
   getComplaints,
   getComplaint,
   updateComplaint,

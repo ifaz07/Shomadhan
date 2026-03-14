@@ -8,6 +8,7 @@ const {
   voteComplaint,
   getNearbyComplaints,
   getHeatmapData,
+  getPublicStats,
   getComplaints,
   getComplaint,
   updateComplaint,
@@ -20,6 +21,7 @@ router.get('/heatmap', getHeatmapData);
 router.get('/nearby', getNearbyComplaints);
 
 // ── Protected routes ──────────────────────────────────────────────────────
+router.get('/stats', protect, getPublicStats);
 router.post('/analyze', protect, analyzeComplaint);
 router.post('/', protect, upload.array('evidence', 5), createComplaint);
 router.get('/', protect, getComplaints);

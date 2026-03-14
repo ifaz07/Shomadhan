@@ -57,6 +57,7 @@ export const complaintAPI = {
   }),
   analyze: (title, description) => api.post('/complaints/analyze', { title, description }),
   getAll: () => api.get('/complaints'),
+  getStats: () => api.get('/complaints/stats'),
   getOne: (id) => api.get(`/complaints/${id}`),
 
   // Upvote / un-vote toggle

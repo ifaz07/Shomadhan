@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Map,
@@ -112,12 +113,17 @@ const StatCard = ({ label, value, color, icon: Icon }) => (
 
 // ─── Main Page ────────────────────────────────────────────────────────
 const HeatmapPage = () => {
+  const [searchParams] = useSearchParams();
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showMarkers, setShowMarkers] = useState(true);
   const [priorityFilter, setPriorityFilter] = useState('All');
-  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [categoryFilter, setCategoryFilter] = useState(() => {
+    const cat = searchParams.get('category');
+    const valid = ['Road', 'Waste', 'Electricity', 'Water', 'Safety', 'Environment', 'Other'];
+    return cat && valid.includes(cat) ? cat : 'All';
+  });
 
   const DHAKA_CENTER = [23.8103, 90.4125];
 

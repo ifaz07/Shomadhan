@@ -10,6 +10,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import OAuthCallbackPage from './pages/OAuthCallbackPage';
 import HeatmapPage from './pages/HeatmapPage';
+import NotificationsPage from './pages/NotificationsPage';
 import ServantDashboardPage from './pages/servant/ServantDashboardPage';
 import ServantComplaintsPage from './pages/servant/ServantComplaintsPage';
 import ServantProfilePage from './pages/servant/ServantProfilePage';
@@ -91,7 +92,7 @@ function App() {
         <Route path="/servant/profile" element={<ServantRoute><ServantProfilePage /></ServantRoute>} />
 
         {/* ─── Shared protected routes ──────────────────────────── */}
-        <Route path="/notifications" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
 
         {/* ─── Fallback ─────────────────────────────────────────── */}
         <Route path="*" element={<Navigate to="/login" replace />} />

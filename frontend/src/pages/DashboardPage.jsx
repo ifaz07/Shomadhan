@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   FileText,
@@ -14,14 +15,14 @@ import { complaintAPI } from '../services/api';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import T from '../components/T';
 
-// Department list — `en` field is the English name sent to the T component for API translation
+// Category that maps to each department (used for "View All" heatmap link)
 const DEPARTMENTS = [
-  { en: 'Public Works',    icon: '🏗️', key: 'public_works',   critical: 0, pending: 0, color: 'from-orange-400 to-orange-600' },
-  { en: 'Water Authority', icon: '💧', key: 'water_authority', critical: 0, pending: 0, color: 'from-blue-400 to-blue-600'   },
-  { en: 'Electricity Dept',icon: '⚡', key: 'electricity',     critical: 0, pending: 0, color: 'from-yellow-400 to-yellow-600' },
-  { en: 'Sanitation Dept', icon: '🧹', key: 'sanitation',      critical: 0, pending: 0, color: 'from-green-400 to-green-600'  },
-  { en: 'Public Safety',   icon: '🛡️', key: 'public_safety',  critical: 0, pending: 0, color: 'from-red-400 to-red-600'     },
-  { en: 'Animal Control',  icon: '🐾', key: 'animal_control',  critical: 0, pending: 0, color: 'from-purple-400 to-purple-600'},
+  { en: 'Public Works',     icon: '🏗️', key: 'public_works',    category: 'Road',        color: 'from-orange-400 to-orange-600' },
+  { en: 'Water Authority',  icon: '💧', key: 'water_authority',  category: 'Water',       color: 'from-blue-400 to-blue-600'    },
+  { en: 'Electricity Dept', icon: '⚡', key: 'electricity',      category: 'Electricity', color: 'from-yellow-400 to-yellow-600' },
+  { en: 'Sanitation Dept',  icon: '🧹', key: 'sanitation',       category: 'Waste',       color: 'from-green-400 to-green-600'  },
+  { en: 'Public Safety',    icon: '🛡️', key: 'public_safety',   category: 'Safety',      color: 'from-red-400 to-red-600'      },
+  { en: 'Animal Control',   icon: '🐾', key: 'animal_control',   category: null,          color: 'from-purple-400 to-purple-600' },
 ];
 
 // ─── Stat Card ───────────────────────────────────────────────────────
@@ -63,59 +64,68 @@ const StatCard = ({ icon: Icon, label, value, trend, trendValue, color, delay })
 );
 
 // ─── Department Card ─────────────────────────────────────────────────
-const DeptCard = ({ dept, index }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.3 + index * 0.05 }}
-    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
-  >
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center gap-3">
-        <span className="text-2xl">{dept.icon}</span>
-        <h3 className="font-semibold text-gray-900 text-sm"><T en={dept.en} /></h3>
-      </div>
-      <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${dept.color} flex items-center justify-center`}>
-        <span className="text-white text-xs font-bold">{dept.critical + dept.pending}</span>
-      </div>
-    </div>
+const DeptCard = ({ dept, deptData, index }) => {
+  const total    = deptData?.total    ?? 0;
+  const critical = deptData?.critical ?? 0;
+  const pending  = deptData?.pending  ?? 0;
 
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-500"><T en="Critical" /></span>
-        <span className={`text-sm font-bold ${dept.critical > 0 ? 'text-red-600' : 'text-gray-300'}`}>
-          {dept.critical}
-        </span>
-      </div>
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-500"><T en="Pending" /></span>
-        <span className={`text-sm font-bold ${dept.pending > 0 ? 'text-orange-500' : 'text-gray-300'}`}>
-          {dept.pending}
-        </span>
-      </div>
-    </div>
+  const viewAllHref = dept.category
+    ? `/heatmap?category=${dept.category}`
+    : '/heatmap';
 
-    <button className="flex items-center gap-1 mt-4 text-xs font-medium text-teal-600 hover:text-teal-700 group-hover:gap-2 transition-all">
-      <T en="View All" /> <ArrowRight size={14} />
-    </button>
-  </motion.div>
-);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3 + index * 0.05 }}
+      className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">{dept.icon}</span>
+          <h3 className="font-semibold text-gray-900 text-sm"><T en={dept.en} /></h3>
+        </div>
+        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${dept.color} flex items-center justify-center`}>
+          <span className="text-white text-xs font-bold">{total}</span>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-500"><T en="Critical" /></span>
+          <span className={`text-sm font-bold ${critical > 0 ? 'text-red-600' : 'text-gray-300'}`}>
+            {critical}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-500"><T en="Pending" /></span>
+          <span className={`text-sm font-bold ${pending > 0 ? 'text-orange-500' : 'text-gray-300'}`}>
+            {pending}
+          </span>
+        </div>
+      </div>
+
+      <Link
+        to={viewAllHref}
+        className="flex items-center gap-1 mt-4 text-xs font-medium text-teal-600 hover:text-teal-700 group-hover:gap-2 transition-all"
+      >
+        <T en="View All" /> <ArrowRight size={14} />
+      </Link>
+    </motion.div>
+  );
+};
 
 // ─── Dashboard Page ──────────────────────────────────────────────────
 const DashboardPage = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState({ total: 0, critical: 0, inProgress: 0, resolved: 0 });
+  const [stats, setStats] = useState({ total: 0, critical: 0, inProgress: 0, resolved: 0, departments: {} });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    complaintAPI.getAll().then((res) => {
-      const complaints = res.data.data || [];
-      setStats({
-        total: complaints.length,
-        critical: complaints.filter((c) => c.priority === 'Critical').length,
-        inProgress: complaints.filter((c) => c.status === 'in-progress').length,
-        resolved: complaints.filter((c) => c.status === 'resolved').length,
-      });
-    }).catch(() => {});
+    complaintAPI.getStats()
+      .then((res) => setStats(res.data.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -160,19 +170,27 @@ const DashboardPage = () => {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900"><T en="Departments" /></h2>
-          <button className="text-xs font-medium text-teal-600 hover:text-teal-700 flex items-center gap-1">
+          <Link
+            to="/heatmap"
+            className="text-xs font-medium text-teal-600 hover:text-teal-700 flex items-center gap-1"
+          >
             <T en="View All" /> <ArrowRight size={14} />
-          </button>
+          </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {DEPARTMENTS.map((dept, i) => (
-            <DeptCard key={dept.key} dept={dept} index={i} />
+            <DeptCard
+              key={dept.key}
+              dept={dept}
+              deptData={stats.departments[dept.key]}
+              index={i}
+            />
           ))}
         </div>
       </div>
 
       {/* ─── Empty state ─────────────────────────────────────────── */}
-      {stats.total === 0 && (
+      {!loading && stats.total === 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

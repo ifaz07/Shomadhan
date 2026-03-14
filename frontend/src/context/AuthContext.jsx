@@ -39,6 +39,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     const { data } = await authAPI.login(credentials);
     localStorage.setItem('token', data.data.token);
+    localStorage.setItem('loginTime', new Date().toISOString());
     setUser(data.data.user);
     toast.success('Welcome back!');
     return data;
@@ -47,6 +48,7 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     const { data } = await authAPI.register(userData);
     localStorage.setItem('token', data.data.token);
+    localStorage.setItem('loginTime', new Date().toISOString());
     setUser(data.data.user);
     toast.success('Account created successfully!');
     return data;
@@ -55,6 +57,7 @@ export const AuthProvider = ({ children }) => {
   // Used by OAuthCallbackPage after Google/Facebook login
   const loginWithToken = async (token) => {
     localStorage.setItem('token', token);
+    localStorage.setItem('loginTime', new Date().toISOString());
     await fetchUser();
   };
 

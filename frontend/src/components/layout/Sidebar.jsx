@@ -27,11 +27,11 @@ const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navItems = [
+    { path: "/profile",          label: <T en="My Profile" />,        icon: User },
     { path: "/dashboard",        label: <T en="Dashboard" />,         icon: LayoutDashboard },
     { path: "/submit-complaint", label: <T en="Submit Complaint" />,  icon: PlusCircle },
     { path: "/heatmap",          label: <T en="Complaint Heatmap" />, icon: Map },
-    { path: "/profile",          label: <T en="My Profile" />,        icon: User },
-    { path: "/notifications",    label: <T en="Notifications" />,     icon: Bell, badge: 3 },
+    { path: "/notifications",    label: <T en="Notifications" />,     icon: Bell },
     { path: "/my-complaints",    label: <T en="My Complaints" />,     icon: FileText,      disabled: true },
     { path: "/analytics",        label: <T en="Analytics" />,         icon: BarChart3,     disabled: true },
     { path: "/feedback",         label: <T en="Feedback" />,          icon: MessageSquare, disabled: true },
@@ -72,10 +72,18 @@ const Sidebar = () => {
         </div>
       </div>
 
-      {/* ─── User info ──────────────────────────────────────────── */}
-      <div className="p-4 border-b border-gray-100">
+      {/* ─── Profile (fixed above nav) ──────────────────────────── */}
+      <Link
+        to="/profile"
+        onClick={() => setIsOpen(false)}
+        className={`p-4 border-b border-gray-100 block transition-colors ${
+          isActive("/profile") ? "bg-gradient-to-r from-teal-50 to-blue-50" : "hover:bg-gray-50"
+        }`}
+      >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-100 to-blue-100 flex items-center justify-center flex-shrink-0">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ring-2 transition-all ${
+            isActive("/profile") ? "ring-teal-400 bg-gradient-to-br from-teal-200 to-blue-200" : "ring-transparent bg-gradient-to-br from-teal-100 to-blue-100"
+          }`}>
             <span className="text-sm font-bold text-teal-700">
               {user?.name?.charAt(0)?.toUpperCase() || "U"}
             </span>
@@ -92,7 +100,7 @@ const Sidebar = () => {
             </div>
           )}
         </div>
-      </div>
+      </Link>
 
       {/* ─── Navigation ─────────────────────────────────────────── */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
