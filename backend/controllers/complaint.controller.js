@@ -83,7 +83,7 @@ const createComplaint = async (req, res, next) => {
 
     // ── Spam / duplicate detection ─────────────────────────────────────
     try {
-      const spam = await checkForDuplicates(title, description, lat, lng, complaintData.user);
+      const spam = await checkForDuplicates(title, description, lat, lng, req.user._id);
       if (spam.isSpam) {
         return res.status(409).json({
           success: false,

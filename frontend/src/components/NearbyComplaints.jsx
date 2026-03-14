@@ -134,12 +134,14 @@ const NearbyComplaints = ({ mapPosition }) => {
                     <span className={`text-xs font-semibold px-1.5 py-0.5 rounded border ${PRIORITY_STYLES[c.priority] || PRIORITY_STYLES.Low}`}>
                       {c.priority}
                     </span>
-                    <span className="flex items-center gap-0.5 text-xs text-gray-400">
-                      <MapPin size={10} />
-                      {c.distance < 1
-                        ? `${Math.round(c.distance * 1000)}m`
-                        : `${c.distance.toFixed(1)}km`}
-                    </span>
+                    {c.distance != null && (
+                      <span className="flex items-center gap-0.5 text-xs text-gray-400">
+                        <MapPin size={10} />
+                        {c.distance < 1
+                          ? `${Math.round(c.distance * 1000)}m`
+                          : `${c.distance.toFixed(1)}km`}
+                      </span>
+                    )}
                   </div>
 
                   <p className="text-sm font-medium text-gray-800 truncate">{c.title}</p>

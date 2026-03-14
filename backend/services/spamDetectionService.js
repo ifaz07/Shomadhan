@@ -134,29 +134,33 @@ async function computeSimilarity(text1, text2) {
  * }>}
  */
 async function checkForDuplicates(title, description, latitude, longitude, userId) {
-  if (latitude == null || longitude == null || !userId) {
-    return { isSpam: false };
-  }
+  if (!userId) return { isSpam: false };
 
   const since = new Date(Date.now() - TIME_WINDOW_MS);
+  const hasLocation = latitude != null && longitude != null;
 
   const recentComplaints = await Complaint.find({
     user: userId,
     createdAt: { $gte: since },
-    latitude:  { $exists: true, $ne: null },
-    longitude: { $exists: true, $ne: null },
     'spamCheck.isDuplicate': { $ne: true },
   }).select('title description latitude longitude ticketId _id');
 
-  const nearby = recentComplaints.filter(
-    (c) => haversineDistance(latitude, longitude, c.latitude, c.longitude) <= RADIUS_KM
-  );
+  // If both complaints have coordinates, filter by proximity.
+  // If either is missing coordinates, skip location filter and check text only.
+  const candidates = hasLocation
+    ? recentComplaints.filter(
+        (c) =>
+          c.latitude != null && c.longitude != null
+            ? haversineDistance(latitude, longitude, c.latitude, c.longitude) <= RADIUS_KM
+            : true  // candidate has no coords — still check text
+      )
+    : recentComplaints;
 
-  if (nearby.length === 0) return { isSpam: false };
+  if (candidates.length === 0) return { isSpam: false };
 
   const newText = `${title} ${description}`;
 
-  for (const candidate of nearby) {
+  for (const candidate of candidates) {
     const candidateText = `${candidate.title} ${candidate.description}`;
     const { score, method } = await computeSimilarity(newText, candidateText);
 
