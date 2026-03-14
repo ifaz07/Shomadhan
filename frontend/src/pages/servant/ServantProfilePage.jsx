@@ -20,6 +20,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import ServantLayout from '../../components/layout/ServantLayout';
 import api, { authAPI } from '../../services/api';
+import T from '../../components/T';
 
 const DEPT_DISPLAY = {
   public_works:    'Public Works',
@@ -148,15 +149,15 @@ const ServantProfilePage = () => {
   };
 
   const tabs = [
-    { id: 'profile',      label: 'Profile',       icon: User },
-    { id: 'security',     label: 'Security',      icon: Lock },
-    { id: 'verification', label: 'Verification',  icon: ShieldCheck },
+    { id: 'profile',      labelEn: 'Profile',       icon: User },
+    { id: 'security',     labelEn: 'Security',      icon: Lock },
+    { id: 'verification', labelEn: 'Verification',  icon: ShieldCheck },
   ];
 
   return (
     <ServantLayout>
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">My Profile</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-6"><T en="My Profile" /></h1>
       </motion.div>
 
       {/* ── Tabs ── */}
@@ -172,7 +173,7 @@ const ServantProfilePage = () => {
               }`}
             >
               <Icon size={16} />
-              {tab.label}
+              <T en={tab.labelEn} />
             </button>
           );
         })}
@@ -213,17 +214,17 @@ const ServantProfilePage = () => {
             </div>
 
             <div className="space-y-4">
-              <InfoRow icon={User}     label="Full Name"        value={user?.name} />
-              <InfoRow icon={Mail}     label="Email"            value={user?.email} />
-              <InfoRow icon={Phone}    label="Phone"            value={user?.phone} muted={!user?.phone} emptyLabel="Not provided" />
+              <InfoRow icon={User}     label={<T en="Full Name" />}  value={user?.name} />
+              <InfoRow icon={Mail}     label={<T en="Email" />}     value={user?.email} />
+              <InfoRow icon={Phone}    label={<T en="Phone" />}     value={user?.phone} muted={!user?.phone} emptyLabel={<T en="Not provided" />} />
 
               <div className="border-t border-gray-100 pt-4 mt-4">
-                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Official Details</p>
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3"><T en="Official Details" /></p>
               </div>
-              <InfoRow icon={Building2}  label="Department"       value={deptLabel} />
-              <InfoRow icon={CreditCard} label="Employee ID"      value={user?.employeeId} />
-              <InfoRow icon={BadgeCheck} label="Government Email" value={user?.governmentEmail} />
-              <InfoRow icon={Briefcase}  label="Designation"      value={user?.designation} />
+              <InfoRow icon={Building2}  label={<T en="Department" />}       value={deptLabel} />
+              <InfoRow icon={CreditCard} label={<T en="Employee ID" />}      value={user?.employeeId} />
+              <InfoRow icon={BadgeCheck} label={<T en="Government Email" />} value={user?.governmentEmail} />
+              <InfoRow icon={Briefcase}  label={<T en="Designation" />}      value={user?.designation} />
             </div>
           </motion.div>
         )}
@@ -237,8 +238,8 @@ const ServantProfilePage = () => {
           >
             {/* Change password */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
-              <h3 className="text-lg font-bold text-gray-900 mb-1">Change Password</h3>
-              <p className="text-sm text-gray-500 mb-6">Update your login password</p>
+              <h3 className="text-lg font-bold text-gray-900 mb-1"><T en="Change Password" /></h3>
+              <p className="text-sm text-gray-500 mb-6"><T en="Update your login password" /></p>
 
               <form onSubmit={handlePasswordChange} className="space-y-4">
                 <PasswordField
@@ -261,28 +262,29 @@ const ServantProfilePage = () => {
                   className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
                   {pwLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                  {pwLoading ? 'Updating...' : 'Update Password'}
+                  {pwLoading ? <T en="Updating..." /> : <T en="Update Password" />}
                 </button>
               </form>
             </div>
 
             {/* Change phone */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
-              <h3 className="text-lg font-bold text-gray-900 mb-1">Change Phone Number</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-1"><T en="Change Phone Number" /></h3>
               <p className="text-sm text-gray-500 mb-6">
-                Current: <span className="font-medium text-gray-700">{user?.phone || 'Not set'}</span>
+                <T en="Current" />: <span className="font-medium text-gray-700">{user?.phone || <T en="Not set" />}</span>
               </p>
 
               <form onSubmit={handlePhoneChange} className="space-y-4">
                 {/* New phone */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">New Phone Number</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5"><T en="New Phone Number" /></label>
                   <div className="relative">
                     <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
                       <Phone size={18} />
                     </div>
                     <input
                       type="tel"
+                      autoComplete="off"
                       value={phoneData.phone}
                       onChange={(e) => { setPhoneData((p) => ({ ...p, phone: e.target.value })); setPhoneErrors((p) => ({ ...p, phone: '' })); }}
                       placeholder="+880 1XXXXXXXXX"
@@ -306,7 +308,7 @@ const ServantProfilePage = () => {
                   className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
                   {phoneLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                  {phoneLoading ? 'Updating...' : 'Update Phone'}
+                  {phoneLoading ? <T en="Updating..." /> : <T en="Update Phone" />}
                 </button>
               </form>
             </div>
@@ -320,8 +322,8 @@ const ServantProfilePage = () => {
             initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
             className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 max-w-2xl"
           >
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Account Verification</h3>
-            <p className="text-sm text-gray-500 mb-6">Your identity verification status</p>
+            <h3 className="text-lg font-bold text-gray-900 mb-1"><T en="Account Verification" /></h3>
+            <p className="text-sm text-gray-500 mb-6"><T en="Your identity verification status" /></p>
 
             {/* Verified badge */}
             <div className="bg-green-50 border border-green-200 rounded-2xl p-6 flex items-center gap-5">
@@ -329,12 +331,12 @@ const ServantProfilePage = () => {
                 <ShieldCheck size={28} className="text-green-600" />
               </div>
               <div>
-                <p className="text-lg font-bold text-green-700">Verified</p>
+                <p className="text-lg font-bold text-green-700"><T en="Verified" /></p>
                 <p className="text-sm text-green-600 mt-0.5">
-                  Your identity has been verified via National ID.
+                  <T en="Your identity has been verified via National ID." />
                 </p>
                 {verifiedAt && (
-                  <p className="text-xs text-green-500 mt-1">Verified on {verifiedAt}</p>
+                  <p className="text-xs text-green-500 mt-1"><T en="Verified on" /> {verifiedAt}</p>
                 )}
               </div>
             </div>
@@ -344,14 +346,14 @@ const ServantProfilePage = () => {
               <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
                 <CreditCard size={18} className="text-gray-400" />
                 <div>
-                  <p className="text-xs text-gray-400">Document Type</p>
-                  <p className="text-sm font-medium text-gray-800">National ID Card (NID)</p>
+                  <p className="text-xs text-gray-400"><T en="Document Type" /></p>
+                  <p className="text-sm font-medium text-gray-800"><T en="National ID Card (NID)" /></p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
                 <ShieldCheck size={18} className="text-gray-400" />
                 <div>
-                  <p className="text-xs text-gray-400">NID Number</p>
+                  <p className="text-xs text-gray-400"><T en="NID Number" /></p>
                   <p className="text-sm font-medium text-gray-800 font-mono">{maskedNid}</p>
                 </div>
               </div>
