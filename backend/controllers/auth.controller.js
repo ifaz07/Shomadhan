@@ -392,4 +392,30 @@ const updatePhone = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, logout, getMe, changePassword, verifyAccount, oauthCallback, forgotPassword, resetPassword, updatePhone };
+// ─── PUT /api/v1/auth/update-avatar ───────────────────────────────────
+const updateAvatar = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No image file provided.' });
+    }
+
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    await User.findByIdAndUpdate(req.user.id, { avatar: avatarUrl });
+
+    res.json({ success: true, message: 'Profile picture updated.', data: { avatar: avatarUrl } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── DELETE /api/v1/auth/avatar ───────────────────────────────────────
+const deleteAvatar = async (req, res, next) => {
+  try {
+    await User.findByIdAndUpdate(req.user.id, { avatar: '' });
+    res.json({ success: true, message: 'Profile picture removed.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, logout, getMe, changePassword, verifyAccount, oauthCallback, forgotPassword, resetPassword, updatePhone, updateAvatar, deleteAvatar };

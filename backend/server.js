@@ -30,6 +30,7 @@ app.use(cookieParser());
 // Static folder for uploaded evidence
 app.use('/uploads/evidence', express.static(path.join(__dirname, 'uploads/evidence')));
 app.use('/uploads/verification', express.static(path.join(__dirname, 'uploads/verification')));
+app.use('/uploads/avatars', express.static(path.join(__dirname, 'uploads/avatars')));
 
 // CORS — allow frontend origin
 app.use(cors({

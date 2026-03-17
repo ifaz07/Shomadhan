@@ -48,6 +48,10 @@ export const authAPI = {
   forgotPassword: (data) => api.post('/auth/forgot-password', data),
   resetPassword: (token, data) => api.put(`/auth/reset-password/${token}`, data),
   updatePhone: (data) => api.put('/auth/update-phone', data),
+  updateAvatar: (formData) => api.put('/auth/update-avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteAvatar: () => api.delete('/auth/avatar'),
 };
 
 // ─── Complaint API calls ──────────────────────────────────────────────
@@ -56,7 +60,7 @@ export const complaintAPI = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   analyze: (title, description) => api.post('/complaints/analyze', { title, description }),
-  getAll: () => api.get('/complaints'),
+  getAll: (params = {}) => api.get('/complaints', { params }),
   getStats: () => api.get('/complaints/stats'),
   getOne: (id) => api.get(`/complaints/${id}`),
 

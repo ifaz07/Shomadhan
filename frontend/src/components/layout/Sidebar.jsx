@@ -20,6 +20,12 @@ import { useAuth } from "../../context/AuthContext";
 import LanguageToggle from "../LanguageToggle";
 import T from "../T";
 
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1').replace('/api/v1', '');
+const resolveAvatar = (url) => {
+  if (!url) return null;
+  return url.startsWith('http') ? url : `${API_BASE}${url}`;
+};
+
 const Sidebar = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -32,7 +38,7 @@ const Sidebar = () => {
     { path: "/submit-complaint", label: <T en="Submit Complaint" />,  icon: PlusCircle },
     { path: "/heatmap",          label: <T en="Complaint Heatmap" />, icon: Map },
     { path: "/notifications",    label: <T en="Notifications" />,     icon: Bell },
-    { path: "/my-complaints",    label: <T en="My Complaints" />,     icon: FileText,      disabled: true },
+    { path: "/my-complaints",    label: <T en="My Complaints" />,     icon: FileText },
     { path: "/analytics",        label: <T en="Analytics" />,         icon: BarChart3,     disabled: true },
     { path: "/feedback",         label: <T en="Feedback" />,          icon: MessageSquare, disabled: true },
   ];
@@ -81,12 +87,24 @@ const Sidebar = () => {
         }`}
       >
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ring-2 transition-all ${
-            isActive("/profile") ? "ring-teal-400 bg-gradient-to-br from-teal-200 to-blue-200" : "ring-transparent bg-gradient-to-br from-teal-100 to-blue-100"
+          <div className={`w-10 h-10 rounded-full flex-shrink-0 ring-2 transition-all overflow-hidden ${
+            isActive("/profile") ? "ring-teal-400" : "ring-transparent"
           }`}>
-            <span className="text-sm font-bold text-teal-700">
-              {user?.name?.charAt(0)?.toUpperCase() || "U"}
-            </span>
+            {resolveAvatar(user?.avatar) ? (
+              <img
+                src={resolveAvatar(user?.avatar)}
+                alt={user?.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${
+                isActive("/profile") ? "from-teal-200 to-blue-200" : "from-teal-100 to-blue-100"
+              }`}>
+                <span className="text-sm font-bold text-teal-700">
+                  {user?.name?.charAt(0)?.toUpperCase() || "U"}
+                </span>
+              </div>
+            )}
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">

@@ -371,15 +371,31 @@ const getPublicStats = async (req, res, next) => {
   }
 };
 
-// @desc    Get all complaints (admin or for users who submitted them)
-// @route   GET /api/v1/complaints
+// @desc    Get all complaints — all authenticated users see all public complaints
+// @route   GET /api/v1/complaints?mine=true (optional: only the user's own)
 // @access  Private
 const getComplaints = async (req, res, next) => {
   try {
     let query = {};
-    if (req.user.role !== 'admin') {
+
+    // Admins see everything; ?mine=true scopes to the requester's own complaints
+    if (req.user.role !== 'admin' && req.query.mine === 'true') {
       query = { user: req.user._id };
     }
+
+    // Optional server-side text filter on location field
+    if (req.query.location) {
+      query.location = { $regex: req.query.location, $options: 'i' };
+    }
+
+    // Optional priority / status filters
+    if (req.query.priority && req.query.priority !== 'All') {
+      query.priority = req.query.priority;
+    }
+    if (req.query.status && req.query.status !== 'All') {
+      query.status = req.query.status;
+    }
+
     const complaints = await Complaint.find(query).sort('-createdAt');
     res.status(200).json({ success: true, count: complaints.length, data: complaints });
   } catch (error) {
@@ -396,9 +412,7 @@ const getComplaint = async (req, res, next) => {
     if (!complaint) {
       return res.status(404).json({ success: false, message: 'Complaint not found' });
     }
-    if (req.user.role !== 'admin' && complaint.user?.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Not authorized to view this' });
-    }
+    // Any authenticated user can view any complaint (civic transparency)
     res.status(200).json({ success: true, data: complaint });
   } catch (error) {
     next(error);

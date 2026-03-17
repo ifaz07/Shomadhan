@@ -11,6 +11,8 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import OAuthCallbackPage from './pages/OAuthCallbackPage';
 import HeatmapPage from './pages/HeatmapPage';
 import NotificationsPage from './pages/NotificationsPage';
+import ComplaintDetailPage from './pages/ComplaintDetailPage';
+import MyComplaintsPage from './pages/MyComplaintsPage';
 import ServantDashboardPage from './pages/servant/ServantDashboardPage';
 import ServantComplaintsPage from './pages/servant/ServantComplaintsPage';
 import ServantProfilePage from './pages/servant/ServantProfilePage';
@@ -86,6 +88,8 @@ function App() {
         <Route path="/verify" element={<ProtectedRoute><VerificationPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/heatmap" element={<ProtectedRoute><HeatmapPage /></ProtectedRoute>} />
+        <Route path="/complaints/:id" element={<ProtectedRoute><ComplaintDetailPage /></ProtectedRoute>} />
+        <Route path="/my-complaints" element={<ProtectedRoute><MyComplaintsPage /></ProtectedRoute>} />
 
         {/* ─── Public Servant Pages ─────────────────────────────── */}
         <Route path="/servant/dashboard" element={<ServantRoute><ServantDashboardPage /></ServantRoute>} />
