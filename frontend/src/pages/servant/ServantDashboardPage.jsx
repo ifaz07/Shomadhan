@@ -1,46 +1,91 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   ClipboardList,
   Clock,
   CheckCircle2,
-  XCircle,
-  AlertTriangle,
   Flame,
   ArrowRight,
   Loader2,
-} from 'lucide-react';
-import { servantAPI } from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
-import ServantLayout from '../../components/layout/ServantLayout';
-import T from '../../components/T';
+  Filter,
+  ExternalLink,
+  MapPin,
+  Tag,
+} from "lucide-react";
+import { servantAPI, complaintAPI } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
+import ServantLayout from "../../components/layout/ServantLayout";
+import T from "../../components/T";
 
 const DEPT_DISPLAY = {
-  public_works:    'Public Works',
-  water_authority: 'Water Authority',
-  electricity:     'Electricity',
-  sanitation:      'Sanitation',
-  public_safety:   'Public Safety',
-  animal_control:  'Animal Control',
-  environment:     'Environment',
-  health:          'Health',
-  transport:       'Transport',
-  other:           'General Administration',
+  public_works: "Public Works",
+  water_authority: "Water Authority",
+  electricity: "Electricity",
+  sanitation: "Sanitation",
+  public_safety: "Public Safety",
+  animal_control: "Animal Control",
+  environment: "Environment",
+  health: "Health",
+  transport: "Transport",
+  other: "General Administration",
 };
 
-const PRIORITY_STYLE = {
-  Critical: { bg: 'bg-red-100',    text: 'text-red-700',    dot: 'bg-red-500' },
-  High:     { bg: 'bg-orange-100', text: 'text-orange-700', dot: 'bg-orange-500' },
-  Medium:   { bg: 'bg-yellow-100', text: 'text-yellow-700', dot: 'bg-yellow-500' },
-  Low:      { bg: 'bg-green-100',  text: 'text-green-700',  dot: 'bg-green-500' },
+const PRIORITY_CONFIG = {
+  Critical: { badge: "bg-red-500 text-white",    border: "border-red-400"    },
+  High:     { badge: "bg-orange-500 text-white",  border: "border-orange-400" },
+  Medium:   { badge: "bg-yellow-500 text-white",  border: "border-yellow-400" },
+  Low:      { badge: "bg-green-500 text-white",   border: "border-green-400"  },
+};
+
+const CATEGORY_LABEL = {
+  Road:              "Road & Infrastructure",
+  Waste:             "Sanitation & Waste",
+  Electricity:       "Electricity",
+  Water:             "Water Supply",
+  Safety:            "Public Safety",
+  Environment:       "Environment",
+  "Law Enforcement": "Law Enforcement",
+  Other:             "Other",
+};
+
+const timeAgo = (date) => {
+  if (!date) return "";
+  const diff = Date.now() - new Date(date).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1)  return "just now";
+  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)  return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
 };
 
 const STATUS_STYLE = {
-  pending:     { bg: 'bg-gray-100',   text: 'text-gray-600',   label: 'Pending' },
-  'in-progress': { bg: 'bg-blue-100',  text: 'text-blue-700',  label: 'In Progress' },
-  resolved:    { bg: 'bg-green-100',  text: 'text-green-700',  label: 'Resolved' },
-  rejected:    { bg: 'bg-red-100',    text: 'text-red-700',    label: 'Rejected' },
+  pending: { bg: "bg-gray-100", text: "text-gray-600", label: "Pending" },
+  "in-progress": {
+    bg: "bg-blue-100",
+    text: "text-blue-700",
+    label: "In Progress",
+  },
+  resolved: { bg: "bg-green-100", text: "text-green-700", label: "Resolved" },
+  rejected: { bg: "bg-red-100", text: "text-red-700", label: "Rejected" },
+};
+
+const getSlaInfo = (slaDeadline, slaDurationHours) => {
+  if (!slaDeadline || !slaDurationHours) return null;
+  const now = Date.now();
+  const deadline = new Date(slaDeadline).getTime();
+  const totalMs = slaDurationHours * 60 * 60 * 1000;
+  const slaSetAt = deadline - totalMs;
+  const elapsed = Math.max(0, now - slaSetAt);
+  const progress = Math.min(100, Math.max(0, Math.round((elapsed / totalMs) * 100)));
+  const msLeft = deadline - now;
+  const hoursLeft = Math.ceil(msLeft / (1000 * 60 * 60));
+  const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+  const isOverdue = msLeft <= 0;
+  const timeLabel = isOverdue ? "Overdue" : hoursLeft <= 24 ? `${hoursLeft}h left` : `${daysLeft}d left`;
+  return { progress, daysLeft, hoursLeft, isOverdue, timeLabel };
 };
 
 const StatCard = ({ label, value, icon: Icon, color, sub }) => (
@@ -49,7 +94,9 @@ const StatCard = ({ label, value, icon: Icon, color, sub }) => (
     animate={{ opacity: 1, y: 0 }}
     className={`bg-white rounded-2xl border ${color.border} p-5 flex items-center gap-4`}
   >
-    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color.iconBg}`}>
+    <div
+      className={`w-12 h-12 rounded-xl flex items-center justify-center ${color.iconBg}`}
+    >
       <Icon size={22} className={color.iconText} />
     </div>
     <div>
@@ -60,19 +107,142 @@ const StatCard = ({ label, value, icon: Icon, color, sub }) => (
   </motion.div>
 );
 
+const DepartmentComplaintCard = ({ complaint, index }) => {
+  const pCfg = PRIORITY_CONFIG[complaint.priority] || PRIORITY_CONFIG.Low;
+  const sCfg = STATUS_STYLE[complaint.status] || STATUS_STYLE.pending;
+  const sla  = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04 }}
+      className={`bg-white rounded-2xl p-5 shadow-sm border-2 ${pCfg.border} hover:shadow-md transition-all duration-200`}
+    >
+      <div className="flex items-start gap-4">
+        {/* Main content */}
+        <div className="flex-1 min-w-0">
+          {/* Badges row */}
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>
+              {complaint.priority}
+            </span>
+            <span className={`px-2.5 py-0.5 rounded-md text-xs font-semibold ${sCfg.bg} ${sCfg.text}`}>
+              {sCfg.label}
+            </span>
+            {complaint.ticketId && (
+              <span className="text-xs text-gray-400 font-mono">{complaint.ticketId}</span>
+            )}
+          </div>
+
+          {/* Title */}
+          <Link
+            to={`/servant/complaints/${complaint._id}`}
+            className="font-bold text-gray-900 text-base mb-1.5 truncate block hover:text-blue-600 transition-colors"
+          >
+            {complaint.title}
+          </Link>
+
+          {/* Meta row */}
+          <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+            {complaint.location && (
+              <span className="flex items-center gap-1">
+                <MapPin size={11} />
+                {complaint.location}
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <Tag size={11} />
+              {CATEGORY_LABEL[complaint.category] || complaint.category}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock size={11} />
+              {timeAgo(complaint.createdAt)}
+            </span>
+          </div>
+
+          {/* SLA bar */}
+          {sla ? (
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span className={sla.isOverdue ? "text-red-600 font-medium" : sla.hoursLeft <= 24 ? "text-orange-600 font-medium" : ""}>
+                  SLA: {sla.timeLabel}
+                </span>
+                <span>{sla.progress}%</span>
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${sla.isOverdue ? "bg-red-500" : sla.hoursLeft <= 24 ? "bg-orange-500" : "bg-gray-800"}`}
+                  style={{ width: `${sla.progress}%` }}
+                />
+              </div>
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-gray-400 italic">
+              No deadline set — awaiting department review
+            </p>
+          )}
+
+          {/* Link */}
+          <Link
+            to="/servant/complaints"
+            className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 font-medium hover:underline"
+          >
+            <ExternalLink size={11} /> Manage in Department Complaints
+          </Link>
+        </div>
+
+        {/* Public support count (read-only) */}
+        <div className="flex flex-col items-center gap-0.5 flex-shrink-0 pt-1 text-center">
+          <span className="text-base font-bold text-gray-700">{complaint.voteCount ?? 0}</span>
+          <span className="text-[10px] text-gray-400 leading-tight">Public<br/>Support</span>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 const ServantDashboardPage = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [complaints, setComplaints] = useState([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [locationFilter, setLocationFilter] = useState("");
+
+  const fetchComplaints = async () => {
+    setListLoading(true);
+    try {
+      const params = {};
+      if (statusFilter !== "all") params.status = statusFilter;
+      if (priorityFilter !== "all") params.priority = priorityFilter;
+      if (locationFilter.trim()) params.location = locationFilter.trim();
+      const res = await complaintAPI.getAll(params);
+      const raw = res.data.data;
+      setComplaints(Array.isArray(raw) ? raw : raw?.complaints || []);
+    } catch {
+      setComplaints([]);
+    } finally {
+      setListLoading(false);
+    }
+  };
+
   useEffect(() => {
-    servantAPI.getStats()
+    servantAPI
+      .getStats()
       .then((res) => setStats(res.data.data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  const deptLabel = DEPT_DISPLAY[user?.department] || 'Department';
+  useEffect(() => {
+    fetchComplaints();
+  }, [statusFilter, priorityFilter, locationFilter]);
+
+  const deptLabel = DEPT_DISPLAY[user?.department] || "Department";
 
   if (loading) {
     return (
@@ -87,14 +257,17 @@ const ServantDashboardPage = () => {
   return (
     <ServantLayout>
       <div className="space-y-6 max-w-5xl">
-
         {/* ── Header ── */}
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+        >
           <h1 className="text-2xl font-bold text-gray-900">
             <T en="Welcome" />, {user?.name}
           </h1>
           <p className="text-gray-500 mt-1">
-            <span className="font-medium text-blue-600">{deptLabel}</span> <T en="Officer · Managing your department's complaints" />
+            <span className="font-medium text-blue-600">{deptLabel}</span>{" "}
+            <T en="Officer · Managing your department's complaints" />
           </p>
         </motion.div>
 
@@ -104,114 +277,150 @@ const ServantDashboardPage = () => {
             label={<T en="Total Assigned" />}
             value={stats?.total ?? 0}
             icon={ClipboardList}
-            color={{ border: 'border-gray-200', iconBg: 'bg-gray-100', iconText: 'text-gray-600' }}
+            color={{
+              border: "border-gray-200",
+              iconBg: "bg-gray-100",
+              iconText: "text-gray-600",
+            }}
           />
           <StatCard
             label={<T en="Pending" />}
             value={stats?.pending ?? 0}
             icon={Clock}
-            color={{ border: 'border-yellow-200', iconBg: 'bg-yellow-50', iconText: 'text-yellow-600' }}
+            color={{
+              border: "border-yellow-200",
+              iconBg: "bg-yellow-50",
+              iconText: "text-yellow-600",
+            }}
           />
           <StatCard
             label={<T en="In Progress" />}
             value={stats?.inProgress ?? 0}
             icon={Flame}
-            color={{ border: 'border-blue-200', iconBg: 'bg-blue-50', iconText: 'text-blue-600' }}
+            color={{
+              border: "border-blue-200",
+              iconBg: "bg-blue-50",
+              iconText: "text-blue-600",
+            }}
           />
           <StatCard
             label={<T en="Resolved" />}
             value={stats?.resolved ?? 0}
             icon={CheckCircle2}
-            color={{ border: 'border-green-200', iconBg: 'bg-green-50', iconText: 'text-green-600' }}
+            color={{
+              border: "border-green-200",
+              iconBg: "bg-green-50",
+              iconText: "text-green-600",
+            }}
           />
         </div>
 
-        {/* ── Critical / High summary ── */}
-        {(stats?.critical > 0 || stats?.high > 0) && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-4"
-          >
-            <AlertTriangle size={22} className="text-red-500 shrink-0" />
-            <p className="text-sm text-red-800">
-              You have{' '}
-              {stats.critical > 0 && (
-                <span className="font-bold text-red-700">{stats.critical} <T en="Critical" /></span>
-              )}
-              {stats.critical > 0 && stats.high > 0 && <> <T en="and" /> </>}
-              {stats.high > 0 && (
-                <span className="font-bold text-orange-600">{stats.high} <T en="High" /></span>
-              )}
-              {' '}<T en="priority complaint" />{(stats.critical + stats.high) > 1 ? <T en="s" /> : ''} <T en="that need attention." />
-            </p>
-            <Link
-              to="/servant/complaints?priority=Critical"
-              className="ml-auto shrink-0 text-xs font-semibold text-red-700 underline"
-            >
-              <T en="View all" />
-            </Link>
-          </motion.div>
-        )}
-
-        {/* ── Urgent complaints ── */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-gray-800"><T en="Urgent Complaints" /></h2>
+        {/* ── Department Complaint Feed (All) ── */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold text-gray-900">
+                <T en="All Department Complaints" />
+              </h2>
+              <span className="text-sm text-gray-400">
+                ({complaints.length})
+              </span>
+            </div>
             <Link
               to="/servant/complaints"
               className="text-sm text-blue-600 font-medium flex items-center gap-1 hover:underline"
             >
-              <T en="View all" /> <ArrowRight size={14} />
+              <T en="Manage complaints" /> <ArrowRight size={14} />
             </Link>
           </div>
+          <p className="text-xs text-gray-400 mb-4">
+            <T en="Read-only overview. Go to Department Complaints to update status or set SLA." />
+          </p>
 
-          {!stats?.urgent?.length ? (
-            <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center text-gray-400">
-              <CheckCircle2 size={36} className="mx-auto mb-3 text-green-400" />
-              <p className="font-medium"><T en="No urgent complaints right now" /></p>
-              <p className="text-sm mt-1"><T en="All critical and high priority issues are handled." /></p>
+          <div className="flex flex-wrap items-center gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100 mb-4">
+            <span className="flex items-center gap-1 text-sm text-gray-600">
+              <Filter size={14} /> <T en="Filters" />
+            </span>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm"
+            >
+              <option value="all">
+                <T en="All Status" />
+              </option>
+              <option value="pending">
+                <T en="Pending" />
+              </option>
+              <option value="in-progress">
+                <T en="In Progress" />
+              </option>
+              <option value="resolved">
+                <T en="Resolved" />
+              </option>
+              <option value="rejected">
+                <T en="Rejected" />
+              </option>
+            </select>
+
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm"
+            >
+              <option value="all">
+                <T en="All Priority" />
+              </option>
+              <option value="Critical">
+                <T en="Critical" />
+              </option>
+              <option value="High">
+                <T en="High" />
+              </option>
+              <option value="Medium">
+                <T en="Medium" />
+              </option>
+              <option value="Low">
+                <T en="Low" />
+              </option>
+            </select>
+
+            <input
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              placeholder="Location..."
+              className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-40"
+            />
+
+            <button
+              onClick={() => {
+                setStatusFilter("all");
+                setPriorityFilter("all");
+                setLocationFilter("");
+              }}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              <T en="Reset" />
+            </button>
+          </div>
+
+          {listLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={24} className="animate-spin text-blue-500" />
+            </div>
+          ) : complaints.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <T en="No department complaints match these filters" />
             </div>
           ) : (
-            <div className="space-y-3">
-              {stats.urgent.map((c, i) => {
-                const pStyle = PRIORITY_STYLE[c.priority] || PRIORITY_STYLE.Low;
-                const sStyle = STATUS_STYLE[c.status] || STATUS_STYLE.pending;
-                return (
-                  <motion.div
-                    key={c._id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="bg-white border border-gray-100 rounded-2xl px-5 py-4 flex items-center gap-4"
-                  >
-                    <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${pStyle.dot}`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${pStyle.bg} ${pStyle.text}`}>
-                          {c.priority}
-                        </span>
-                        <span className="text-[10px] text-gray-400 font-medium">{c.category}</span>
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${sStyle.bg} ${sStyle.text}`}>
-                          {sStyle.label}
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold text-gray-800 mt-0.5 truncate">{c.title}</p>
-                      <p className="text-xs text-gray-400 font-mono">{c.ticketId}</p>
-                    </div>
-                    <Link
-                      to="/servant/complaints"
-                      className="text-xs text-blue-600 font-medium hover:underline shrink-0"
-                    >
-                      <T en="Manage" /> →
-                    </Link>
-                  </motion.div>
-                );
-              })}
+            <div className="flex flex-col gap-4">
+              {complaints.map((c, i) => (
+                <DepartmentComplaintCard key={c._id} complaint={c} index={i} />
+              ))}
             </div>
           )}
         </div>
-
       </div>
     </ServantLayout>
   );

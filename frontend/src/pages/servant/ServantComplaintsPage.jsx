@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   Filter,
   Loader2,
@@ -7,234 +8,220 @@ import {
   ClipboardList,
   MapPin,
   ThumbsUp,
-  ChevronDown,
-  X,
-} from 'lucide-react';
-import toast from 'react-hot-toast';
-import { servantAPI } from '../../services/api';
-import ServantLayout from '../../components/layout/ServantLayout';
-import T from '../../components/T';
+  Search,
+  Timer,
+  Tag,
+  Clock,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import { servantAPI } from "../../services/api";
+import ServantLayout from "../../components/layout/ServantLayout";
+import T from "../../components/T";
 
 const PRIORITY_STYLE = {
-  Critical: { bg: 'bg-red-100',    text: 'text-red-700',    border: 'border-red-300',    dot: 'bg-red-500' },
-  High:     { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300', dot: 'bg-orange-500' },
-  Medium:   { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-300', dot: 'bg-yellow-500' },
-  Low:      { bg: 'bg-green-100',  text: 'text-green-700',  border: 'border-green-300',  dot: 'bg-green-500' },
+  Critical: {
+    bg: "bg-red-100",
+    text: "text-red-700",
+    border: "border-red-300",
+    dot: "bg-red-500",
+  },
+  High: {
+    bg: "bg-orange-100",
+    text: "text-orange-700",
+    border: "border-orange-300",
+    dot: "bg-orange-500",
+  },
+  Medium: {
+    bg: "bg-yellow-100",
+    text: "text-yellow-700",
+    border: "border-yellow-300",
+    dot: "bg-yellow-500",
+  },
+  Low: {
+    bg: "bg-green-100",
+    text: "text-green-700",
+    border: "border-green-300",
+    dot: "bg-green-500",
+  },
 };
 
 const STATUS_STYLE = {
-  pending:       { bg: 'bg-gray-100',  text: 'text-gray-600',  label: 'Pending' },
-  'in-progress': { bg: 'bg-blue-100',  text: 'text-blue-700',  label: 'In Progress' },
-  resolved:      { bg: 'bg-green-100', text: 'text-green-700', label: 'Resolved' },
-  rejected:      { bg: 'bg-red-100',   text: 'text-red-700',   label: 'Rejected' },
+  pending: { bg: "bg-gray-100", text: "text-gray-600", label: "Pending" },
+  "in-progress": {
+    bg: "bg-blue-100",
+    text: "text-blue-700",
+    label: "In Progress",
+  },
+  resolved: { bg: "bg-green-100", text: "text-green-700", label: "Resolved" },
+  rejected: { bg: "bg-red-100", text: "text-red-700", label: "Rejected" },
 };
 
-// What status transitions are allowed per current status
-const NEXT_STATUSES = {
-  pending:       ['in-progress'],
-  'in-progress': ['resolved', 'rejected'],
-  resolved:      [],
-  rejected:      [],
+const getSlaInfo = (slaDeadline, slaDurationHours) => {
+  if (!slaDeadline || !slaDurationHours) return null;
+  const now = Date.now();
+  const deadline = new Date(slaDeadline).getTime();
+  const totalMs = slaDurationHours * 60 * 60 * 1000;
+  const slaSetAt = deadline - totalMs;
+  const elapsed = Math.max(0, now - slaSetAt);
+  const progress = Math.min(100, Math.max(0, Math.round((elapsed / totalMs) * 100)));
+  const msLeft = deadline - now;
+  const hoursLeft = Math.ceil(msLeft / (1000 * 60 * 60));
+  const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+  const isOverdue = msLeft <= 0;
+  const timeLabel = isOverdue ? "Overdue" : hoursLeft <= 24 ? `${hoursLeft}h left` : `${daysLeft}d left`;
+  return { progress, daysLeft, hoursLeft, isOverdue, timeLabel };
 };
 
-const STATUS_LABELS = {
-  'in-progress': 'Mark In Progress',
-  resolved:      'Mark Resolved',
-  rejected:      'Mark Rejected',
+
+const CATEGORY_LABEL = {
+  Road:              "Road & Infrastructure",
+  Waste:             "Sanitation & Waste",
+  Electricity:       "Electricity",
+  Water:             "Water Supply",
+  Safety:            "Public Safety",
+  Environment:       "Environment",
+  "Law Enforcement": "Law Enforcement",
+  Other:             "Other",
 };
 
-// ─── Status Update Modal ───────────────────────────────────────────────
-const StatusModal = ({ complaint, onClose, onUpdated }) => {
-  const [selected, setSelected] = useState('');
-  const [note, setNote] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const nextOptions = NEXT_STATUSES[complaint.status] || [];
-
-  const handleSubmit = async () => {
-    if (!selected) return;
-    setLoading(true);
-    try {
-      await servantAPI.updateStatus(complaint._id, selected, note);
-      toast.success(`Status updated to "${selected}"`);
-      onUpdated();
-      onClose();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update status');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-gray-900"><T en="Update Status" /></h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X size={18} />
-          </button>
-        </div>
-
-        <p className="text-sm text-gray-600 mb-4 truncate">
-          <span className="font-medium text-gray-800">{complaint.title}</span>{' '}
-          <span className="text-gray-400 font-mono text-xs">({complaint.ticketId})</span>
-        </p>
-
-        {/* Status options */}
-        <div className="space-y-2 mb-4">
-          {nextOptions.map((s) => (
-            <button
-              key={s}
-              onClick={() => setSelected(s)}
-              className={`w-full px-4 py-3 rounded-xl border text-sm font-medium text-left transition-all ${
-                selected === s
-                  ? s === 'resolved'
-                    ? 'bg-green-50 border-green-400 text-green-700'
-                    : s === 'rejected'
-                    ? 'bg-red-50 border-red-400 text-red-700'
-                    : 'bg-blue-50 border-blue-400 text-blue-700'
-                  : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <T en={STATUS_LABELS[s]} />
-            </button>
-          ))}
-        </div>
-
-        {/* Optional note */}
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Add a note (optional)"
-          rows={3}
-          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none mb-4"
-        />
-
-        <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            <T en="Cancel" />
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!selected || loading}
-            className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {loading && <Loader2 size={14} className="animate-spin" />}
-            <T en="Confirm" />
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
+const timeAgo = (date) => {
+  if (!date) return "";
+  const diff = Date.now() - new Date(date).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 };
 
 // ─── Complaint Card ────────────────────────────────────────────────────
-const ComplaintCard = ({ complaint, onUpdateClick }) => {
+const ComplaintCard = ({ complaint, index }) => {
+  const navigate = useNavigate();
   const pStyle = PRIORITY_STYLE[complaint.priority] || PRIORITY_STYLE.Low;
   const sStyle = STATUS_STYLE[complaint.status] || STATUS_STYLE.pending;
-  const canUpdate = NEXT_STATUSES[complaint.status]?.length > 0;
+  const sla = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
+  const isClosed = complaint.status === "resolved" || complaint.status === "rejected";
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-sm transition-shadow"
+      transition={{ delay: index * 0.04 }}
+      className={`bg-white rounded-2xl p-5 shadow-sm border-2 ${pStyle.border} hover:shadow-md transition-all duration-200`}
     >
-      {/* Top row */}
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${pStyle.bg} ${pStyle.text}`}>
-            ● {complaint.priority}
-          </span>
-          <span className={`px-2 py-0.5 rounded-lg text-[11px] font-medium ${sStyle.bg} ${sStyle.text}`}>
-            {sStyle.label}
-          </span>
-          <span className="text-[11px] text-gray-400 font-medium border border-gray-200 px-2 py-0.5 rounded-lg">
-            {complaint.category}
-          </span>
+      <div className="flex items-start gap-4">
+        {/* Main content */}
+        <div className="flex-1 min-w-0">
+          {/* Badges row */}
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pStyle.bg} ${pStyle.text}`}>
+              {complaint.priority}
+            </span>
+            <span className={`px-2.5 py-0.5 rounded-md text-xs font-semibold ${sStyle.bg} ${sStyle.text}`}>
+              {sStyle.label}
+            </span>
+            {complaint.ticketId && (
+              <span className="text-xs text-gray-400 font-mono">{complaint.ticketId}</span>
+            )}
+          </div>
+
+          {/* Title */}
+          <h3
+            className="font-bold text-gray-900 text-base mb-1.5 line-clamp-2 hover:text-blue-600 cursor-pointer transition-colors"
+            onClick={() => navigate(`/servant/complaints/${complaint._id}`)}
+          >
+            {complaint.title}
+          </h3>
+
+          {/* Meta row */}
+          <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap mb-1">
+            {complaint.location && (
+              <span className="flex items-center gap-1">
+                <MapPin size={11} />
+                {complaint.location}
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <Tag size={11} />
+              {CATEGORY_LABEL[complaint.category] || complaint.category}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock size={11} />
+              {timeAgo(complaint.createdAt)}
+            </span>
+          </div>
+
+          {/* SLA */}
+          {sla ? (
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className={sla.isOverdue ? "text-red-600 font-medium" : sla.hoursLeft <= 24 ? "text-orange-600 font-medium" : "text-gray-500"}>
+                  Resolution deadline: {sla.timeLabel}
+                </span>
+                <span className="text-gray-400">{sla.progress}%</span>
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    sla.isOverdue ? "bg-red-500" : sla.hoursLeft <= 24 ? "bg-orange-500" : "bg-teal-600"
+                  }`}
+                  style={{ width: `${sla.progress}%` }}
+                />
+              </div>
+            </div>
+          ) : !isClosed ? (
+            <p className="mt-2 text-xs text-amber-600 flex items-center gap-1">
+              <Timer size={11} /> No resolution deadline set yet
+            </p>
+          ) : null}
+
         </div>
-        <span className="text-[10px] text-gray-400 font-mono shrink-0">{complaint.ticketId}</span>
-      </div>
 
-      {/* Title */}
-      <h3 className="text-sm font-semibold text-gray-800 mb-1 line-clamp-2">{complaint.title}</h3>
-
-      {/* Meta */}
-      <div className="flex items-center gap-4 text-xs text-gray-400 mb-4">
-        {complaint.location && (
-          <span className="flex items-center gap-1">
-            <MapPin size={11} /> {complaint.location.slice(0, 50)}{complaint.location.length > 50 ? '…' : ''}
+        {/* Upvotes */}
+        <div className="flex flex-col items-center gap-0.5 flex-shrink-0 pt-1">
+          <ThumbsUp size={18} className="text-gray-400" />
+          <span className="text-base font-bold text-gray-800 leading-tight">
+            {complaint.voteCount ?? 0}
           </span>
-        )}
-        <span className="flex items-center gap-1">
-          <ThumbsUp size={11} /> {complaint.voteCount}
-        </span>
-        <span>{new Date(complaint.createdAt).toLocaleDateString()}</span>
-      </div>
-
-      {/* Action */}
-      {canUpdate ? (
-        <button
-          onClick={() => onUpdateClick(complaint)}
-          className="w-full py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-        >
-          <ChevronDown size={14} />
-          <T en="Update Status" />
-        </button>
-      ) : (
-        <div className={`w-full py-2 rounded-xl text-xs font-semibold text-center ${sStyle.bg} ${sStyle.text}`}>
-          <T en={sStyle.label} /> — <T en="No further action needed" />
+          <span className="text-xs text-gray-400">Upvotes</span>
         </div>
-      )}
+      </div>
     </motion.div>
   );
 };
 
 // ─── Main Page ─────────────────────────────────────────────────────────
 const ServantComplaintsPage = () => {
+  const navigate = useNavigate();
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [locationFilter, setLocationFilter] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [modalComplaint, setModalComplaint] = useState(null);
-
   const fetchComplaints = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await servantAPI.getComplaints({
+      const params = {
         status: statusFilter,
         priority: priorityFilter,
         page,
         limit: 12,
-      });
+      };
+      if (locationFilter.trim()) params.location = locationFilter.trim();
+      const res = await servantAPI.getComplaints(params);
       setComplaints(res.data.data);
       setTotalPages(res.data.pages);
       setTotal(res.data.total);
     } catch {
-      toast.error('Failed to load complaints');
+      toast.error("Failed to load complaints");
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, priorityFilter, page]);
+  }, [statusFilter, priorityFilter, locationFilter, page]);
 
   useEffect(() => {
     fetchComplaints();
@@ -243,12 +230,11 @@ const ServantComplaintsPage = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, priorityFilter]);
+  }, [statusFilter, priorityFilter, locationFilter]);
 
   return (
     <ServantLayout>
       <div className="space-y-5 max-w-6xl">
-
         {/* ── Header ── */}
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -256,53 +242,87 @@ const ServantComplaintsPage = () => {
             <T en="Department Complaints" />
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {total} <T en="complaint" />{total !== 1 ? <T en="s" /> : ''} <T en="in your department" />
+            {total} <T en="complaint" />
+            {total !== 1 ? <T en="s" /> : ""} <T en="in your department" />
           </p>
         </div>
 
         {/* ── Filters ── */}
-        <div className="bg-white border border-gray-100 rounded-xl p-4 flex flex-wrap items-center gap-3">
-          <Filter size={15} className="text-gray-400" />
+        <div className="bg-white border border-gray-100 rounded-xl p-4 space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Filter size={15} className="text-gray-400 shrink-0" />
 
-          {/* Status filter */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {['all', 'pending', 'in-progress', 'resolved', 'rejected'].map((s) => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all border ${
-                  statusFilter === s
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
-                }`}
-              >
-                {s === 'all' ? <T en="All Status" /> : <T en={STATUS_STYLE[s]?.label || s} />}
-              </button>
-            ))}
+            {/* Status filter */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {["all", "pending", "in-progress", "resolved", "rejected"].map(
+                (s) => (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-all border ${
+                      statusFilter === s
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    {s === "all" ? (
+                      <T en="All Status" />
+                    ) : (
+                      <T en={STATUS_STYLE[s]?.label || s} />
+                    )}
+                  </button>
+                ),
+              )}
+            </div>
+
+            <div className="w-px h-4 bg-gray-200 hidden sm:block" />
+
+            {/* Priority filter */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {["all", "Critical", "High", "Medium", "Low"].map((p) => {
+                const pStyle = PRIORITY_STYLE[p];
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setPriorityFilter(p)}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-all border ${
+                      priorityFilter === p
+                        ? p === "all"
+                          ? "bg-gray-800 text-white border-gray-800"
+                          : `${pStyle?.bg} ${pStyle?.text} ${pStyle?.border}`
+                        : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    {p === "all" ? <T en="All Priority" /> : <T en={p} />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="w-px h-4 bg-gray-200" />
-
-          {/* Priority filter */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {['all', 'Critical', 'High', 'Medium', 'Low'].map((p) => {
-              const pStyle = PRIORITY_STYLE[p];
-              return (
-                <button
-                  key={p}
-                  onClick={() => setPriorityFilter(p)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all border ${
-                    priorityFilter === p
-                      ? p === 'all'
-                        ? 'bg-gray-800 text-white border-gray-800'
-                        : `${pStyle?.bg} ${pStyle?.text} ${pStyle?.border}`
-                      : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
-                  }`}
-                >
-                  {p === 'all' ? <T en="All Priority" /> : <T en={p} />}
-                </button>
-              );
-            })}
+          {/* Location search */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 max-w-xs">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                placeholder="Search by location..."
+                className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none"
+              />
+            </div>
+            {(statusFilter !== "all" || priorityFilter !== "all" || locationFilter) && (
+              <button
+                onClick={() => {
+                  setStatusFilter("all");
+                  setPriorityFilter("all");
+                  setLocationFilter("");
+                }}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                <T en="Reset filters" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -314,16 +334,20 @@ const ServantComplaintsPage = () => {
         ) : complaints.length === 0 ? (
           <div className="bg-white border border-gray-100 rounded-2xl p-16 text-center text-gray-400">
             <CheckCircle2 size={40} className="mx-auto mb-3 text-green-400" />
-            <p className="font-medium text-gray-600"><T en="No complaints found" /></p>
-            <p className="text-sm mt-1"><T en="Try changing the filters above." /></p>
+            <p className="font-medium text-gray-600">
+              <T en="No complaints found" />
+            </p>
+            <p className="text-sm mt-1">
+              <T en="Try changing the filters above." />
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {complaints.map((c) => (
+          <div className="flex flex-col gap-4">
+            {complaints.map((c, i) => (
               <ComplaintCard
                 key={c._id}
                 complaint={c}
-                onUpdateClick={setModalComplaint}
+                index={i}
               />
             ))}
           </div>
@@ -353,16 +377,6 @@ const ServantComplaintsPage = () => {
         )}
       </div>
 
-      {/* ── Status Update Modal ── */}
-      <AnimatePresence>
-        {modalComplaint && (
-          <StatusModal
-            complaint={modalComplaint}
-            onClose={() => setModalComplaint(null)}
-            onUpdated={fetchComplaints}
-          />
-        )}
-      </AnimatePresence>
     </ServantLayout>
   );
 };

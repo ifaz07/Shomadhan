@@ -40,13 +40,14 @@ const STATUS_CONFIG = {
 };
 
 const CATEGORY_LABEL = {
-  Road:        'Road & Infrastructure',
-  Waste:       'Sanitation & Waste',
-  Electricity: 'Electricity',
-  Water:       'Water Supply',
-  Safety:      'Public Safety',
-  Environment: 'Environment',
-  Other:       'Other',
+  Road:              'Road & Infrastructure',
+  Waste:             'Sanitation & Waste',
+  Electricity:       'Electricity',
+  Water:             'Water Supply',
+  Safety:            'Public Safety',
+  Environment:       'Environment',
+  'Law Enforcement': 'Law Enforcement',
+  Other:             'Other',
 };
 
 const DEPT_LABEL = {
@@ -71,16 +72,20 @@ const timeAgo = (date) => {
   return `${days} day${days === 1 ? '' : 's'} ago`;
 };
 
-const getSlaInfo = (createdAt, slaDeadline) => {
-  if (!slaDeadline) return null;
-  const now      = Date.now();
-  const created  = new Date(createdAt).getTime();
+const getSlaInfo = (slaDeadline, slaDurationHours) => {
+  if (!slaDeadline || !slaDurationHours) return null;
+  const now = Date.now();
   const deadline = new Date(slaDeadline).getTime();
-  const total    = deadline - created;
-  const elapsed  = now - created;
-  const progress = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
-  const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
-  return { progress, daysLeft };
+  const totalMs = slaDurationHours * 60 * 60 * 1000;
+  const slaSetAt = deadline - totalMs;
+  const elapsed = Math.max(0, now - slaSetAt);
+  const progress = Math.min(100, Math.max(0, Math.round((elapsed / totalMs) * 100)));
+  const msLeft = deadline - now;
+  const hoursLeft = Math.ceil(msLeft / (1000 * 60 * 60));
+  const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+  const isOverdue = msLeft <= 0;
+  const timeLabel = isOverdue ? 'Overdue' : hoursLeft <= 24 ? `${hoursLeft}h left` : `${daysLeft}d left`;
+  return { progress, daysLeft, hoursLeft, isOverdue, timeLabel };
 };
 
 const isVideo = (url) => /\.(mp4|mov|avi|webm|mkv)$/i.test(url || '');
@@ -175,9 +180,9 @@ const ComplaintDetailPage = () => {
 
   const pCfg    = PRIORITY_CONFIG[complaint.priority] || PRIORITY_CONFIG.Low;
   const sCfg    = STATUS_CONFIG[complaint.status]     || STATUS_CONFIG.pending;
-  const sla     = getSlaInfo(complaint.createdAt, complaint.slaDeadline);
+  const sla     = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
   const evidence  = complaint.evidence  || [];
-  const timeline  = complaint.timeline  || [];
+  const timeline  = complaint.history   || [];
   const hasMap    = complaint.latitude && complaint.longitude;
 
   return (
@@ -274,25 +279,29 @@ const ComplaintDetailPage = () => {
             </div>
 
             {/* SLA */}
-            {sla && (
-              <div className="mb-5">
-                <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
-                  <span className="font-medium">SLA Deadline</span>
-                  <span className={sla.daysLeft <= 0 ? 'text-red-600 font-semibold' : ''}>
-                    {sla.daysLeft > 0 ? `${sla.daysLeft} days left` : 'Overdue'}
-                  </span>
-                </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      sla.daysLeft <= 0 ? 'bg-red-500' :
-                      sla.daysLeft <= 3 ? 'bg-orange-500' : 'bg-gray-800'
-                    }`}
-                    style={{ width: `${sla.progress}%` }}
-                  />
-                </div>
-              </div>
-            )}
+            <div className="mb-5">
+              {sla ? (
+                <>
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+                    <span className="font-medium">Resolution Deadline</span>
+                    <span className={sla.isOverdue ? 'text-red-600 font-semibold' : sla.hoursLeft <= 24 ? 'text-orange-600 font-semibold' : ''}>
+                      {sla.timeLabel}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        sla.isOverdue ? 'bg-red-500' :
+                        sla.hoursLeft <= 24 ? 'bg-orange-500' : 'bg-teal-600'
+                      }`}
+                      style={{ width: `${sla.progress}%` }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-gray-400 italic">No resolution deadline assigned yet — department review pending</p>
+              )}
+            </div>
 
             {/* Attachments */}
             {evidence.length > 0 && (
@@ -344,14 +353,8 @@ const ComplaintDetailPage = () => {
               <h2 className="text-base font-bold text-gray-900 mb-5">Activity Timeline</h2>
               <div className="flex flex-col gap-0">
                 {timeline.map((item, i) => {
-                  const role = item.role || (item.by ? 'officer' : 'system');
-                  const actor = item.by?.name
-                    ? `${item.by.name}${
-                        item.by.department
-                          ? ` - ${DEPT_LABEL[item.by.department] || item.by.department}`
-                          : ''
-                      }`
-                    : 'System';
+                  const isSla = item.message?.toLowerCase().includes('sla');
+                  const role = isSla ? 'field_inspector' : 'officer';
 
                   return (
                     <div key={i} className="flex gap-3">
@@ -363,10 +366,14 @@ const ComplaintDetailPage = () => {
                       </div>
                       <div className="flex-1 pb-5">
                         <div className="flex items-center justify-between mb-0.5">
-                          <span className="text-sm font-semibold text-gray-800">{actor}</span>
-                          <span className="text-xs text-gray-400">{timeAgo(item.createdAt)}</span>
+                          <span className="text-sm font-semibold text-gray-800">
+                            {isSla ? 'SLA Update' : 'Status Update'}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {timeAgo(item.updatedAt || item.createdAt)}
+                          </span>
                         </div>
-                        <p className="text-sm text-gray-600">{item.note || item.action}</p>
+                        <p className="text-sm text-gray-600">{item.message}</p>
                       </div>
                     </div>
                   );

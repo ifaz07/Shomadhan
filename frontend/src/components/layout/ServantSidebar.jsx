@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   ClipboardList,
@@ -12,20 +12,20 @@ import {
   Briefcase,
   Bell,
   ShieldCheck,
-} from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+} from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 
 const DEPT_DISPLAY = {
-  public_works:    'Public Works',
-  water_authority: 'Water Authority',
-  electricity:     'Electricity',
-  sanitation:      'Sanitation',
-  public_safety:   'Public Safety',
-  animal_control:  'Animal Control',
-  environment:     'Environment',
-  health:          'Health',
-  transport:       'Transport',
-  other:           'General Administration',
+  public_works: "Public Works",
+  water_authority: "Water Authority",
+  electricity: "Electricity",
+  sanitation: "Sanitation",
+  public_safety: "Public Safety",
+  animal_control: "Animal Control",
+  environment: "Environment",
+  health: "Health",
+  transport: "Transport",
+  other: "General Administration",
 };
 
 const ServantSidebar = () => {
@@ -34,13 +34,17 @@ const ServantSidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const deptLabel = DEPT_DISPLAY[user?.department] || 'Department';
+  const deptLabel = DEPT_DISPLAY[user?.department] || "Department";
 
   const navItems = [
-    { path: '/servant/dashboard',   label: 'Dashboard',             icon: LayoutDashboard },
-    { path: '/servant/complaints',  label: 'Department Complaints', icon: ClipboardList },
-    { path: '/servant/profile',     label: 'My Profile',            icon: User },
-    { path: '/notifications',       label: 'Notifications',         icon: Bell, badge: 0 },
+    { path: "/servant/profile", label: "My Profile", icon: User },
+    { path: "/servant/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    {
+      path: "/servant/complaints",
+      label: "Department Complaints",
+      icon: ClipboardList,
+    },
+    { path: "/notifications", label: "Notifications", icon: Bell, badge: 0 },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -56,7 +60,9 @@ const ServantSidebar = () => {
           {!isCollapsed && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <h1 className="text-base font-bold text-gray-900">Somadhan</h1>
-              <p className="text-[10px] text-blue-500 font-semibold -mt-0.5">Servant Portal</p>
+              <p className="text-[10px] text-blue-500 font-semibold -mt-0.5">
+                Servant Portal
+              </p>
             </motion.div>
           )}
         </div>
@@ -68,7 +74,7 @@ const ServantSidebar = () => {
           <div className="relative flex-shrink-0">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
               <span className="text-sm font-bold text-blue-700">
-                {user?.name?.charAt(0)?.toUpperCase() || 'O'}
+                {user?.name?.charAt(0)?.toUpperCase() || "O"}
               </span>
             </div>
             {/* Green verified tick */}
@@ -78,9 +84,13 @@ const ServantSidebar = () => {
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">{user?.name}</p>
+              <p className="text-sm font-semibold text-gray-900 truncate">
+                {user?.name}
+              </p>
               {user?.designation && (
-                <p className="text-[10px] text-gray-500 truncate">{user.designation}</p>
+                <p className="text-[10px] text-gray-500 truncate">
+                  {user.designation}
+                </p>
               )}
               <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 mt-0.5">
                 {deptLabel}
@@ -102,8 +112,8 @@ const ServantSidebar = () => {
               onClick={() => setIsOpen(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative ${
                 active
-                  ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               }`}
             >
               {active && (
@@ -112,7 +122,7 @@ const ServantSidebar = () => {
                   className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-500 rounded-r-full"
                 />
               )}
-              <Icon size={18} className={active ? 'text-blue-600' : ''} />
+              <Icon size={18} className={active ? "text-blue-600" : ""} />
               {!isCollapsed && <span>{item.label}</span>}
               {!isCollapsed && item.badge > 0 && (
                 <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
@@ -152,13 +162,17 @@ const ServantSidebar = () => {
         {isOpen && (
           <>
             <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
               className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
             />
             <motion.div
-              initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="lg:hidden fixed left-0 top-0 bottom-0 w-72 bg-white shadow-2xl z-50"
             >
               <button
@@ -176,7 +190,7 @@ const ServantSidebar = () => {
       {/* Desktop sidebar */}
       <motion.aside
         className={`hidden lg:flex flex-col bg-white border-r border-gray-100 h-screen sticky top-0 transition-all duration-300 ${
-          isCollapsed ? 'w-20' : 'w-72'
+          isCollapsed ? "w-20" : "w-72"
         }`}
       >
         {SidebarContent()}
@@ -186,7 +200,7 @@ const ServantSidebar = () => {
         >
           <ChevronLeft
             size={14}
-            className={`text-gray-500 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`}
+            className={`text-gray-500 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""}`}
           />
         </button>
       </motion.aside>

@@ -52,6 +52,7 @@ const categories = [
   'Water',
   'Safety',
   'Environment',
+  'Law Enforcement',
   'Other'
 ];
 

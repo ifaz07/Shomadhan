@@ -1,14 +1,14 @@
-const Complaint = require('../models/Complaint.model');
-const crypto = require('crypto');
-const { classifyComplaint } = require('../services/nlpService');
-const { checkForDuplicates } = require('../services/spamDetectionService');
-const { calculatePriority } = require('../services/priorityService');
+const Complaint = require("../models/Complaint.model");
+const crypto = require("crypto");
+const { classifyComplaint } = require("../services/nlpService");
+const { checkForDuplicates } = require("../services/spamDetectionService");
+const { calculatePriority } = require("../services/priorityService");
 
 // Helper: Generate unique ticket ID (e.g., SOM-2024-ABC12)
 const generateTicketId = () => {
-  const prefix = 'SOM';
+  const prefix = "SOM";
   const year = new Date().getFullYear();
-  const random = crypto.randomBytes(3).toString('hex').toUpperCase();
+  const random = crypto.randomBytes(3).toString("hex").toUpperCase();
   return `${prefix}-${year}-${random}`;
 };
 
@@ -30,28 +30,38 @@ const haversineKm = (lat1, lon1, lat2, lon2) => {
 // @access  Private (Verified account required)
 const createComplaint = async (req, res, next) => {
   try {
-    const { title, description, category, isAnonymous, location, latitude, longitude, emergencyFlag } = req.body;
+    const {
+      title,
+      description,
+      category,
+      isAnonymous,
+      location,
+      latitude,
+      longitude,
+      emergencyFlag,
+    } = req.body;
 
     // Check if user is verified
     if (!req.user.isVerified) {
       return res.status(403).json({
         success: false,
-        message: 'Your account must be verified to submit a complaint. Please provide NID, Birth Certificate, or Passport in your profile.',
+        message:
+          "Your account must be verified to submit a complaint. Please provide NID, Birth Certificate, or Passport in your profile.",
       });
     }
 
     let evidence = [];
     if (req.files && req.files.length > 0) {
       evidence = req.files.map((file) => {
-        let type = 'image';
-        if (file.mimetype.startsWith('video/')) type = 'video';
-        if (file.mimetype.startsWith('audio/')) type = 'audio';
+        let type = "image";
+        if (file.mimetype.startsWith("video/")) type = "video";
+        if (file.mimetype.startsWith("audio/")) type = "audio";
         return { url: `/uploads/evidence/${file.filename}`, type };
       });
     }
 
-    const isAnon = isAnonymous === 'true' || isAnonymous === true;
-    const emergency = emergencyFlag === 'true' || emergencyFlag === true;
+    const isAnon = isAnonymous === "true" || isAnonymous === true;
+    const emergency = emergencyFlag === "true" || emergencyFlag === true;
     const lat = latitude ? Number(latitude) : null;
     const lng = longitude ? Number(longitude) : null;
 
@@ -60,7 +70,7 @@ const createComplaint = async (req, res, next) => {
       category,
       emergencyFlag: emergency,
       voteCount: 0,
-      location: location || '',
+      location: location || "",
     });
 
     const complaintData = {
@@ -74,7 +84,7 @@ const createComplaint = async (req, res, next) => {
       latitude: lat,
       longitude: lng,
       user: isAnon ? null : req.user?._id,
-      status: 'pending',
+      status: "pending",
       priority,
       emergencyFlag: emergency,
       voteCount: 0,
@@ -83,13 +93,19 @@ const createComplaint = async (req, res, next) => {
 
     // ── Spam / duplicate detection ─────────────────────────────────────
     try {
-      const spam = await checkForDuplicates(title, description, lat, lng, req.user._id);
+      const spam = await checkForDuplicates(
+        title,
+        description,
+        lat,
+        lng,
+        req.user._id,
+      );
       if (spam.isSpam) {
         return res.status(409).json({
           success: false,
           message:
-            'A similar complaint from the same area was already submitted within the last 24 hours. ' +
-            'Please check the existing ticket before submitting again.',
+            "A similar complaint from the same area was already submitted within the last 24 hours. " +
+            "Please check the existing ticket before submitting again.",
           duplicate: {
             ticketId: spam.originalTicketId,
             similarity: spam.similarity,
@@ -98,7 +114,7 @@ const createComplaint = async (req, res, next) => {
         });
       }
     } catch (spamErr) {
-      console.warn('[SpamDetection] Check skipped:', spamErr.message);
+      console.warn("[SpamDetection] Check skipped:", spamErr.message);
     }
 
     // ── NLP classification ────────────────────────────────────────────
@@ -114,7 +130,7 @@ const createComplaint = async (req, res, next) => {
         analyzedAt: new Date(),
       };
     } catch (nlpErr) {
-      console.warn('[NLP] Classification skipped:', nlpErr.message);
+      console.warn("[NLP] Classification skipped:", nlpErr.message);
     }
 
     if (nlpAnalysis) complaintData.nlpAnalysis = nlpAnalysis;
@@ -134,7 +150,12 @@ const analyzeComplaint = async (req, res, next) => {
   try {
     const { title, description } = req.body;
     if (!title || !description) {
-      return res.status(400).json({ success: false, message: 'Both title and description are required for analysis' });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Both title and description are required for analysis",
+        });
     }
     const result = await classifyComplaint(title, description);
     res.status(200).json({ success: true, data: result });
@@ -150,7 +171,9 @@ const voteComplaint = async (req, res, next) => {
   try {
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) {
-      return res.status(404).json({ success: false, message: 'Complaint not found' });
+      return res
+        .status(404)
+        .json({ success: false, message: "Complaint not found" });
     }
 
     const userId = req.user._id.toString();
@@ -171,7 +194,7 @@ const voteComplaint = async (req, res, next) => {
       category: complaint.category,
       emergencyFlag: complaint.emergencyFlag,
       voteCount: complaint.voteCount,
-      location: complaint.location || '',
+      location: complaint.location || "",
     });
 
     await complaint.save();
@@ -195,8 +218,10 @@ const getHeatmapData = async (req, res, next) => {
     const complaints = await Complaint.find({
       latitude: { $ne: null },
       longitude: { $ne: null },
-      status: { $ne: 'rejected' },
-    }).select('latitude longitude priority voteCount category status ticketId title location createdAt emergencyFlag');
+      status: { $ne: "rejected" },
+    }).select(
+      "latitude longitude priority voteCount category status ticketId title location createdAt emergencyFlag",
+    );
 
     // Weight map for heatmap intensity
     const WEIGHT = { Critical: 1.0, High: 0.7, Medium: 0.4, Low: 0.2 };
@@ -233,7 +258,12 @@ const getNearbyComplaints = async (req, res, next) => {
     const category = req.query.category;
 
     if (isNaN(lat) || isNaN(lng)) {
-      return res.status(400).json({ success: false, message: 'lat and lng query params are required' });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "lat and lng query params are required",
+        });
     }
 
     // Rough bounding box for initial DB filter (1 deg lat ≈ 111 km)
@@ -241,13 +271,15 @@ const getNearbyComplaints = async (req, res, next) => {
     const query = {
       latitude: { $gte: lat - delta, $lte: lat + delta },
       longitude: { $gte: lng - delta, $lte: lng + delta },
-      status: { $ne: 'rejected' },
+      status: { $ne: "rejected" },
     };
     if (category) query.category = category;
 
     const candidates = await Complaint.find(query)
-      .select('ticketId title category status priority voteCount latitude longitude location createdAt')
-      .sort('-voteCount -createdAt')
+      .select(
+        "ticketId title category status priority voteCount latitude longitude location createdAt",
+      )
+      .sort("-voteCount -createdAt")
       .limit(20);
 
     // Filter to exact radius using Haversine
@@ -269,33 +301,58 @@ const updateComplaint = async (req, res, next) => {
   try {
     let complaint = await Complaint.findById(req.params.id);
     if (!complaint) {
-      return res.status(404).json({ success: false, message: 'Complaint not found' });
+      return res
+        .status(404)
+        .json({ success: false, message: "Complaint not found" });
     }
     if (complaint.user?.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Not authorized to edit this complaint' });
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Not authorized to edit this complaint",
+        });
     }
     const timeDiff = Date.now() - new Date(complaint.createdAt).getTime();
     if (timeDiff > 4 * 60 * 1000) {
       return res.status(403).json({
         success: false,
-        message: 'Edit window expired. Complaints can only be edited within 4 minutes of submission.',
+        message:
+          "Edit window expired. Complaints can only be edited within 4 minutes of submission.",
       });
     }
 
-    const { title, description, category, location, latitude, longitude, emergencyFlag } = req.body;
-    const emergency = emergencyFlag === 'true' || emergencyFlag === true;
+    const {
+      title,
+      description,
+      category,
+      location,
+      latitude,
+      longitude,
+      emergencyFlag,
+    } = req.body;
+    const emergency = emergencyFlag === "true" || emergencyFlag === true;
 
     const newPriority = calculatePriority({
       category: category || complaint.category,
       emergencyFlag: emergency,
       voteCount: complaint.voteCount,
-      location: location || complaint.location || '',
+      location: location || complaint.location || "",
     });
 
     complaint = await Complaint.findByIdAndUpdate(
       req.params.id,
-      { title, description, category, location, latitude, longitude, emergencyFlag: emergency, priority: newPriority },
-      { new: true, runValidators: true }
+      {
+        title,
+        description,
+        category,
+        location,
+        latitude,
+        longitude,
+        emergencyFlag: emergency,
+        priority: newPriority,
+      },
+      { new: true, runValidators: true },
     );
 
     res.status(200).json({ success: true, data: complaint });
@@ -311,13 +368,25 @@ const deleteComplaint = async (req, res, next) => {
   try {
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) {
-      return res.status(404).json({ success: false, message: 'Complaint not found' });
+      return res
+        .status(404)
+        .json({ success: false, message: "Complaint not found" });
     }
-    if (req.user.role !== 'admin' && complaint.user?.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Not authorized to delete this complaint' });
+    if (
+      req.user.role !== "admin" &&
+      complaint.user?.toString() !== req.user._id.toString()
+    ) {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Not authorized to delete this complaint",
+        });
     }
     await complaint.deleteOne();
-    res.status(200).json({ success: true, message: 'Complaint deleted successfully' });
+    res
+      .status(200)
+      .json({ success: true, message: "Complaint deleted successfully" });
   } catch (error) {
     next(error);
   }
@@ -328,44 +397,55 @@ const deleteComplaint = async (req, res, next) => {
 // @access  Private
 const getPublicStats = async (req, res, next) => {
   try {
-    const all = await Complaint.find({ status: { $ne: 'rejected' } }).select('category priority status');
+    const all = await Complaint.find({ status: { $ne: "rejected" } }).select(
+      "category priority status",
+    );
 
     const CATEGORY_TO_DEPT = {
-      Road:        'public_works',
-      Waste:       'sanitation',
-      Electricity: 'electricity',
-      Water:       'water_authority',
-      Safety:      'public_safety',
-      Environment: 'public_works',
-      Other:       null,
+      Road: "public_works",
+      Waste: "sanitation",
+      Electricity: "electricity",
+      Water: "water_authority",
+      Safety: "public_safety",
+      Environment: "public_works",
+      Other: null,
     };
 
     const deptStats = {
-      public_works:    { total: 0, critical: 0, pending: 0 },
+      public_works: { total: 0, critical: 0, pending: 0 },
       water_authority: { total: 0, critical: 0, pending: 0 },
-      electricity:     { total: 0, critical: 0, pending: 0 },
-      sanitation:      { total: 0, critical: 0, pending: 0 },
-      public_safety:   { total: 0, critical: 0, pending: 0 },
-      animal_control:  { total: 0, critical: 0, pending: 0 },
+      electricity: { total: 0, critical: 0, pending: 0 },
+      sanitation: { total: 0, critical: 0, pending: 0 },
+      public_safety: { total: 0, critical: 0, pending: 0 },
+      animal_control: { total: 0, critical: 0, pending: 0 },
     };
 
-    let total = 0, critical = 0, inProgress = 0, resolved = 0;
+    let total = 0,
+      critical = 0,
+      inProgress = 0,
+      resolved = 0;
 
     all.forEach((c) => {
       total++;
-      if (c.priority === 'Critical') critical++;
-      if (c.status === 'in-progress') inProgress++;
-      if (c.status === 'resolved') resolved++;
+      if (c.priority === "Critical") critical++;
+      if (c.status === "in-progress") inProgress++;
+      if (c.status === "resolved") resolved++;
 
       const deptKey = CATEGORY_TO_DEPT[c.category];
       if (deptKey && deptStats[deptKey]) {
         deptStats[deptKey].total++;
-        if (c.priority === 'Critical') deptStats[deptKey].critical++;
-        if (c.status === 'pending' || c.status === 'in-progress') deptStats[deptKey].pending++;
+        if (c.priority === "Critical") deptStats[deptKey].critical++;
+        if (c.status === "pending" || c.status === "in-progress")
+          deptStats[deptKey].pending++;
       }
     });
 
-    res.status(200).json({ success: true, data: { total, critical, inProgress, resolved, departments: deptStats } });
+    res
+      .status(200)
+      .json({
+        success: true,
+        data: { total, critical, inProgress, resolved, departments: deptStats },
+      });
   } catch (error) {
     next(error);
   }
@@ -379,25 +459,27 @@ const getComplaints = async (req, res, next) => {
     let query = {};
 
     // Admins see everything; ?mine=true scopes to the requester's own complaints
-    if (req.user.role !== 'admin' && req.query.mine === 'true') {
+    if (req.user.role !== "admin" && req.query.mine === "true") {
       query = { user: req.user._id };
     }
 
     // Optional server-side text filter on location field
     if (req.query.location) {
-      query.location = { $regex: req.query.location, $options: 'i' };
+      query.location = { $regex: req.query.location, $options: "i" };
     }
 
     // Optional priority / status filters
-    if (req.query.priority && req.query.priority !== 'All') {
+    if (req.query.priority && req.query.priority !== "All") {
       query.priority = req.query.priority;
     }
-    if (req.query.status && req.query.status !== 'All') {
+    if (req.query.status && req.query.status !== "All") {
       query.status = req.query.status;
     }
 
-    const complaints = await Complaint.find(query).sort('-createdAt');
-    res.status(200).json({ success: true, count: complaints.length, data: complaints });
+    const complaints = await Complaint.find(query).sort("-createdAt");
+    res
+      .status(200)
+      .json({ success: true, count: complaints.length, data: complaints });
   } catch (error) {
     next(error);
   }
@@ -410,7 +492,9 @@ const getComplaint = async (req, res, next) => {
   try {
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) {
-      return res.status(404).json({ success: false, message: 'Complaint not found' });
+      return res
+        .status(404)
+        .json({ success: false, message: "Complaint not found" });
     }
     // Any authenticated user can view any complaint (civic transparency)
     res.status(200).json({ success: true, data: complaint });

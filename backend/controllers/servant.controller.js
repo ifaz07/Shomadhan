@@ -1,17 +1,44 @@
-const Complaint = require('../models/Complaint.model');
+const Complaint = require("../models/Complaint.model");
 
 // ─── Department → Complaint category mapping ──────────────────────────
 const DEPT_CATEGORY_MAP = {
-  public_works:    ['Road'],
-  water_authority: ['Water'],
-  electricity:     ['Electricity'],
-  sanitation:      ['Waste'],
-  public_safety:   ['Safety'],
-  animal_control:  ['Environment'],
-  environment:     ['Environment'],
-  health:          ['Other'],
-  transport:       ['Road'],
-  other:           ['Road', 'Waste', 'Electricity', 'Water', 'Safety', 'Environment', 'Other'],
+  public_works: ["Road"],
+  water_authority: ["Water"],
+  electricity: ["Electricity"],
+  sanitation: ["Waste"],
+  public_safety: ["Safety"],
+  animal_control: ["Environment"],
+  environment: ["Environment"],
+  health: ["Other"],
+  transport: ["Road"],
+  police: ["Law Enforcement"],
+  other: [
+    "Road",
+    "Waste",
+    "Electricity",
+    "Water",
+    "Safety",
+    "Environment",
+    "Law Enforcement",
+    "Other",
+  ],
+};
+
+// Maps priority string to numeric value for correct sorting
+const PRIORITY_SORT_STAGE = {
+  $addFields: {
+    _priorityOrder: {
+      $switch: {
+        branches: [
+          { case: { $eq: ["$priority", "Critical"] }, then: 4 },
+          { case: { $eq: ["$priority", "High"] }, then: 3 },
+          { case: { $eq: ["$priority", "Medium"] }, then: 2 },
+          { case: { $eq: ["$priority", "Low"] }, then: 1 },
+        ],
+        default: 0,
+      },
+    },
+  },
 };
 
 // @desc    Get complaints assigned to this officer's department
@@ -21,31 +48,106 @@ const getDepartmentComplaints = async (req, res, next) => {
   try {
     const categories = DEPT_CATEGORY_MAP[req.user.department] || [];
 
-    const { status, priority, page = 1, limit = 20 } = req.query;
+    const { status, priority, location, page = 1, limit = 20 } = req.query;
 
-    const query = { category: { $in: categories } };
-    if (status && status !== 'all') query.status = status;
-    if (priority && priority !== 'all') query.priority = priority;
+    const matchStage = { category: { $in: categories } };
+    if (status && status !== "all") matchStage.status = status;
+    if (priority && priority !== "all") matchStage.priority = priority;
+    if (location && String(location).trim()) {
+      matchStage.location = {
+        $regex: String(location).trim(),
+        $options: "i",
+      };
+    }
 
     const skip = (Number(page) - 1) * Number(limit);
+    const pageLimit = Number(limit);
 
-    const [complaints, total] = await Promise.all([
-      Complaint.find(query)
-        .sort({ priority: -1, createdAt: -1 })
-        .skip(skip)
-        .limit(Number(limit))
-        .populate('user', 'name email'),
-      Complaint.countDocuments(query),
+    const [results, totalArr] = await Promise.all([
+      Complaint.aggregate([
+        { $match: matchStage },
+        PRIORITY_SORT_STAGE,
+        { $sort: { _priorityOrder: -1, createdAt: -1 } },
+        { $skip: skip },
+        { $limit: pageLimit },
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user",
+            pipeline: [{ $project: { name: 1, email: 1 } }],
+          },
+        },
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+      ]),
+      Complaint.countDocuments(matchStage),
     ]);
 
     res.status(200).json({
       success: true,
-      count: complaints.length,
-      total,
+      count: results.length,
+      total: totalArr,
       page: Number(page),
-      pages: Math.ceil(total / Number(limit)),
-      data: complaints,
+      pages: Math.ceil(totalArr / pageLimit),
+      data: results,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Assign or update SLA for a department complaint
+// @route   PUT /api/v1/servant/complaints/:id/sla
+// @access  Private (department_officer only)
+const setComplaintSLA = async (req, res, next) => {
+  try {
+    const { hours } = req.body;
+    const slaHours = Number(hours);
+
+    if (!slaHours || slaHours <= 0 || slaHours > 168) {
+      return res.status(400).json({
+        success: false,
+        message: "SLA hours must be between 1 and 168",
+      });
+    }
+
+    const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Complaint not found" });
+    }
+
+    const categories = DEPT_CATEGORY_MAP[req.user.department] || [];
+    if (!categories.includes(complaint.category)) {
+      return res.status(403).json({
+        success: false,
+        message: "This complaint does not belong to your department.",
+      });
+    }
+
+    if (complaint.status === "resolved" || complaint.status === "rejected") {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot update SLA for a '${complaint.status}' complaint.`,
+      });
+    }
+
+    complaint.slaDurationHours = slaHours;
+    complaint.slaDeadline = new Date(Date.now() + slaHours * 60 * 60 * 1000);
+    complaint.slaAssignedBy = req.user._id;
+
+    complaint.history = complaint.history || [];
+    complaint.history.push({
+      status: complaint.status,
+      message: `SLA updated to ${slaHours}h by ${req.user.name}`,
+      updatedAt: new Date(),
+    });
+
+    await complaint.save();
+
+    res.status(200).json({ success: true, data: complaint });
   } catch (error) {
     next(error);
   }
@@ -58,25 +160,61 @@ const getDepartmentStats = async (req, res, next) => {
   try {
     const categories = DEPT_CATEGORY_MAP[req.user.department] || [];
 
-    const [total, pending, inProgress, resolved, rejected, critical, high] = await Promise.all([
-      Complaint.countDocuments({ category: { $in: categories } }),
-      Complaint.countDocuments({ category: { $in: categories }, status: 'pending' }),
-      Complaint.countDocuments({ category: { $in: categories }, status: 'in-progress' }),
-      Complaint.countDocuments({ category: { $in: categories }, status: 'resolved' }),
-      Complaint.countDocuments({ category: { $in: categories }, status: 'rejected' }),
-      Complaint.countDocuments({ category: { $in: categories }, priority: 'Critical' }),
-      Complaint.countDocuments({ category: { $in: categories }, priority: 'High' }),
-    ]);
+    const [total, pending, inProgress, resolved, rejected, critical, high] =
+      await Promise.all([
+        Complaint.countDocuments({ category: { $in: categories } }),
+        Complaint.countDocuments({
+          category: { $in: categories },
+          status: "pending",
+        }),
+        Complaint.countDocuments({
+          category: { $in: categories },
+          status: "in-progress",
+        }),
+        Complaint.countDocuments({
+          category: { $in: categories },
+          status: "resolved",
+        }),
+        Complaint.countDocuments({
+          category: { $in: categories },
+          status: "rejected",
+        }),
+        Complaint.countDocuments({
+          category: { $in: categories },
+          priority: "Critical",
+        }),
+        Complaint.countDocuments({
+          category: { $in: categories },
+          priority: "High",
+        }),
+      ]);
 
-    // Recent 5 critical/high complaints
-    const urgent = await Complaint.find({
-      category: { $in: categories },
-      priority: { $in: ['Critical', 'High'] },
-      status: { $in: ['pending', 'in-progress'] },
-    })
-      .sort({ priority: -1, createdAt: -1 })
-      .limit(5)
-      .select('ticketId title category priority status location createdAt voteCount');
+    // Recent 5 critical/high complaints (sorted Critical first, then High)
+    const urgent = await Complaint.aggregate([
+      {
+        $match: {
+          category: { $in: categories },
+          priority: { $in: ["Critical", "High"] },
+          status: { $in: ["pending", "in-progress"] },
+        },
+      },
+      PRIORITY_SORT_STAGE,
+      { $sort: { _priorityOrder: -1, createdAt: -1 } },
+      { $limit: 5 },
+      {
+        $project: {
+          ticketId: 1,
+          title: 1,
+          category: 1,
+          priority: 1,
+          status: 1,
+          location: 1,
+          createdAt: 1,
+          voteCount: 1,
+          slaDeadline: 1,
+        },
+      },
+    ]);
 
     res.status(200).json({
       success: true,
@@ -103,17 +241,19 @@ const updateComplaintStatus = async (req, res, next) => {
   try {
     const { status, note } = req.body;
 
-    const allowed = ['in-progress', 'resolved', 'rejected'];
+    const allowed = ["in-progress", "resolved", "rejected"];
     if (!allowed.includes(status)) {
       return res.status(400).json({
         success: false,
-        message: `Invalid status. Allowed: ${allowed.join(', ')}`,
+        message: `Invalid status. Allowed: ${allowed.join(", ")}`,
       });
     }
 
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) {
-      return res.status(404).json({ success: false, message: 'Complaint not found' });
+      return res
+        .status(404)
+        .json({ success: false, message: "Complaint not found" });
     }
 
     // Ensure this officer's department covers this complaint's category
@@ -121,22 +261,23 @@ const updateComplaintStatus = async (req, res, next) => {
     if (!categories.includes(complaint.category)) {
       return res.status(403).json({
         success: false,
-        message: 'This complaint does not belong to your department.',
+        message: "This complaint does not belong to your department.",
       });
     }
 
     // Prevent nonsensical status changes (e.g. re-opening a resolved complaint)
-    if (complaint.status === 'resolved' || complaint.status === 'rejected') {
+    if (complaint.status === "resolved" || complaint.status === "rejected") {
       return res.status(400).json({
         success: false,
         message: `Cannot change status of a '${complaint.status}' complaint.`,
       });
     }
 
-    const deptName = req.user.department.replace(/_/g, ' ');
+    const deptName = req.user.department.replace(/_/g, " ");
     const historyEntry = {
-      message: `Status changed to '${status}' by ${deptName} officer (${req.user.name}).${note ? ` Note: ${note}` : ''}`,
-      timestamp: new Date(),
+      status,
+      message: `Status changed to '${status}' by ${deptName} officer (${req.user.name}).${note ? ` Note: ${note}` : ""}`,
+      updatedAt: new Date(),
     };
 
     complaint.status = status;
@@ -150,4 +291,9 @@ const updateComplaintStatus = async (req, res, next) => {
   }
 };
 
-module.exports = { getDepartmentComplaints, getDepartmentStats, updateComplaintStatus };
+module.exports = {
+  getDepartmentComplaints,
+  getDepartmentStats,
+  updateComplaintStatus,
+  setComplaintSLA,
+};

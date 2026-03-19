@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const evidenceSchema = new mongoose.Schema({
   url: {
@@ -7,7 +7,7 @@ const evidenceSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['image', 'video', 'audio'],
+    enum: ["image", "video", "audio"],
     required: true,
   },
   publicId: {
@@ -24,18 +24,27 @@ const complaintSchema = new mongoose.Schema(
     },
     title: {
       type: String,
-      required: [true, 'Title is required'],
+      required: [true, "Title is required"],
       trim: true,
     },
     description: {
       type: String,
-      required: [true, 'Description is required'],
+      required: [true, "Description is required"],
       trim: true,
     },
     category: {
       type: String,
-      required: [true, 'Category is required'],
-      enum: ['Road', 'Waste', 'Electricity', 'Water', 'Safety', 'Environment', 'Other'],
+      required: [true, "Category is required"],
+      enum: [
+        "Road",
+        "Waste",
+        "Electricity",
+        "Water",
+        "Safety",
+        "Environment",
+        "Law Enforcement",
+        "Other",
+      ],
     },
     evidence: [evidenceSchema],
     isAnonymous: {
@@ -44,15 +53,15 @@ const complaintSchema = new mongoose.Schema(
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: function() {
+      ref: "User",
+      required: function () {
         return !this.isAnonymous;
       },
     },
     status: {
       type: String,
-      enum: ['pending', 'in-progress', 'resolved', 'rejected'],
-      default: 'pending',
+      enum: ["pending", "in-progress", "resolved", "rejected"],
+      default: "pending",
     },
     location: {
       type: String,
@@ -68,25 +77,21 @@ const complaintSchema = new mongoose.Schema(
     // ── Priority System ─────────────────────────────────────────────────
     priority: {
       type: String,
-      enum: ['Low', 'Medium', 'High', 'Critical'],
-      default: 'Low',
+      enum: ["Low", "Medium", "High", "Critical"],
+      default: "Low",
     },
     emergencyFlag: {
       type: Boolean,
       default: false,
     },
+    isEmergency: {
+      type: Boolean,
+      default: false,
+    },
 
     // ── Public Voting ────────────────────────────────────────────────────
-    votes: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-      },
-    ],
-    voteCount: {
-      type: Number,
-      default: 0,
-    },
+    votes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    voteCount: { type: Number, default: 0 },
 
     history: [
       {
@@ -111,27 +116,26 @@ const complaintSchema = new mongoose.Schema(
     },
     spamCheck: {
       isDuplicate: { type: Boolean, default: false },
-      similarTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Complaint' },
+      similarTo: { type: mongoose.Schema.Types.ObjectId, ref: "Complaint" },
       originalTicketId: { type: String },
       similarity: { type: Number },
       method: { type: String },
       checkedAt: { type: Date },
     },
-
-    // ─── Priority & Voting ────────────────────────────────────────
-    priority: {
-      type: String,
-      enum: ['Low', 'Medium', 'High', 'Critical'],
-      default: 'Low',
+    // ── SLA Tracking ─────────────────────────────────────────────
+    slaDurationHours: {
+      type: Number,
+      default: 0,
     },
-    isEmergency: {
-      type: Boolean,
-      default: false,
+    slaDeadline: {
+      type: Date,
     },
-    votes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    voteCount: { type: Number, default: 0 },
+    slaAssignedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Index for geospatial queries
@@ -139,4 +143,4 @@ complaintSchema.index({ latitude: 1, longitude: 1 });
 complaintSchema.index({ priority: 1 });
 complaintSchema.index({ voteCount: -1 });
 
-module.exports = mongoose.model('Complaint', complaintSchema);
+module.exports = mongoose.model("Complaint", complaintSchema);

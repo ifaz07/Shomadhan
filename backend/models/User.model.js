@@ -56,6 +56,7 @@ const userSchema = new mongoose.Schema(
         'health',
         'transport',
         'environment',
+        'police',
         'other',
       ],
     },

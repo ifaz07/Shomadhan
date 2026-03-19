@@ -26,13 +26,14 @@ const STATUS_CONFIG = {
 };
 
 const CATEGORY_LABEL = {
-  Road:        'Road & Infrastructure',
-  Waste:       'Sanitation & Waste',
-  Electricity: 'Electricity',
-  Water:       'Water Supply',
-  Safety:      'Public Safety',
-  Environment: 'Environment',
-  Other:       'Other',
+  Road:              'Road & Infrastructure',
+  Waste:             'Sanitation & Waste',
+  Electricity:       'Electricity',
+  Water:             'Water Supply',
+  Safety:            'Public Safety',
+  Environment:       'Environment',
+  'Law Enforcement': 'Law Enforcement',
+  Other:             'Other',
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────
@@ -48,16 +49,18 @@ const timeAgo = (date) => {
   return `${days} day${days === 1 ? '' : 's'} ago`;
 };
 
-const getSlaInfo = (createdAt, slaDeadline) => {
-  if (!slaDeadline) return null;
-  const now      = Date.now();
-  const created  = new Date(createdAt).getTime();
+const getSlaInfo = (slaDeadline, slaDurationHours) => {
+  if (!slaDeadline || !slaDurationHours) return null;
+  const now = Date.now();
   const deadline = new Date(slaDeadline).getTime();
-  const total    = deadline - created;
-  const elapsed  = now - created;
-  const progress = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
-  const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
-  return { progress, daysLeft };
+  const totalMs = slaDurationHours * 60 * 60 * 1000;
+  const slaSetAt = deadline - totalMs;
+  const elapsed = Math.max(0, now - slaSetAt);
+  const progress = Math.min(100, Math.max(0, Math.round((elapsed / totalMs) * 100)));
+  const msLeft = deadline - now;
+  const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+  const isOverdue = msLeft <= 0;
+  return { progress, daysLeft, isOverdue };
 };
 
 // ─── Stat Card ────────────────────────────────────────────────────────
@@ -84,7 +87,7 @@ const StatCard = ({ icon: Icon, label, value, color, bg, delay }) => (
 const ComplaintCard = ({ complaint, index, onClick }) => {
   const pCfg = PRIORITY_CONFIG[complaint.priority] || PRIORITY_CONFIG.Low;
   const sCfg = STATUS_CONFIG[complaint.status]    || STATUS_CONFIG.pending;
-  const sla  = getSlaInfo(complaint.createdAt, complaint.slaDeadline);
+  const sla  = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
 
   return (
     <motion.div
@@ -132,19 +135,19 @@ const ComplaintCard = ({ complaint, index, onClick }) => {
           </div>
 
           {/* SLA */}
-          {sla && (
+          {sla ? (
             <div className="mt-3">
               <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                 <span>
                   SLA Deadline:{' '}
-                  {sla.daysLeft > 0 ? `${sla.daysLeft} days left` : 'Overdue'}
+                  {sla.isOverdue ? 'Overdue' : `${sla.daysLeft} day${sla.daysLeft === 1 ? '' : 's'} left`}
                 </span>
                 <span>{sla.progress}%</span>
               </div>
               <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${
-                    sla.daysLeft <= 0 ? 'bg-red-500' :
+                    sla.isOverdue ? 'bg-red-500' :
                     sla.daysLeft <= 1 ? 'bg-red-500' :
                     sla.daysLeft <= 3 ? 'bg-orange-500' : 'bg-gray-800'
                   }`}
@@ -152,6 +155,8 @@ const ComplaintCard = ({ complaint, index, onClick }) => {
                 />
               </div>
             </div>
+          ) : (
+            <p className="mt-3 text-xs text-gray-400 italic">No deadline assigned yet</p>
           )}
         </div>
 

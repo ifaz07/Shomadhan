@@ -37,6 +37,7 @@ const DEPARTMENTS = [
   { value: 'health', label: <T en="Health Dept" /> },
   { value: 'transport', label: <T en="Transport Dept" /> },
   { value: 'environment', label: <T en="Environment Dept" /> },
+  { value: 'police', label: <T en="Police Department" /> },
   { value: 'other', label: <T en="Other" /> },
 ];
 
