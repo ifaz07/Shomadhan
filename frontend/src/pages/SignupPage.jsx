@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -18,13 +18,57 @@ import {
   Briefcase,
   CreditCard,
   Users,
+  MapPin,
+  Navigation,
+  Search,
+  MousePointer2
 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import toast from 'react-hot-toast';
 import AuthLayout from '../components/auth/AuthLayout';
 import SocialButtons from '../components/auth/SocialButtons';
 import PasswordStrength from '../components/auth/PasswordStrength';
 import { useAuth } from '../context/AuthContext';
 import T from '../components/T';
+
+// Fix for default marker icons
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+// ─── Map Helpers ─────────────────────────────────────────────────────
+const LocationMarker = ({ position, setPosition, setAddress }) => {
+  const map = useMap();
+  useMapEvents({
+    click(e) {
+      const { lat, lng } = e.latlng;
+      setPosition([lat, lng]);
+      reverseGeocode(lat, lng, setAddress);
+    },
+  });
+  useEffect(() => {
+    if (position) map.flyTo(position, 16);
+  }, [position, map]);
+  return position === null ? null : <Marker position={position} />;
+};
+
+const reverseGeocode = async (lat, lng, setAddress) => {
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+    const data = await response.json();
+    if (data && data.display_name) setAddress(data.display_name);
+  } catch (error) {
+    console.error('Geocoding error:', error);
+  }
+};
 
 // ─── Department options ──────────────────────────────────────────────
 const DEPARTMENTS = [
@@ -41,18 +85,17 @@ const DEPARTMENTS = [
   { value: 'other', label: <T en="Other" /> },
 ];
 
-// ─── Multi-step signup ───────────────────────────────────────────────
-// Citizen:         Step 1 (role) → Step 2 (basic info) → Step 3 (password)
-// Public Servant:  Step 1 (role) → Step 2 (basic + govt info) → Step 3 (password)
 const SignupPage = () => {
   const { register } = useAuth();
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    role: '', // 'citizen' or 'department_officer'
+    role: '', 
     name: '',
     email: '',
     phone: '',
+    // Address
+    presentAddress: { address: '', lat: null, lng: null },
     // Public servant extras
     department: '',
     employeeId: '',
@@ -64,6 +107,10 @@ const SignupPage = () => {
     confirmPassword: '',
     agreeTerms: false,
   });
+  const [mapPosition, setMapPosition] = useState(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -71,72 +118,45 @@ const SignupPage = () => {
   const [focusedField, setFocusedField] = useState(null);
 
   const isPublicServant = formData.role === 'department_officer';
-  const totalSteps = 3;
+  const totalSteps = 4;
+
+  const setAddressLabel = useCallback((addr) => {
+    setFormData(prev => ({ ...prev, presentAddress: { ...prev.presentAddress, address: addr } }));
+  }, []);
 
   // ─── Validation per step ─────────────────────────────────────────
   const validateStep2 = () => {
     const newErrors = {};
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
-    }
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
-    }
-    if (formData.phone && !/^(\+880|0)?1[3-9]\d{8}$/.test(formData.phone)) {
-      newErrors.phone = 'Please enter a valid BD phone number';
-    }
-    // Public servant extra fields
+    if (!formData.name.trim()) newErrors.name = 'Name is required';
+    if (!formData.email.trim()) newErrors.email = 'Email is required';
+    else if (!/^\S+@\S+\.\S+$/.test(formData.email)) newErrors.email = 'Valid email required';
+    
     if (isPublicServant) {
       if (!formData.department) newErrors.department = 'Department is required';
-      if (!formData.employeeId.trim()) newErrors.employeeId = 'Employee ID is required';
-      if (!formData.governmentEmail.trim()) {
-        newErrors.governmentEmail = 'Government email is required';
-      } else if (!/^\S+@\S+\.\S+$/.test(formData.governmentEmail)) {
-        newErrors.governmentEmail = 'Please enter a valid email';
-      }
-      if (!formData.designation.trim()) newErrors.designation = 'Designation is required';
-      if (!formData.nidNumber.trim()) {
-        newErrors.nidNumber = 'NID number is required';
-      } else if (!/^\d{10}$/.test(formData.nidNumber.trim())) {
-        newErrors.nidNumber = 'NID must be exactly 10 digits';
-      }
+      if (!formData.nidNumber.trim()) newErrors.nidNumber = 'NID required';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const validateStep3 = () => {
+    if (!formData.presentAddress.address || !mapPosition) {
+      toast.error('Please pinpoint your address on the map');
+      return false;
+    }
+    return true;
+  };
+
+  const validateStep4 = () => {
     const newErrors = {};
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Must be at least 8 characters';
-    } else if (!/(?=.*[a-z])/.test(formData.password)) {
-      newErrors.password = 'Must contain a lowercase letter';
-    } else if (!/(?=.*[A-Z])/.test(formData.password)) {
-      newErrors.password = 'Must contain an uppercase letter';
-    } else if (!/(?=.*\d)/.test(formData.password)) {
-      newErrors.password = 'Must contain a number';
-    } else if (!/(?=.*[!@#$%^&*])/.test(formData.password)) {
-      newErrors.password = 'Must contain a special character';
-    }
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-    if (!formData.agreeTerms) {
-      newErrors.agreeTerms = 'You must accept the terms';
-    }
+    if (!formData.password) newErrors.password = 'Password required';
+    else if (formData.password.length < 8) newErrors.password = 'Min 8 characters';
+    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
+    if (!formData.agreeTerms) newErrors.agreeTerms = 'Accept terms to continue';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // ─── Handle input changes ────────────────────────────────────────
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -146,509 +166,182 @@ const SignupPage = () => {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  // ─── Step navigation ─────────────────────────────────────────────
   const selectRole = (role) => {
     setFormData((prev) => ({ ...prev, role }));
-    setErrors({});
     setStep(2);
   };
 
-  const goToStep3 = () => {
-    if (validateStep2()) setStep(3);
+  const goToStep3 = () => { if (validateStep2()) setStep(3); };
+  const goToStep4 = () => { if (validateStep3()) setStep(4); };
+
+  const getCurrentLocation = () => {
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setMapPosition([pos.coords.latitude, pos.coords.longitude]);
+        reverseGeocode(pos.coords.latitude, pos.coords.longitude, setAddressLabel);
+        setIsLocating(false);
+      },
+      () => { toast.error('Location access denied'); setIsLocating(false); }
+    );
   };
 
-  // ─── Submit registration ─────────────────────────────────────────
+  const searchLocation = async () => {
+    if (!formData.presentAddress.address.trim()) return;
+    setIsSearching(true);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.presentAddress.address)}&limit=1`);
+      const data = await response.json();
+      if (data?.[0]) {
+        setMapPosition([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
+        setAddressLabel(data[0].display_name);
+      } else { toast.error('Location not found'); }
+    } finally { setIsSearching(false); }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateStep3()) return;
+    if (!validateStep4()) return;
 
     setIsLoading(true);
     try {
       const payload = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone || undefined,
-        password: formData.password,
+        ...formData,
+        presentAddress: {
+            address: formData.presentAddress.address,
+            lat: mapPosition[0],
+            lng: mapPosition[1]
+        }
       };
-      if (isPublicServant) {
-        payload.role = 'department_officer';
-        payload.department = formData.department;
-        payload.employeeId = formData.employeeId;
-        payload.governmentEmail = formData.governmentEmail;
-        payload.designation = formData.designation;
-        payload.nidNumber = formData.nidNumber;
-      }
       await register(payload);
     } catch (error) {
-      const msg =
-        error.response?.data?.message || 'Registration failed. Please try again.';
-      toast.error(msg);
-
-      if (error.response?.data?.errors) {
-        const serverErrors = {};
-        error.response.data.errors.forEach((err) => {
-          serverErrors[err.field] = err.message;
-        });
-        setErrors(serverErrors);
-        if (serverErrors.name || serverErrors.email || serverErrors.phone || serverErrors.department) {
-          setStep(2);
-        }
-      }
+      toast.error(error.response?.data?.message || 'Registration failed');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ─── Render input helper ─────────────────────────────────────────
-  const renderInput = ({ name, label, type = 'text', icon: Icon, placeholder, autoComplete, isPassword, showToggle, toggleFn, optional }) => (
+  const renderInput = ({ name, label, type = 'text', icon: Icon, placeholder, isPassword, showToggle, toggleFn }) => (
     <div>
-      <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1.5">
-        {label}
-        {optional && <span className="text-gray-400 font-normal ml-1">(optional)</span>}
-      </label>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
       <div className="relative">
-        <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 ${
-          focusedField === name ? 'text-teal-500' : 'text-gray-400'
-        }`}>
+        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
           <Icon size={18} />
         </div>
         <input
-          id={name}
           name={name}
           type={isPassword ? (showToggle ? 'text' : 'password') : type}
-          autoComplete={autoComplete}
           value={formData[name]}
           onChange={handleChange}
-          onFocus={() => setFocusedField(name)}
-          onBlur={() => setFocusedField(null)}
           placeholder={placeholder}
-          className={`input-field pl-11 ${isPassword ? 'pr-11' : ''} ${errors[name] ? 'input-error' : ''}`}
+          className={`input-field pl-11 ${errors[name] ? 'input-error' : ''}`}
         />
         {isPassword && (
-          <button
-            type="button"
-            onClick={toggleFn}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <button type="button" onClick={toggleFn} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
             {showToggle ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         )}
       </div>
-      <AnimatePresence>
-        {errors[name] && (
-          <motion.p
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            className="text-red-500 text-xs mt-1.5"
-          >
-            {errors[name]}
-          </motion.p>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-
-  // ─── Step indicator ──────────────────────────────────────────────
-  const StepIndicator = () => (
-    <div className="flex items-center justify-center gap-2 mb-6">
-      {[1, 2, 3].map((s) => (
-        <div key={s} className="flex items-center gap-2">
-          <motion.div
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors duration-300 ${
-              s < step
-                ? 'bg-teal-500 text-white'
-                : s === step
-                ? 'bg-gradient-to-r from-teal-500 to-blue-500 text-white shadow-lg shadow-teal-500/25'
-                : 'bg-gray-100 text-gray-400'
-            }`}
-            animate={s === step ? { scale: [1, 1.1, 1] } : {}}
-            transition={{ duration: 0.3 }}
-          >
-            {s < step ? <CheckCircle2 size={16} /> : s}
-          </motion.div>
-          {s < totalSteps && (
-            <div className={`w-8 sm:w-12 h-0.5 rounded-full transition-colors duration-500 ${
-              step > s ? 'bg-teal-500' : 'bg-gray-200'
-            }`} />
-          )}
-        </div>
-      ))}
     </div>
   );
 
   return (
     <AuthLayout>
-      {/* ─── Mobile logo ──────────────────────────────────────────── */}
-      <div className="lg:hidden text-center mb-6">
-        <motion.div
-          className="w-14 h-14 mx-auto mb-3 rounded-xl bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center shadow-lg"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', stiffness: 200, delay: 0.1 }}
-        >
-          <span className="text-2xl font-bold text-white font-bengali">স</span>
-        </motion.div>
-        <h1 className="text-2xl font-bold text-white font-bengali">সমাধান</h1>
-      </div>
-
-      {/* ─── Card ──────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8 sm:p-10">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 sm:p-10 max-w-md mx-auto">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Create your account</h2>
-          <p className="text-gray-500 mt-1 text-sm">
-            {step === 1 && <T en="Choose how you want to use Somadhan" />}
-            {step === 2 && (isPublicServant ? <T en="Enter your personal & official details" /> : <T en="Enter your basic information" />)}
-            {step === 3 && <T en="Set a secure password for your account" />}
-          </p>
+          <h2 className="text-2xl font-bold text-gray-900">Create Account</h2>
+          <div className="flex gap-2 mt-4">
+            {[1, 2, 3, 4].map(s => (
+                <div key={s} className={`h-1.5 flex-1 rounded-full transition-all ${step >= s ? 'bg-teal-500' : 'bg-gray-100'}`} />
+            ))}
+          </div>
         </div>
 
-        <StepIndicator />
-
         <AnimatePresence mode="wait">
-          {/* ─── Step 1: Role Selection ──────────────────────────── */}
           {step === 1 && (
-            <motion.div
-              key="step1"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-4"
-            >
+            <motion.div key="s1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
               <SocialButtons />
-
-              <div className="relative my-4">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-white px-3 text-gray-400 uppercase tracking-wider">
-                    <T en="or choose your role" />
-                  </span>
-                </div>
-              </div>
-
-              {/* Role Cards */}
               <div className="grid grid-cols-1 gap-3">
-                {/* Citizen Card */}
-                <motion.button
-                  type="button"
-                  onClick={() => selectRole('citizen')}
-                  className="group relative flex items-center gap-4 p-5 rounded-xl border-2 border-gray-200 bg-white text-left hover:border-teal-400 hover:bg-teal-50/50 transition-all duration-200"
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                >
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-100 to-teal-200 flex items-center justify-center flex-shrink-0 group-hover:from-teal-200 group-hover:to-teal-300 transition-colors">
-                    <Users size={22} className="text-teal-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900"><T en="Citizen" /></h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      <T en="Report issues, track complaints, and upvote community problems" />
-                    </p>
-                  </div>
-                  <ArrowRight size={18} className="text-gray-300 group-hover:text-teal-500 transition-colors" />
-                </motion.button>
-
-                {/* Public Servant Card */}
-                <motion.button
-                  type="button"
-                  onClick={() => selectRole('department_officer')}
-                  className="group relative flex items-center gap-4 p-5 rounded-xl border-2 border-gray-200 bg-white text-left hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-200"
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                >
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center flex-shrink-0 group-hover:from-blue-200 group-hover:to-blue-300 transition-colors">
-                    <Building2 size={22} className="text-blue-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900"><T en="Public Servant" /></h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      <T en="Manage and resolve department-assigned complaints" />
-                    </p>
-                  </div>
-                  <ArrowRight size={18} className="text-gray-300 group-hover:text-blue-500 transition-colors" />
-                </motion.button>
+                <button onClick={() => selectRole('citizen')} className="flex items-center gap-4 p-5 rounded-xl border-2 hover:border-teal-400 text-left transition-all">
+                  <div className="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600"><Users /></div>
+                  <div><h3 className="font-bold">Citizen</h3><p className="text-xs text-gray-500">Report & track issues</p></div>
+                </button>
+                <button onClick={() => selectRole('department_officer')} className="flex items-center gap-4 p-5 rounded-xl border-2 hover:border-blue-400 text-left transition-all">
+                  <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600"><Building2 /></div>
+                  <div><h3 className="font-bold">Public Servant</h3><p className="text-xs text-gray-500">Manage assigned tasks</p></div>
+                </button>
               </div>
             </motion.div>
           )}
 
-          {/* ─── Step 2: Basic Info (+ Public Servant extras) ───── */}
           {step === 2 && (
-            <motion.div
-              key="step2"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              {/* Role badge */}
-              <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium mb-5 ${
-                isPublicServant
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-teal-100 text-teal-700'
-              }`}>
-                {isPublicServant ? <Building2 size={13} /> : <Users size={13} />}
-                {isPublicServant ? <T en="Public Servant" /> : <T en="Citizen" />}
-              </div>
-
-              <div className="space-y-3.5">
-                {renderInput({
-                  name: 'name',
-                  label: <T en="Full name" />,
-                  icon: User,
-                  placeholder: 'e.g. Rafiq Ahmed',
-                  autoComplete: 'name',
-                })}
-                {renderInput({
-                  name: 'email',
-                  label: <T en="Email address" />,
-                  type: 'email',
-                  icon: Mail,
-                  placeholder: 'you@example.com',
-                  autoComplete: 'email',
-                })}
-                {renderInput({
-                  name: 'phone',
-                  label: <T en="Phone number" />,
-                  type: 'tel',
-                  icon: Phone,
-                  placeholder: '+880 1XXXXXXXXX',
-                  autoComplete: 'tel',
-                  optional: true,
-                })}
-
-                {/* ─── Public Servant Extra Fields ─────────────────── */}
-                {isPublicServant && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="space-y-3.5 pt-2 border-t border-gray-100"
-                  >
-                    <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">
-                      <T en="Official Details" />
-                    </p>
-
-                    {/* Department Dropdown */}
-                    <div>
-                      <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1.5">
-                        <T en="Department" />
-                      </label>
-                      <div className="relative">
-                        <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 ${
-                          focusedField === 'department' ? 'text-teal-500' : 'text-gray-400'
-                        }`}>
-                          <Building2 size={18} />
-                        </div>
-                        <select
-                          id="department"
-                          name="department"
-                          value={formData.department}
-                          onChange={handleChange}
-                          onFocus={() => setFocusedField('department')}
-                          onBlur={() => setFocusedField(null)}
-                          className={`input-field pl-11 appearance-none cursor-pointer ${errors.department ? 'input-error' : ''}`}
-                        >
-                          <option value=""><T en="Select your department" /></option>
-                          {DEPARTMENTS.map((d) => (
-                            <option key={d.value} value={d.value}>{d.label}</option>
-                          ))}
+            <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+               {renderInput({ name: 'name', label: 'Full Name', icon: User, placeholder: 'Rafiq Ahmed' })}
+               {renderInput({ name: 'email', label: 'Email', icon: Mail, type: 'email', placeholder: 'rafiq@example.com' })}
+               {isPublicServant && (
+                   <>
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700">Department</label>
+                        <select name="department" value={formData.department} onChange={handleChange} className="input-field">
+                            <option value="">Select Department</option>
+                            {DEPARTMENTS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
                         </select>
-                      </div>
-                      <AnimatePresence>
-                        {errors.department && (
-                          <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="text-red-500 text-xs mt-1.5">
-                            {errors.department}
-                          </motion.p>
-                        )}
-                      </AnimatePresence>
                     </div>
-
-                    {renderInput({
-                      name: 'employeeId',
-                      label: <T en="Employee ID" />,
-                      icon: CreditCard,
-                      placeholder: 'e.g. GOV-2024-1234',
-                    })}
-                    {renderInput({
-                      name: 'governmentEmail',
-                      label: <T en="Government Email" />,
-                      type: 'email',
-                      icon: BadgeCheck,
-                      placeholder: 'you@govt.bd',
-                    })}
-                    {renderInput({
-                      name: 'designation',
-                      label: <T en="Designation / Rank" />,
-                      icon: Briefcase,
-                      placeholder: 'e.g. Junior Engineer, Inspector',
-                    })}
-                    {renderInput({
-                      name: 'nidNumber',
-                      label: <T en="National ID Number (NID)" />,
-                      icon: Shield,
-                      placeholder: '10-digit NID number',
-                      type: 'text',
-                    })}
-                  </motion.div>
-                )}
-
-                {/* Navigation buttons */}
-                <div className="flex gap-3 pt-2">
-                  <motion.button
-                    type="button"
-                    onClick={() => { setStep(1); setErrors({}); }}
-                    className="flex items-center justify-center gap-1.5 px-5 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-all"
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                  >
-                    <ArrowLeft size={16} />
-                    <span><T en="Back" /></span>
-                  </motion.button>
-                  <motion.button
-                    type="button"
-                    onClick={goToStep3}
-                    className="btn-primary flex-1 flex items-center justify-center gap-2"
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                  >
-                    <span><T en="Continue" /></span>
-                    <ArrowRight size={18} />
-                  </motion.button>
-                </div>
-              </div>
+                    {renderInput({ name: 'nidNumber', label: 'NID Number', icon: Shield, placeholder: '10-digit NID' })}
+                   </>
+               )}
+               <div className="flex gap-2 pt-2">
+                 <button onClick={() => setStep(1)} className="px-4 py-3 rounded-xl border-2 text-gray-500 font-bold"><ArrowLeft /></button>
+                 <button onClick={goToStep3} className="btn-primary flex-1 flex items-center justify-center gap-2">Continue <ArrowRight size={18} /></button>
+               </div>
             </motion.div>
           )}
 
-          {/* ─── Step 3: Password + Terms ───────────────────────── */}
           {step === 3 && (
-            <motion.div
-              key="step3"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                <div>
-                  {renderInput({
-                    name: 'password',
-                    label: <T en="Password" />,
-                    icon: Lock,
-                    placeholder: 'Create a strong password',
-                    autoComplete: 'new-password',
-                    isPassword: true,
-                    showToggle: showPassword,
-                    toggleFn: () => setShowPassword(!showPassword),
-                  })}
-                  <PasswordStrength password={formData.password} />
-                </div>
+            <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+               <h3 className="font-bold text-gray-800 flex items-center gap-2"><MapPin className="text-teal-500" size={18}/> Present Address</h3>
+               <div className="flex gap-1.5">
+                  <input 
+                    type="text" 
+                    value={formData.presentAddress.address} 
+                    onChange={e => setAddressLabel(e.target.value)}
+                    placeholder="Search area..." 
+                    className="input-field text-sm"
+                  />
+                  <button onClick={searchLocation} className="p-3 bg-gray-900 text-white rounded-xl">{isSearching ? <Loader2 className="animate-spin" size={18}/> : <Search size={18}/>}</button>
+               </div>
+               <div className="h-[240px] w-full rounded-xl overflow-hidden border relative z-0">
+                  <MapContainer center={[23.8103, 90.4125]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <LocationMarker position={mapPosition} setPosition={setMapPosition} setAddress={setAddressLabel} />
+                  </MapContainer>
+               </div>
+               <button onClick={getCurrentLocation} className="text-xs font-bold text-teal-600 flex items-center gap-1"><Navigation size={14}/> Use My Location</button>
+               <div className="flex gap-2 pt-2">
+                 <button onClick={() => setStep(2)} className="px-4 py-3 rounded-xl border-2 text-gray-500 font-bold"><ArrowLeft /></button>
+                 <button onClick={goToStep4} className="btn-primary flex-1 flex items-center justify-center gap-2">Continue <ArrowRight size={18} /></button>
+               </div>
+            </motion.div>
+          )}
 
-                {renderInput({
-                  name: 'confirmPassword',
-                  label: <T en="Confirm password" />,
-                  icon: Lock,
-                  placeholder: 'Repeat your password',
-                  autoComplete: 'new-password',
-                  isPassword: true,
-                  showToggle: showConfirm,
-                  toggleFn: () => setShowConfirm(!showConfirm),
-                })}
-
-                {/* Terms */}
-                <div>
-                  <label className="flex items-start gap-2.5 cursor-pointer">
-                    <input
-                      name="agreeTerms"
-                      type="checkbox"
-                      checked={formData.agreeTerms}
-                      onChange={handleChange}
-                      className="w-4 h-4 mt-0.5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
-                    />
-                    <span className="text-sm text-gray-600 leading-tight">
-                      <T en="I agree to the" />{' '}
-                      <button type="button" className="text-teal-600 hover:text-teal-700 font-medium underline">
-                        <T en="Terms of Service" />
-                      </button>{' '}
-                      <T en="and" />{' '}
-                      <button type="button" className="text-teal-600 hover:text-teal-700 font-medium underline">
-                        <T en="Privacy Policy" />
-                      </button>
-                    </span>
-                  </label>
-                  <AnimatePresence>
-                    {errors.agreeTerms && (
-                      <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="text-red-500 text-xs mt-1.5 ml-6">
-                        {errors.agreeTerms}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Verification notice */}
-                <motion.div
-                  className="bg-teal-50 border border-teal-200 rounded-xl p-3.5 flex items-start gap-3"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <Shield size={18} className="text-teal-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-teal-700 leading-relaxed">
-                    <strong><T en="Profile verification" /></strong> — <T en="To file complaints, verify your identity with a NID, Passport, or Birth Certificate from your profile after signing up." />
-                  </p>
-                </motion.div>
-
-                {/* Action buttons */}
-                <div className="flex gap-3 pt-1">
-                  <motion.button
-                    type="button"
-                    onClick={() => setStep(2)}
-                    className="flex items-center justify-center gap-1.5 px-5 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-all"
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                  >
-                    <ArrowLeft size={16} />
-                    <span><T en="Back" /></span>
-                  </motion.button>
-
-                  <motion.button
-                    type="submit"
-                    disabled={isLoading}
-                    className="btn-primary flex-1 flex items-center justify-center gap-2"
-                    whileHover={{ scale: isLoading ? 1 : 1.01 }}
-                    whileTap={{ scale: isLoading ? 1 : 0.99 }}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 size={20} className="animate-spin" />
-                        <span><T en="Creating account..." /></span>
-                      </>
-                    ) : (
-                      <>
-                        <span><T en="Create Account" /></span>
-                        <ArrowRight size={18} />
-                      </>
-                    )}
-                  </motion.button>
-                </div>
-              </form>
+          {step === 4 && (
+            <motion.div key="s4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+               {renderInput({ name: 'password', label: 'Password', icon: Lock, isPassword: true, showToggle: showPassword, toggleFn: () => setShowPassword(!showPassword) })}
+               {renderInput({ name: 'confirmPassword', label: 'Confirm Password', icon: Lock, isPassword: true, showToggle: showConfirm, toggleFn: () => setShowConfirm(!showConfirm) })}
+               <label className="flex items-start gap-2 cursor-pointer">
+                 <input type="checkbox" name="agreeTerms" checked={formData.agreeTerms} onChange={handleChange} className="mt-1" />
+                 <span className="text-xs text-gray-600">I agree to the Terms and Privacy Policy</span>
+               </label>
+               <div className="flex gap-2 pt-2">
+                 <button onClick={() => setStep(3)} className="px-4 py-3 rounded-xl border-2 text-gray-500 font-bold"><ArrowLeft /></button>
+                 <button onClick={handleSubmit} disabled={isLoading} className="btn-primary flex-1 flex items-center justify-center gap-2">
+                   {isLoading ? <Loader2 className="animate-spin" size={20}/> : "Create Account"}
+                 </button>
+               </div>
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Sign in link */}
-        <p className="text-center text-sm text-gray-500 mt-6">
-          <T en="Already have an account?" />{' '}
-          <Link to="/login" className="text-teal-600 hover:text-teal-700 font-semibold transition-colors">
-            <T en="Sign in" />
-          </Link>
-        </p>
       </div>
-
-      <p className="text-center text-xs text-white/30 mt-6">
-        © 2026 সমাধান (Somadhan). All rights reserved.
-      </p>
     </AuthLayout>
   );
 };

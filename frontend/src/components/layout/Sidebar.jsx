@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,6 +17,7 @@ import {
   Map,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { notificationAPI } from "../../services/api";
 import LanguageToggle from "../LanguageToggle";
 import T from "../T";
 
@@ -31,13 +32,30 @@ const Sidebar = () => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await notificationAPI.getAll();
+        const unread = res.data.data.filter(n => !n.isRead).length;
+        setUnreadCount(unread);
+      } catch (err) {
+        console.error("Failed to fetch unread count:", err);
+      }
+    };
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, [location.pathname]);
 
   const navItems = [
     { path: "/profile",          label: <T en="My Profile" />,        icon: User },
     { path: "/dashboard",        label: <T en="Dashboard" />,         icon: LayoutDashboard },
     { path: "/submit-complaint", label: <T en="Submit Complaint" />,  icon: PlusCircle },
     { path: "/heatmap",          label: <T en="Complaint Heatmap" />, icon: Map },
-    { path: "/notifications",    label: <T en="Notifications" />,     icon: Bell },
+    { path: "/notifications",    label: <T en="Notifications" />,     icon: Bell, badge: unreadCount > 0 ? unreadCount : null },
     { path: "/my-complaints",    label: <T en="My Complaints" />,     icon: FileText },
     { path: "/analytics",        label: <T en="Analytics" />,         icon: BarChart3,     disabled: true },
     { path: "/feedback",         label: <T en="Feedback" />,          icon: MessageSquare, disabled: true },

@@ -117,6 +117,12 @@ const userSchema = new mongoose.Schema(
     // ─── Account State ───────────────────────────────────────────
     isActive: { type: Boolean, default: true },
     lastLogin: { type: Date },
+    fcmToken: { type: String, default: null },
+    presentAddress: {
+      address: { type: String, default: '' },
+      lat: { type: Number, default: null },
+      lng: { type: Number, default: null },
+    },
   },
   {
     timestamps: true,

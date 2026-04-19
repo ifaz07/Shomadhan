@@ -1,17 +1,31 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Mail, Phone, Lock, Eye, EyeOff, Shield, ShieldCheck, ShieldX,
   Camera, Save, Loader2, Building2, Briefcase, CreditCard, Clock,
-  ArrowRight, Pencil, X, Check, Trash2,
+  ArrowRight, Pencil, X, Check, Trash2, MapPin, Navigation, Search, MousePointer2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/layout/DashboardLayout';
-import { authAPI } from '../services/api';
+import { authAPI, notificationAPI } from '../services/api';
 import AvatarCropModal from '../components/AvatarCropModal';
 import T from '../components/T';
+
+// Fix for default marker icons in Leaflet with React
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1').replace('/api/v1', '');
 
@@ -19,6 +33,32 @@ const resolveAvatar = (url) => {
   if (!url) return null;
   if (url.startsWith('http')) return url;
   return `${API_BASE}${url}`;
+};
+
+// ─── Map Helpers ─────────────────────────────────────────────────────
+const LocationMarker = ({ position, setPosition, setAddress }) => {
+  const map = useMap();
+  useMapEvents({
+    click(e) {
+      const { lat, lng } = e.latlng;
+      setPosition([lat, lng]);
+      reverseGeocode(lat, lng, setAddress);
+    },
+  });
+  useEffect(() => {
+    if (position) map.flyTo(position, 16);
+  }, [position, map]);
+  return position === null ? null : <Marker position={position} />;
+};
+
+const reverseGeocode = async (lat, lng, setAddress) => {
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+    const data = await response.json();
+    if (data && data.display_name) setAddress(data.display_name);
+  } catch (error) {
+    console.error('Geocoding error:', error);
+  }
 };
 
 // ─── Info Row ─────────────────────────────────────────────────────────
@@ -80,6 +120,24 @@ const ProfilePage = () => {
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [phoneError, setPhoneError]     = useState('');
   const [showPhonePass, setShowPhonePass] = useState(false);
+
+  // ── Address edit state ────────────────────────────────────────
+  const [addressEditing, setAddressEditing] = useState(false);
+  const [addressData, setAddressData] = useState({
+    address: user?.presentAddress?.address || '',
+    lat: user?.presentAddress?.lat || null,
+    lng: user?.presentAddress?.lng || null
+  });
+  const [mapPosition, setMapPosition] = useState(
+    user?.presentAddress?.lat ? [user.presentAddress.lat, user.presentAddress.lng] : null
+  );
+  const [isLocating, setIsLocating] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [addressLoading, setAddressLoading] = useState(false);
+
+  const setAddress = useCallback((addr) => {
+    setAddressData(prev => ({ ...prev, address: addr }));
+  }, []);
 
   // ── Password state ────────────────────────────────────────────
   const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -170,6 +228,62 @@ const ProfilePage = () => {
     setPhoneEditing(false);
     setPhoneData({ phone: user?.phone || '', currentPassword: '' });
     setPhoneError('');
+  };
+
+  // ── Address update ────────────────────────────────────────────
+  const handleAddressSave = async () => {
+    if (!addressData.address) return toast.error('Address is required');
+    setAddressLoading(true);
+    try {
+      await authAPI.updateAddress({
+        address: addressData.address,
+        lat: mapPosition?.[0],
+        lng: mapPosition?.[1]
+      });
+      await getMe();
+      toast.success('Present address updated');
+      setAddressEditing(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update address');
+    } finally {
+      setAddressLoading(false);
+    }
+  };
+
+  const getCurrentLocation = () => {
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setMapPosition([latitude, longitude]);
+        reverseGeocode(latitude, longitude, setAddress);
+        setIsLocating(false);
+      },
+      () => {
+        toast.error('Unable to retrieve location');
+        setIsLocating(false);
+      }
+    );
+  };
+
+  const searchLocation = async () => {
+    if (!addressData.address.trim()) return;
+    setIsSearching(true);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressData.address)}&limit=1`);
+      const data = await response.json();
+      if (data?.[0]) {
+        const { lat, lon, display_name } = data[0];
+        setMapPosition([parseFloat(lat), parseFloat(lon)]);
+        setAddressData(prev => ({ ...prev, address: display_name }));
+      } else {
+        toast.error('Location not found');
+      }
+    } catch (err) {
+      toast.error('Search failed');
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   // ── Password change ───────────────────────────────────────────
@@ -435,6 +549,97 @@ const ProfilePage = () => {
                   ) : (
                     <p className={`text-sm font-medium ${user?.phone ? 'text-gray-900' : 'text-gray-300 italic'}`}>
                       {user?.phone || 'Not provided'}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Present Address — editable with Map */}
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <MapPin size={16} className="text-gray-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <p className="text-xs text-gray-400"><T en="Present Address" /></p>
+                    {!addressEditing && (
+                      <button
+                        onClick={() => setAddressEditing(true)}
+                        className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium"
+                      >
+                        <Pencil size={11} />
+                        {user?.presentAddress?.address ? 'Edit' : 'Add'}
+                      </button>
+                    )}
+                  </div>
+
+                  {addressEditing ? (
+                    <div className="space-y-3 mt-1">
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          value={addressData.address}
+                          onChange={(e) => setAddressData(p => ({ ...p, address: e.target.value }))}
+                          placeholder="Search your area..."
+                          className="input-field text-sm py-2"
+                        />
+                        <button
+                          type="button"
+                          onClick={searchLocation}
+                          disabled={isSearching}
+                          className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                        >
+                          {isSearching ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                        </button>
+                      </div>
+
+                      <div className="h-[200px] w-full rounded-xl overflow-hidden border border-gray-100 relative z-0">
+                        <MapContainer
+                          center={mapPosition || [23.8103, 90.4125]}
+                          zoom={13}
+                          style={{ height: '100%', width: '100%' }}
+                        >
+                          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                          <LocationMarker position={mapPosition} setPosition={setMapPosition} setAddress={setAddress} />
+                        </MapContainer>
+                        <div className="absolute bottom-2 left-2 z-[1000] bg-white/80 backdrop-blur-sm px-2 py-1 rounded-md text-[9px] font-medium text-gray-500">
+                          Click map to pin location
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                         <button
+                            type="button"
+                            onClick={getCurrentLocation}
+                            disabled={isLocating}
+                            className="flex items-center gap-1 text-[11px] text-teal-600 font-medium"
+                          >
+                            <Navigation size={12} />
+                            Use My Location
+                          </button>
+
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleAddressSave}
+                              disabled={addressLoading}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 text-white text-xs font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-60"
+                            >
+                              {addressLoading ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setAddressEditing(false)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                              <X size={13} />
+                              Cancel
+                            </button>
+                          </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className={`text-sm font-medium leading-relaxed ${user?.presentAddress?.address ? 'text-gray-900' : 'text-gray-300 italic'}`}>
+                      {user?.presentAddress?.address || 'Not set'}
                     </p>
                   )}
                 </div>

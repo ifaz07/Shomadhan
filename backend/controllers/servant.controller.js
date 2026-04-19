@@ -1,4 +1,5 @@
 const Complaint = require("../models/Complaint.model");
+const { sendNotification } = require("../services/notificationService");
 
 const DEPT_CATEGORY_MAP = {
   public_works: ["Road"],
@@ -23,13 +24,25 @@ const DEPT_CATEGORY_MAP = {
   ],
 };
 
-// Maps priority string to numeric value for correct sorting
+// Maps priority and status to a numeric value for "always on top" sorting
 const PRIORITY_SORT_STAGE = {
   $addFields: {
-    _priorityOrder: {
+    _sortWeight: {
       $switch: {
         branches: [
-          { case: { $eq: ["$priority", "Critical"] }, then: 4 },
+          // Critical + Pending gets the absolute highest weight (always on top)
+          { 
+            case: { 
+              $and: [
+                { $eq: ["$priority", "Critical"] },
+                { $eq: ["$status", "pending"] }
+              ] 
+            }, 
+            then: 100 
+          },
+          // Other Critical cases
+          { case: { $eq: ["$priority", "Critical"] }, then: 90 },
+          // Regular priority levels
           { case: { $eq: ["$priority", "High"] }, then: 3 },
           { case: { $eq: ["$priority", "Medium"] }, then: 2 },
           { case: { $eq: ["$priority", "Low"] }, then: 1 },
@@ -66,7 +79,7 @@ const getDepartmentComplaints = async (req, res, next) => {
       Complaint.aggregate([
         { $match: matchStage },
         PRIORITY_SORT_STAGE,
-        { $sort: { _priorityOrder: -1, createdAt: -1 } },
+        { $sort: { _sortWeight: -1, createdAt: -1 } },
         { $skip: skip },
         { $limit: pageLimit },
         {
@@ -283,6 +296,16 @@ const updateComplaintStatus = async (req, res, next) => {
     complaint.history = complaint.history || [];
     complaint.history.push(historyEntry);
     await complaint.save();
+
+    // Trigger Notification
+    if (complaint.user) {
+      await sendNotification(complaint.user, {
+        subject: `Complaint Status Updated: ${status.toUpperCase()}`,
+        message: `Your complaint "${complaint.title}" (Ticket: ${complaint.ticketId}) has been updated to "${status}".${note ? ` Note: ${note}` : ""}`,
+        type: status === "resolved" ? "success" : "info",
+        relatedTicket: complaint._id,
+      });
+    }
 
     res.status(200).json({ success: true, data: complaint });
   } catch (error) {

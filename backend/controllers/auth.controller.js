@@ -44,7 +44,7 @@ const register = async (req, res, next) => {
       });
     }
 
-    const { name, email, password, phone, role, department, employeeId, governmentEmail, designation, nidNumber } = req.body;
+    const { name, email, password, phone, role, department, employeeId, governmentEmail, designation, nidNumber, presentAddress } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -57,6 +57,15 @@ const register = async (req, res, next) => {
 
     // Build user data — only include public servant fields if role is department_officer
     const userData = { name, email, password, phone };
+
+    // Set presentAddress if provided
+    if (presentAddress && typeof presentAddress === 'object') {
+      userData.presentAddress = {
+        address: presentAddress.address || '',
+        lat: presentAddress.lat ? Number(presentAddress.lat) : null,
+        lng: presentAddress.lng ? Number(presentAddress.lng) : null,
+      };
+    }
 
     if (role === 'department_officer') {
       if (!nidNumber || String(nidNumber).length !== 10) {
@@ -418,4 +427,32 @@ const deleteAvatar = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, logout, getMe, changePassword, verifyAccount, oauthCallback, forgotPassword, resetPassword, updatePhone, updateAvatar, deleteAvatar };
+// ─── PUT /api/v1/auth/update-address ──────────────────────────────────
+const updateAddress = async (req, res, next) => {
+  try {
+    const { address, lat, lng } = req.body;
+
+    if (!address) {
+      return res.status(400).json({ success: false, message: 'Address is required.' });
+    }
+
+    const user = await User.findById(req.user.id);
+    user.presentAddress = {
+      address,
+      lat: lat ? Number(lat) : null,
+      lng: lng ? Number(lng) : null,
+    };
+
+    await user.save({ validateBeforeSave: false });
+
+    res.json({
+      success: true,
+      message: 'Present address updated successfully.',
+      data: { presentAddress: user.presentAddress },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, logout, getMe, changePassword, verifyAccount, oauthCallback, forgotPassword, resetPassword, updatePhone, updateAvatar, deleteAvatar, updateAddress };

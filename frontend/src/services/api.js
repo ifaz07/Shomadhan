@@ -59,6 +59,7 @@ export const authAPI = {
       headers: { "Content-Type": "multipart/form-data" },
     }),
   deleteAvatar: () => api.delete("/auth/avatar"),
+  updateAddress: (data) => api.put("/auth/update-address", data),
 };
 
 // ─── Complaint API calls ──────────────────────────────────────────────
@@ -93,6 +94,13 @@ export const servantAPI = {
   updateStatus: (id, status, note = "") =>
     api.put(`/servant/complaints/${id}/status`, { status, note }),
   setSLA: (id, hours) => api.put(`/servant/complaints/${id}/sla`, { hours }),
+};
+
+// ─── Notification API calls ──────────────────────────────────────────
+export const notificationAPI = {
+  getAll: () => api.get("/notifications"),
+  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put("/notifications/read-all"),
 };
 
 export default api;

@@ -14,6 +14,7 @@ import {
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+window.L = L;
 import toast from 'react-hot-toast';
 import { complaintAPI } from '../services/api';
 import DashboardLayout from '../components/layout/DashboardLayout';

@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const { classifyComplaint } = require("../services/nlpService");
 const { checkForDuplicates } = require("../services/spamDetectionService");
 const { calculatePriority } = require("../services/priorityService");
+const { sendNotification, sendEmergencyAlertToNearbyUsers } = require("../services/notificationService");
 
 // Helper: Generate unique ticket ID (e.g., SOM-2024-ABC12)
 const generateTicketId = () => {
@@ -136,6 +137,22 @@ const createComplaint = async (req, res, next) => {
     if (nlpAnalysis) complaintData.nlpAnalysis = nlpAnalysis;
 
     const complaint = await Complaint.create(complaintData);
+
+    // Trigger Notification
+    if (complaint.user) {
+      await sendNotification(complaint.user, {
+        subject: 'Complaint Received: ' + complaint.ticketId,
+        message: `Your complaint "${complaint.title}" has been received and is currently pending review. Ticket ID: ${complaint.ticketId}`,
+        type: 'info',
+        relatedTicket: complaint._id,
+      });
+    }
+
+    // ─── Emergency Broadcast ───────────────────────────────────────
+    if (complaint.emergencyFlag) {
+      // Async broadcast to nearby users
+      sendEmergencyAlertToNearbyUsers(complaint);
+    }
 
     res.status(201).json({ success: true, data: complaint });
   } catch (error) {
@@ -451,6 +468,35 @@ const getPublicStats = async (req, res, next) => {
   }
 };
 
+// Maps priority and status to a numeric value for "always on top" sorting
+const PRIORITY_SORT_STAGE = {
+  $addFields: {
+    _sortWeight: {
+      $switch: {
+        branches: [
+          // Critical + Pending gets the absolute highest weight (always on top)
+          { 
+            case: { 
+              $and: [
+                { $eq: ["$priority", "Critical"] },
+                { $eq: ["$status", "pending"] }
+              ] 
+            }, 
+            then: 100 
+          },
+          // Other Critical cases
+          { case: { $eq: ["$priority", "Critical"] }, then: 90 },
+          // Regular priority levels
+          { case: { $eq: ["$priority", "High"] }, then: 3 },
+          { case: { $eq: ["$priority", "Medium"] }, then: 2 },
+          { case: { $eq: ["$priority", "Low"] }, then: 1 },
+        ],
+        default: 0,
+      },
+    },
+  },
+};
+
 // @desc    Get all complaints — all authenticated users see all public complaints
 // @route   GET /api/v1/complaints?mine=true (optional: only the user's own)
 // @access  Private
@@ -476,7 +522,12 @@ const getComplaints = async (req, res, next) => {
       query.status = req.query.status;
     }
 
-    const complaints = await Complaint.find(query).sort("-createdAt");
+    const complaints = await Complaint.aggregate([
+      { $match: query },
+      PRIORITY_SORT_STAGE,
+      { $sort: { _sortWeight: -1, createdAt: -1 } }
+    ]);
+
     res
       .status(200)
       .json({ success: true, count: complaints.length, data: complaints });

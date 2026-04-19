@@ -47,8 +47,10 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     const { data } = await authAPI.register(userData);
-    localStorage.setItem('token', data.data.token);
-    localStorage.setItem('loginTime', new Date().toISOString());
+    if (data.data.token) {
+        localStorage.setItem('token', data.data.token);
+        localStorage.setItem('loginTime', new Date().toISOString());
+    }
     setUser(data.data.user);
     toast.success('Account created successfully!');
     return data;

@@ -25,6 +25,10 @@ const registerValidator = [
     .trim()
     .matches(/^(\+880|0)?1[3-9]\d{8}$/).withMessage('Please provide a valid BD phone number'),
 
+  body('presentAddress')
+    .optional()
+    .isObject().withMessage('Present address must be an object'),
+
   // ─── Public Servant conditional validations ────────────────────
   body('role')
     .optional()
