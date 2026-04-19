@@ -2,21 +2,15 @@
 
 const Complaint = require('../models/Complaint.model');
 
-// HF Sentence Similarity pipeline — accepts { source_sentence, sentences[] }
-// and returns an array of similarity scores directly (no cosine math needed).
+
 const HF_SIMILARITY_URL =
   'https://router.huggingface.co/hf-inference/models/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2';
 const HF_API_KEY = process.env.HUGGINGFACE_API_KEY;
 
-const RADIUS_KM = 0.5;             // 500-metre proximity radius
-const SIMILARITY_THRESHOLD = 0.65; // 65% similarity → duplicate
-const TIME_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+const RADIUS_KM = 0.5;             
+const SIMILARITY_THRESHOLD = 0.65; 
+const TIME_WINDOW_MS = 24 * 60 * 60 * 1000; 
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/**
- * Haversine distance between two coordinates (in km).
- */
 function haversineDistance(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const toRad = (d) => (d * Math.PI) / 180;
@@ -28,7 +22,6 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Minimal stopwords for overlap fallback — keeps civic/location words unlike the NLP list
 const OVERLAP_STOPWORDS = new Set([
   'the','a','an','is','it','in','on','at','to','of','and','or','but','for',
   'with','this','that','there','are','was','were','has','have','had','been',
@@ -37,10 +30,7 @@ const OVERLAP_STOPWORDS = new Set([
   'should','may','might','am','also','very','just','more','some','any','all',
 ]);
 
-/**
- * Word-level overlap similarity — keeps important civic words like "road", "pothole".
- * Uses unigrams + bigrams for better matching of paraphrased text.
- */
+
 function wordOverlapSimilarity(text1, text2) {
   const tokenize = (t) =>
     t.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(
@@ -50,7 +40,6 @@ function wordOverlapSimilarity(text1, text2) {
   const words1 = tokenize(text1);
   const words2 = tokenize(text2);
 
-  // Build bigrams
   const bigrams = (arr) => arr.slice(0, -1).map((w, i) => `${w}_${arr[i + 1]}`);
 
   const tokens1 = new Set([...words1, ...bigrams(words1)]);
@@ -61,13 +50,7 @@ function wordOverlapSimilarity(text1, text2) {
   return union === 0 ? 0 : intersection / union;
 }
 
-// ─── HF Sentence Similarity API ───────────────────────────────────────────────
 
-/**
- * Call HF Sentence Similarity pipeline.
- * Correct input format: { inputs: { source_sentence, sentences: [candidate] } }
- * Returns a similarity score 0–1.
- */
 async function callHFSimilarity(text1, text2) {
   const response = await fetch(HF_SIMILARITY_URL, {
     method: 'POST',
@@ -89,14 +72,10 @@ async function callHFSimilarity(text1, text2) {
   }
 
   const result = await response.json();
-  // Returns [score] array — one score per candidate sentence
   return Array.isArray(result) ? result[0] : result;
 }
 
-/**
- * Compute text similarity. Tries HF semantic API first, falls back to word overlap.
- * Returns { score: number, method: 'semantic'|'keyword' }
- */
+
 async function computeSimilarity(text1, text2) {
   if (HF_API_KEY && HF_API_KEY !== 'your_huggingface_api_key_here') {
     try {
@@ -117,8 +96,8 @@ async function computeSimilarity(text1, text2) {
  * Rules:
  *  - Requires both latitude AND longitude to perform location-based check.
  *  - Compares against all non-spam complaints submitted in the last 24 hours
- *    that are within RADIUS_KM.
- *  - Returns the first match whose similarity exceeds SIMILARITY_THRESHOLD.
+ *    that are within RADIUS_K  M.
+ *   - Uses semantic similarity (via Hugging Face) if API key is configured, otherwise falls back to keyword overlap.
  *
  * @param {string}      title
  * @param {string}      description
@@ -152,7 +131,7 @@ async function checkForDuplicates(title, description, latitude, longitude, userI
         (c) =>
           c.latitude != null && c.longitude != null
             ? haversineDistance(latitude, longitude, c.latitude, c.longitude) <= RADIUS_KM
-            : true  // candidate has no coords — still check text
+            : true  
       )
     : recentComplaints;
 

@@ -1,6 +1,5 @@
 const Complaint = require("../models/Complaint.model");
 
-// ─── Department → Complaint category mapping ──────────────────────────
 const DEPT_CATEGORY_MAP = {
   public_works: ["Road"],
   water_authority: ["Water"],
