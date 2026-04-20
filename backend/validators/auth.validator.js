@@ -39,8 +39,14 @@ const registerValidator = [
     .notEmpty().withMessage('Department is required for public servants')
     .isIn([
       'public_works', 'water_authority', 'electricity', 'sanitation',
-      'public_safety', 'animal_control', 'health', 'transport', 'environment', 'other',
+      'public_safety', 'animal_control', 'health', 'transport', 'environment', 'police', 'other',
     ]).withMessage('Invalid department'),
+
+  body('nidNumber')
+    .if(body('role').equals('department_officer'))
+    .notEmpty().withMessage('NID number is required')
+    .isLength({ min: 10, max: 10 }).withMessage('NID number must be exactly 10 digits')
+    .isNumeric().withMessage('NID must contain only digits'),
 
   body('employeeId')
     .if(body('role').equals('department_officer'))

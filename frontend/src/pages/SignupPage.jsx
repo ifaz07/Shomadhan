@@ -134,6 +134,11 @@ const SignupPage = () => {
     if (isPublicServant) {
       if (!formData.department) newErrors.department = 'Department is required';
       if (!formData.nidNumber.trim()) newErrors.nidNumber = 'NID required';
+      else if (formData.nidNumber.trim().length !== 10) newErrors.nidNumber = 'NID must be 10 digits';
+      if (!formData.employeeId.trim()) newErrors.employeeId = 'Employee ID is required';
+      if (!formData.governmentEmail.trim()) newErrors.governmentEmail = 'Gov Email is required';
+      else if (!/^\S+@\S+\.\S+$/.test(formData.governmentEmail)) newErrors.governmentEmail = 'Valid email required';
+      if (!formData.designation.trim()) newErrors.designation = 'Designation is required';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -151,6 +156,9 @@ const SignupPage = () => {
     const newErrors = {};
     if (!formData.password) newErrors.password = 'Password required';
     else if (formData.password.length < 8) newErrors.password = 'Min 8 characters';
+    else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])/.test(formData.password)) {
+      newErrors.password = 'Must include A-Z, a-z, 0-9, and !@#$%^&*';
+    }
     if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
     if (!formData.agreeTerms) newErrors.agreeTerms = 'Accept terms to continue';
     setErrors(newErrors);
@@ -214,8 +222,18 @@ const SignupPage = () => {
         }
       };
       await register(payload);
+      toast.success('Account created successfully!');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Registration failed');
+      if (error.response?.data?.errors) {
+        const backendErrors = {};
+        error.response.data.errors.forEach(err => {
+          backendErrors[err.field] = err.message;
+        });
+        setErrors(backendErrors);
+        toast.error('Validation failed. Please check the form.');
+      } else {
+        toast.error(error.response?.data?.message || 'Registration failed');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -223,7 +241,10 @@ const SignupPage = () => {
 
   const renderInput = ({ name, label, type = 'text', icon: Icon, placeholder, isPassword, showToggle, toggleFn }) => (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+      <div className="flex justify-between items-center mb-1.5">
+        <label className="block text-sm font-medium text-gray-700">{label}</label>
+        {errors[name] && <span className="text-[10px] font-bold text-rose-500 animate-pulse uppercase">{errors[name]}</span>}
+      </div>
       <div className="relative">
         <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
           <Icon size={18} />
@@ -234,7 +255,7 @@ const SignupPage = () => {
           value={formData[name]}
           onChange={handleChange}
           placeholder={placeholder}
-          className={`input-field pl-11 ${errors[name] ? 'input-error' : ''}`}
+          className={`input-field pl-11 transition-all ${errors[name] ? 'border-rose-400 focus:ring-rose-200' : 'focus:ring-teal-200'}`}
         />
         {isPassword && (
           <button type="button" onClick={toggleFn} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
@@ -275,19 +296,25 @@ const SignupPage = () => {
           )}
 
           {step === 2 && (
-            <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+            <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                {renderInput({ name: 'name', label: 'Full Name', icon: User, placeholder: 'Rafiq Ahmed' })}
                {renderInput({ name: 'email', label: 'Email', icon: Mail, type: 'email', placeholder: 'rafiq@example.com' })}
                {isPublicServant && (
                    <>
                     <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-gray-700">Department</label>
-                        <select name="department" value={formData.department} onChange={handleChange} className="input-field">
+                        <div className="flex justify-between">
+                            <label className="text-sm font-medium text-gray-700">Department</label>
+                            {errors.department && <span className="text-[10px] font-bold text-rose-500">{errors.department}</span>}
+                        </div>
+                        <select name="department" value={formData.department} onChange={handleChange} className={`input-field ${errors.department ? 'border-rose-400' : ''}`}>
                             <option value="">Select Department</option>
                             {DEPARTMENTS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
                         </select>
                     </div>
                     {renderInput({ name: 'nidNumber', label: 'NID Number', icon: Shield, placeholder: '10-digit NID' })}
+                    {renderInput({ name: 'employeeId', label: 'Employee ID', icon: BadgeCheck, placeholder: 'ID-12345' })}
+                    {renderInput({ name: 'governmentEmail', label: 'Gov Email', icon: Mail, type: 'email', placeholder: 'officer@gov.bd' })}
+                    {renderInput({ name: 'designation', label: 'Designation', icon: Briefcase, placeholder: 'Senior Engineer' })}
                    </>
                )}
                <div className="flex gap-2 pt-2">
