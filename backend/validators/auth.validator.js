@@ -9,8 +9,7 @@ const registerValidator = [
   body('email')
     .trim()
     .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Please provide a valid email')
-    .normalizeEmail(),
+    .isEmail().withMessage('Please provide a valid email'),
 
   body('password')
     .notEmpty().withMessage('Password is required')
@@ -69,8 +68,7 @@ const loginValidator = [
   body('email')
     .trim()
     .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Please provide a valid email')
-    .normalizeEmail(),
+    .isEmail().withMessage('Please provide a valid email'),
 
   body('password')
     .notEmpty().withMessage('Password is required'),

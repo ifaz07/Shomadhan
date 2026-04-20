@@ -131,6 +131,10 @@ const SignupPage = () => {
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     else if (!/^\S+@\S+\.\S+$/.test(formData.email)) newErrors.email = 'Valid email required';
     
+    if (formData.phone.trim() && !/^(\+880|0)?1[3-9]\d{8}$/.test(formData.phone.trim())) {
+      newErrors.phone = 'Invalid BD phone number';
+    }
+
     if (isPublicServant) {
       if (!formData.department) newErrors.department = 'Department is required';
       if (!formData.nidNumber.trim()) newErrors.nidNumber = 'NID required';
@@ -215,6 +219,7 @@ const SignupPage = () => {
     try {
       const payload = {
         ...formData,
+        phone: formData.phone.trim() || undefined,
         presentAddress: {
             address: formData.presentAddress.address,
             lat: mapPosition[0],
@@ -299,6 +304,7 @@ const SignupPage = () => {
             <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                {renderInput({ name: 'name', label: 'Full Name', icon: User, placeholder: 'Rafiq Ahmed' })}
                {renderInput({ name: 'email', label: 'Email', icon: Mail, type: 'email', placeholder: 'rafiq@example.com' })}
+               {renderInput({ name: 'phone', label: 'Phone Number (Optional)', icon: Phone, placeholder: '01XXXXXXXXX' })}
                {isPublicServant && (
                    <>
                     <div className="space-y-1.5">
