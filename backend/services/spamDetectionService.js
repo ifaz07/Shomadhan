@@ -112,6 +112,100 @@ async function computeSimilarity(text1, text2) {
  *   method?: 'semantic'|'keyword',
  * }>}
  */
+// ─── AI Prank Detection (Hugging Face / Local Fallback) ───────────────────────
+
+/**
+ * Act as a civic moderator to detect pranks/fake complaints.
+ * Uses Hugging Face Zero-Shot Classification with a Local Keyword Fallback.
+ */
+async function analyzePrankPotential(title, description) {
+  const text = `${title} ${description}`.toLowerCase();
+  
+  // 1. Local Rule-Based Scorer (Always works, even without internet/keys)
+  const prankPatterns = [
+    { words: ['alien', 'ufo', 'space', 'mars', 'galaxy'], score: 0.95 },
+    { words: ['ghost', 'zombie', 'vampire', 'magic', 'supernatural', 'monster'], score: 0.9 },
+    { words: ['superman', 'batman', 'spiderman', 'avengers', 'marvel', 'superhero'], score: 0.95 },
+    { words: ['biryani', 'pizza', 'burger', 'delicious', 'tasty', 'eating'], score: 0.4 }, 
+    { words: ['cow', 'goat', 'animal', 'talking'], score: 0.3 },
+    { words: ['killed me', 'i am dead', 'ghost of me', 'dying in'], score: 0.95 },
+    { words: ['prank', 'joke', 'just kidding', 'test', 'fake'], score: 0.9 },
+  ];
+
+  let localScore = 0;
+  // Dynamic combined checks for specific cases like "cow eating man"
+  if (text.includes('cow') && text.includes('eating')) localScore = 0.9;
+  if (text.includes('flying') && text.includes('man')) localScore = 0.85;
+
+  prankPatterns.forEach(pattern => {
+    if (pattern.words.some(word => text.includes(word))) {
+      localScore = Math.max(localScore, pattern.score);
+    }
+  });
+
+  // If local rules strongly identify a prank, return immediately
+  if (localScore >= 0.85) {
+    console.log(`[AI Prank Check] Local Rules detected prank (${localScore}): "${title}"`);
+    return { is_prank: true, confidence_score: localScore };
+  }
+
+  // 2. Hugging Face AI Check (Zero-Shot Classification)
+  const HF_TOKEN = process.env.HUGGINGFACE_API_KEY;
+  if (HF_TOKEN && HF_TOKEN !== 'your_huggingface_api_key_here') {
+    try {
+      console.log(`[AI Prank Check] Attempting HF Analysis: "${title}"`);
+      
+      const response = await fetch(
+        'https://router.huggingface.co/hf-inference/models/facebook/bart-large-mnli',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${HF_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            inputs: `${title}: ${description}`,
+            parameters: {
+              candidate_labels: ["serious civic complaint", "prank or joke", "nonsense"],
+              wait_for_model: true
+            }
+          })
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        const prankIdx = result.labels.indexOf("prank or joke");
+        const nonsenseIdx = result.labels.indexOf("nonsense");
+        const aiScore = Math.max(result.scores[prankIdx], result.scores[nonsenseIdx]);
+
+        console.log(`[AI Prank Check] HF Success: PrankScore=${aiScore.toFixed(2)}`);
+        return {
+          is_prank: aiScore > 0.7,
+          confidence_score: aiScore
+        };
+      } else {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+           const errData = await response.json();
+           console.warn(`[AI Prank Check] HF API Error: ${errData.error || response.statusText}`);
+        } else {
+           console.warn(`[AI Prank Check] HF API returned non-JSON response: ${response.status}`);
+        }
+      }
+    } catch (err) {
+      console.warn(`[AI Prank Check] HF Connection failed: ${err.message}`);
+    }
+  }
+
+  // 3. Final Fallback (Combine local score if API failed)
+  return {
+    is_prank: localScore > 0.6,
+    confidence_score: localScore
+  };
+}
+
 async function checkForDuplicates(title, description, latitude, longitude, userId) {
   if (!userId) return { isSpam: false };
 
@@ -161,4 +255,4 @@ async function checkForDuplicates(title, description, latitude, longitude, userI
   return { isSpam: false };
 }
 
-module.exports = { checkForDuplicates, haversineDistance };
+module.exports = { checkForDuplicates, haversineDistance, analyzePrankPotential };

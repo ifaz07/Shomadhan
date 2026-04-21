@@ -1,7 +1,7 @@
 const Complaint = require("../models/Complaint.model");
 const crypto = require("crypto");
 const { classifyComplaint } = require("../services/nlpService");
-const { checkForDuplicates } = require("../services/spamDetectionService");
+const { checkForDuplicates, analyzePrankPotential } = require("../services/spamDetectionService");
 const { calculatePriority } = require("../services/priorityService");
 
 // Helper: Generate unique ticket ID (e.g., SOM-2024-ABC12)
@@ -65,6 +65,18 @@ const createComplaint = async (req, res, next) => {
     const lat = latitude ? Number(latitude) : null;
     const lng = longitude ? Number(longitude) : null;
 
+    // ── AI Prank Detection ───────────────────────────────────────────
+    let aiStatus = { is_prank: false, confidence_score: 0 };
+    try {
+      aiStatus = await analyzePrankPotential(title, description);
+    } catch (aiErr) {
+      console.warn("[AI Prank Check] Skipped:", aiErr.message);
+    }
+
+    const finalStatus = (aiStatus.is_prank && aiStatus.confidence_score >= 0.80) 
+      ? "rejected" 
+      : "pending";
+
     // Auto-calculate initial priority (before votes, so voteCount = 0)
     const priority = calculatePriority({
       category,
@@ -84,12 +96,25 @@ const createComplaint = async (req, res, next) => {
       latitude: lat,
       longitude: lng,
       user: isAnon ? null : req.user?._id,
-      status: "pending",
+      status: finalStatus,
       priority,
       emergencyFlag: emergency,
       voteCount: 0,
       votes: [],
+      is_prank: aiStatus.is_prank,
+      ai_confidence_score: aiStatus.confidence_score,
+      current_authority_level: 1,
+      last_escalated_at: new Date(),
     };
+
+    if (finalStatus === "rejected") {
+      complaintData.history = [{
+        action: "AI Prank Detection",
+        message: `System automatically rejected this complaint as a likely prank (Confidence: ${(aiStatus.confidence_score * 100).toFixed(1)}%)`,
+        status: "rejected",
+        date: new Date()
+      }];
+    }
 
     // ── Spam / duplicate detection ─────────────────────────────────────
     try {
