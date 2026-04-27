@@ -93,11 +93,36 @@ const complaintSchema = new mongoose.Schema(
     votes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     voteCount: { type: Number, default: 0 },
 
+    // ── AI Detection ──
+    is_prank: {
+      type: Boolean,
+      default: false,
+    },
+    ai_confidence_score: {
+      type: Number,
+      default: 0,
+    },
+
+    // ── Escalation System ──
+    current_authority_level: {
+      type: Number,
+      default: 1,
+      min: 1,
+      max: 3,
+    },
+    last_escalated_at: {
+      type: Date,
+      default: Date.now,
+    },
+
     history: [
       {
+        action: String,
+        from_level: Number,
+        to_level: Number,
         status: String,
         message: String,
-        updatedAt: {
+        date: {
           type: Date,
           default: Date.now,
         },

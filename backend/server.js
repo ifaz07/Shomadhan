@@ -16,6 +16,7 @@ const complaintRoutes = require('./routes/complaint.routes');
 const servantRoutes = require('./routes/servant.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const { errorHandler } = require('./middleware/error.middleware');
+const { initEscalationEngine } = require('./services/escalationService');
 
 const app = express();
 
@@ -84,6 +85,10 @@ mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('✅ MongoDB connected');
+    
+    // Start background tasks
+    initEscalationEngine();
+
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
