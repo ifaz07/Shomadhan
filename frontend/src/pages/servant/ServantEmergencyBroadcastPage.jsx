@@ -1,19 +1,36 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
   Bell,
   Clock,
+  Loader2,
   MapPin,
+  MousePointer2,
+  Navigation,
   Plus,
+  Search,
   Send,
   X,
   XCircle,
 } from "lucide-react";
+import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import L from "leaflet";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import ServantLayout from "../../components/layout/ServantLayout";
 import T from "../../components/T";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+const DefaultIcon = L.icon({
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 const EMERGENCY_TYPES = [
   { value: "fire", label: "Fire", color: "bg-red-500" },
@@ -55,13 +72,50 @@ const formatDateTime = (value) => {
   return new Date(value).toLocaleString();
 };
 
+const reverseGeocode = async (lat, lng, setAddress) => {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
+    );
+    const data = await response.json();
+    if (data?.display_name) {
+      setAddress(data.display_name);
+    }
+  } catch (error) {
+    console.error("Geocoding error:", error);
+  }
+};
+
+const LocationMarker = ({ position, setPosition, setAddress }) => {
+  const map = useMap();
+
+  useMapEvents({
+    click(event) {
+      const { lat, lng } = event.latlng;
+      setPosition([lat, lng]);
+      reverseGeocode(lat, lng, setAddress);
+    },
+  });
+
+  useEffect(() => {
+    if (position) {
+      map.flyTo(position, 15);
+    }
+  }, [position, map]);
+
+  return position ? <Marker position={position} /> : null;
+};
+
 export default function ServantEmergencyBroadcastPage() {
   const [broadcasts, setBroadcasts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("all");
   const [formData, setFormData] = useState(INITIAL_FORM);
+  const [mapPosition, setMapPosition] = useState(null);
 
   useEffect(() => {
     fetchBroadcasts();
@@ -84,8 +138,63 @@ export default function ServantEmergencyBroadcastPage() {
     setFormData((current) => ({ ...current, [field]: value }));
   };
 
+  const setAddress = useCallback((address) => {
+    setFormData((current) => ({ ...current, address }));
+  }, []);
+
   const resetForm = () => {
     setFormData(INITIAL_FORM);
+    setMapPosition(null);
+  };
+
+  const getCurrentLocation = () => {
+    setIsLocating(true);
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      setIsLocating(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setMapPosition([latitude, longitude]);
+        reverseGeocode(latitude, longitude, setAddress);
+        setIsLocating(false);
+        toast.success("Location found");
+      },
+      () => {
+        toast.error("Unable to retrieve your location");
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  const searchLocation = async () => {
+    if (!formData.address.trim()) return;
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.address)}&limit=1`
+      );
+      const data = await response.json();
+
+      if (data?.length) {
+        const { lat, lon, display_name } = data[0];
+        setMapPosition([parseFloat(lat), parseFloat(lon)]);
+        setAddress(display_name);
+        toast.success("Location found on map");
+      } else {
+        toast.error("Location not found. Try being more specific.");
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+      toast.error("Error searching for location");
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -103,7 +212,14 @@ export default function ServantEmergencyBroadcastPage() {
         areaRadiusKm: Number.isNaN(radiusKm) ? 5 : radiusKm,
         targetAudience: formData.targetAudience,
         expiresAt: formData.expiresAt || undefined,
-        affectedArea: undefined,
+        affectedArea: mapPosition
+          ? {
+              type: "Point",
+              coordinates: [mapPosition[1], mapPosition[0]],
+              radiusKm: Number.isNaN(radiusKm) ? 5 : radiusKm,
+              address: formData.address.trim(),
+            }
+          : undefined,
       });
 
       toast.success("Emergency broadcast sent successfully");
@@ -323,13 +439,71 @@ export default function ServantEmergencyBroadcastPage() {
                     <label className="mb-2 block text-sm font-medium text-slate-700">
                       <T en="Affected Area Address" />
                     </label>
-                    <input
-                      type="text"
-                      value={formData.address}
-                      onChange={(event) => updateField("address", event.target.value)}
-                      placeholder="Mirpur Section 10, Dhaka"
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
-                    />
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={formData.address}
+                          onChange={(event) => updateField("address", event.target.value)}
+                          placeholder="Mirpur Section 10, Dhaka"
+                          className="w-full rounded-2xl border border-slate-200 py-3 pl-11 pr-4 text-sm text-slate-900 outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+                        />
+                        <MapPin className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={searchLocation}
+                        disabled={isSearching}
+                        className="inline-flex min-w-[52px] items-center justify-center rounded-2xl bg-slate-900 px-4 text-white transition hover:bg-slate-800 disabled:opacity-60"
+                      >
+                        {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2 space-y-4">
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-slate-800">
+                          <T en="Choose area on the map" />
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          <T en="Use current location, search by address, or click on the map to pin the alert center." />
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={getCurrentLocation}
+                        disabled={isLocating}
+                        className="inline-flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
+                      >
+                        {isLocating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Navigation className="h-4 w-4" />}
+                        <T en={isLocating ? "Locating..." : "My Location"} />
+                      </button>
+                    </div>
+
+                    <div className="relative z-0 h-[300px] overflow-hidden rounded-2xl border border-slate-200">
+                      <MapContainer
+                        center={mapPosition || [23.8103, 90.4125]}
+                        zoom={13}
+                        style={{ height: "100%", width: "100%" }}
+                      >
+                        <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        <LocationMarker
+                          position={mapPosition}
+                          setPosition={setMapPosition}
+                          setAddress={setAddress}
+                        />
+                      </MapContainer>
+
+                      <div className="absolute bottom-4 left-4 z-[1000] flex items-center gap-2 rounded-lg border border-slate-200 bg-white/90 px-3 py-1.5 text-[10px] font-medium text-slate-600 shadow-sm backdrop-blur-md">
+                        <MousePointer2 className="h-3.5 w-3.5 text-rose-500" />
+                        <T en="Click to pin exact alert center" />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="md:col-span-2">

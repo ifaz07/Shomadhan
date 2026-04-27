@@ -16,6 +16,8 @@ import {
   Truck,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import LanguageToggle from "../LanguageToggle";
+import T from "../T";
 
 const DEPT_DISPLAY = {
   public_works: "Public Works",
@@ -39,17 +41,17 @@ const ServantSidebar = () => {
   const deptLabel = DEPT_DISPLAY[user?.department] || "Department";
 
   const navItems = [
-    { path: "/servant/profile", label: "My Profile", icon: User },
-    { path: "/servant/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { path: "/servant/profile", label: <T en="My Profile" />, icon: User },
+    { path: "/servant/dashboard", label: <T en="Dashboard" />, icon: LayoutDashboard },
     {
       path: "/servant/complaints",
-      label: "Department Complaints",
+      label: <T en="Department Complaints" />,
       icon: ClipboardList,
     },
-    { path: "/servant/heatmap", label: "Heatmap", icon: LayoutDashboard },
-    { path: "/servant/emergency-notification", label: "Emergency Notification", icon: AlertTriangle },
-    { path: "/resource-tracker", label: "Resource Tracker", icon: Truck },
-    { path: "/notifications", label: "Notifications", icon: Bell, badge: 0 },
+    { path: "/servant/heatmap", label: <T en="Heatmap" />, icon: LayoutDashboard },
+    { path: "/servant/emergency-notification", label: <T en="Emergency Notification" />, icon: AlertTriangle },
+    { path: "/resource-tracker", label: <T en="Resource Tracker" />, icon: Truck },
+    { path: "/notifications", label: <T en="Notifications" />, icon: Bell, badge: 0 },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -58,18 +60,21 @@ const ServantSidebar = () => {
     <div className="flex flex-col h-full">
       {/* ─── Logo ─────────────────────────────────────────────── */}
       <div className="p-5 border-b border-gray-100">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-            <Briefcase size={18} className="text-white" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+              <Briefcase size={18} className="text-white" />
+            </div>
+            {!isCollapsed && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <h1 className="text-base font-bold text-gray-900">Somadhan</h1>
+                <p className="text-[10px] text-blue-500 font-semibold -mt-0.5">
+                  <T en="Servant Portal" />
+                </p>
+              </motion.div>
+            )}
           </div>
-          {!isCollapsed && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <h1 className="text-base font-bold text-gray-900">Somadhan</h1>
-              <p className="text-[10px] text-blue-500 font-semibold -mt-0.5">
-                Servant Portal
-              </p>
-            </motion.div>
-          )}
+          {!isCollapsed && <LanguageToggle variant="light" />}
         </div>
       </div>
 
@@ -94,11 +99,11 @@ const ServantSidebar = () => {
               </p>
               {user?.designation && (
                 <p className="text-[10px] text-gray-500 truncate">
-                  {user.designation}
+                  <T en={user.designation} />
                 </p>
               )}
               <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 mt-0.5">
-                {deptLabel}
+                <T en={deptLabel} />
               </span>
             </div>
           )}
@@ -146,7 +151,7 @@ const ServantSidebar = () => {
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all w-full"
         >
           <LogOut size={18} />
-          {!isCollapsed && <span>Sign out</span>}
+          {!isCollapsed && <span><T en="Sign out" /></span>}
         </button>
       </div>
     </div>
