@@ -1,5 +1,32 @@
 const mongoose = require("mongoose");
 
+const affectedAreaSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: ["Point", "Polygon"],
+      default: "Point",
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude] for Point
+      validate: {
+        validator(value) {
+          return value == null || value.length === 2;
+        },
+        message: "Coordinates must contain [longitude, latitude]",
+      },
+    },
+    radiusKm: {
+      type: Number,
+      default: 5,
+    },
+    address: {
+      type: String,
+    },
+  },
+  { _id: false }
+);
+
 const broadcastSchema = new mongoose.Schema(
   {
     title: {
@@ -22,23 +49,19 @@ const broadcastSchema = new mongoose.Schema(
       enum: ["low", "medium", "high", "critical"],
       default: "medium",
     },
+    areaLabel: {
+      type: String,
+      trim: true,
+    },
+    areaRadiusKm: {
+      type: Number,
+      default: 5,
+      min: 1,
+    },
     // Geo-targeting: area affected
     affectedArea: {
-      type: {
-        type: String,
-        enum: ["Point", "Polygon"],
-        default: "Point",
-      },
-      coordinates: {
-        type: [Number], // [longitude, latitude] for Point
-      },
-      radiusKm: {
-        type: Number,
-        default: 5, // Default radius in kilometers
-      },
-      address: {
-        type: String,
-      },
+      type: affectedAreaSchema,
+      default: undefined,
     },
     // Target audience
     targetAudience: {
@@ -99,7 +122,14 @@ const broadcastSchema = new mongoose.Schema(
 );
 
 // Index for geo-queries
-broadcastSchema.index({ "affectedArea": "2dsphere" });
+broadcastSchema.index(
+  { affectedArea: "2dsphere" },
+  {
+    partialFilterExpression: {
+      "affectedArea.coordinates.0": { $exists: true },
+    },
+  }
+);
 broadcastSchema.index({ status: 1, createdAt: -1 });
 
 module.exports = mongoose.model("EmergencyBroadcast", broadcastSchema);

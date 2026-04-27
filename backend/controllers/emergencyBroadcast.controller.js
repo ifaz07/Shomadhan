@@ -6,14 +6,33 @@ const User = require('../models/User.model');
 // @access  Private (admin, department_officer)
 const createBroadcast = async (req, res) => {
   try {
-    const { title, message, type, severity, affectedArea, targetAudience, scheduledAt, expiresAt, attachments } = req.body;
+    const {
+      title,
+      message,
+      type,
+      severity,
+      areaLabel,
+      areaRadiusKm,
+      affectedArea,
+      targetAudience,
+      scheduledAt,
+      expiresAt,
+      attachments,
+    } = req.body;
+
+    const normalizedAffectedArea =
+      affectedArea?.coordinates?.length === 2
+        ? affectedArea
+        : undefined;
 
     const broadcast = await EmergencyBroadcast.create({
       title,
       message,
       type,
       severity,
-      affectedArea,
+      areaLabel,
+      areaRadiusKm,
+      affectedArea: normalizedAffectedArea,
       targetAudience: targetAudience || 'all',
       sentBy: req.user._id,
       scheduledAt,
@@ -105,7 +124,19 @@ const getBroadcast = async (req, res) => {
 // @access  Private (admin, department_officer)
 const updateBroadcast = async (req, res) => {
   try {
-    const { title, message, type, severity, affectedArea, targetAudience, status, expiresAt, attachments } = req.body;
+    const {
+      title,
+      message,
+      type,
+      severity,
+      areaLabel,
+      areaRadiusKm,
+      affectedArea,
+      targetAudience,
+      status,
+      expiresAt,
+      attachments,
+    } = req.body;
 
     const broadcast = await EmergencyBroadcast.findById(req.params.id);
 
@@ -121,7 +152,9 @@ const updateBroadcast = async (req, res) => {
     if (message) broadcast.message = message;
     if (type) broadcast.type = type;
     if (severity) broadcast.severity = severity;
-    if (affectedArea) broadcast.affectedArea = affectedArea;
+    if (areaLabel !== undefined) broadcast.areaLabel = areaLabel;
+    if (areaRadiusKm !== undefined) broadcast.areaRadiusKm = areaRadiusKm;
+    if (affectedArea?.coordinates?.length === 2) broadcast.affectedArea = affectedArea;
     if (targetAudience) broadcast.targetAudience = targetAudience;
     if (status) broadcast.status = status;
     if (expiresAt) broadcast.expiresAt = expiresAt;

@@ -44,8 +44,6 @@ const INITIAL_FORM = {
   message: "",
   type: "fire",
   severity: "medium",
-  latitude: "",
-  longitude: "",
   radiusKm: 5,
   address: "",
   targetAudience: "all",
@@ -92,15 +90,7 @@ export default function ServantEmergencyBroadcastPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-
-    const latitude = parseFloat(formData.latitude);
-    const longitude = parseFloat(formData.longitude);
     const radiusKm = parseFloat(formData.radiusKm);
-
-    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-      toast.error("Please provide valid latitude and longitude");
-      return;
-    }
 
     try {
       setSubmitting(true);
@@ -109,14 +99,11 @@ export default function ServantEmergencyBroadcastPage() {
         message: formData.message.trim(),
         type: formData.type,
         severity: formData.severity,
+        areaLabel: formData.address.trim(),
+        areaRadiusKm: Number.isNaN(radiusKm) ? 5 : radiusKm,
         targetAudience: formData.targetAudience,
         expiresAt: formData.expiresAt || undefined,
-        affectedArea: {
-          type: "Point",
-          coordinates: [longitude, latitude],
-          radiusKm: Number.isNaN(radiusKm) ? 5 : radiusKm,
-          address: formData.address.trim(),
-        },
+        affectedArea: undefined,
       });
 
       toast.success("Emergency broadcast sent successfully");
@@ -304,36 +291,6 @@ export default function ServantEmergencyBroadcastPage() {
 
                   <div>
                     <label className="mb-2 block text-sm font-medium text-slate-700">
-                      <T en="Latitude" />
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      required
-                      value={formData.latitude}
-                      onChange={(event) => updateField("latitude", event.target.value)}
-                      placeholder="23.8103"
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">
-                      <T en="Longitude" />
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      required
-                      value={formData.longitude}
-                      onChange={(event) => updateField("longitude", event.target.value)}
-                      placeholder="90.4125"
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">
                       <T en="Coverage Radius (km)" />
                     </label>
                     <input
@@ -455,19 +412,19 @@ export default function ServantEmergencyBroadcastPage() {
                     <p className="mt-2 text-sm leading-6 text-slate-600">{broadcast.message}</p>
 
                     <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-slate-500">
-                      {broadcast.affectedArea?.address && (
+                      {(broadcast.areaLabel || broadcast.affectedArea?.address) && (
                         <span className="inline-flex items-center gap-1.5">
                           <MapPin className="h-4 w-4" />
-                          {broadcast.affectedArea.address}
+                          {broadcast.areaLabel || broadcast.affectedArea?.address}
                         </span>
                       )}
                       <span className="inline-flex items-center gap-1.5">
                         <Clock className="h-4 w-4" />
                         {formatDateTime(broadcast.createdAt)}
                       </span>
-                      {broadcast.affectedArea?.radiusKm ? (
+                      {broadcast.areaRadiusKm ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
-                          <T en={`${broadcast.affectedArea.radiusKm} km radius`} />
+                          <T en={`${broadcast.areaRadiusKm} km radius`} />
                         </span>
                       ) : null}
                     </div>
