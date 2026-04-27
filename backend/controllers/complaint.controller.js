@@ -412,12 +412,12 @@ const getPublicStats = async (req, res, next) => {
     };
 
     const deptStats = {
-      public_works: { total: 0, critical: 0, pending: 0 },
-      water_authority: { total: 0, critical: 0, pending: 0 },
-      electricity: { total: 0, critical: 0, pending: 0 },
-      sanitation: { total: 0, critical: 0, pending: 0 },
-      public_safety: { total: 0, critical: 0, pending: 0 },
-      animal_control: { total: 0, critical: 0, pending: 0 },
+      public_works: { total: 0, critical: 0, pending: 0, resolved: 0, inProgress: 0 },
+      water_authority: { total: 0, critical: 0, pending: 0, resolved: 0, inProgress: 0 },
+      electricity: { total: 0, critical: 0, pending: 0, resolved: 0, inProgress: 0 },
+      sanitation: { total: 0, critical: 0, pending: 0, resolved: 0, inProgress: 0 },
+      public_safety: { total: 0, critical: 0, pending: 0, resolved: 0, inProgress: 0 },
+      animal_control: { total: 0, critical: 0, pending: 0, resolved: 0, inProgress: 0 },
     };
 
     let total = 0,
@@ -435,8 +435,9 @@ const getPublicStats = async (req, res, next) => {
       if (deptKey && deptStats[deptKey]) {
         deptStats[deptKey].total++;
         if (c.priority === "Critical") deptStats[deptKey].critical++;
-        if (c.status === "pending" || c.status === "in-progress")
-          deptStats[deptKey].pending++;
+        if (c.status === "pending") deptStats[deptKey].pending++;
+        if (c.status === "in-progress") { deptStats[deptKey].pending++; deptStats[deptKey].inProgress++; }
+        if (c.status === "resolved") deptStats[deptKey].resolved++;
       }
     });
 

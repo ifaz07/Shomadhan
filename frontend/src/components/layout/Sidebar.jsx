@@ -39,7 +39,7 @@ const Sidebar = () => {
     { path: "/heatmap",          label: <T en="Complaint Heatmap" />, icon: Map },
     { path: "/notifications",    label: <T en="Notifications" />,     icon: Bell },
     { path: "/my-complaints",    label: <T en="My Complaints" />,     icon: FileText },
-    { path: "/analytics",        label: <T en="Analytics" />,         icon: BarChart3,     disabled: true },
+    { path: "/analytics",        label: <T en="Analytics" />,         icon: BarChart3 },
     { path: "/feedback",         label: <T en="Feedback" />,          icon: MessageSquare, disabled: true },
   ];
 

@@ -54,7 +54,7 @@ const STEPS = [
 ];
 
 const getStepIndex = (status) => {
-  if (status === 'rejected')    return 1; // got rejected after submission
+  if (status === 'rejected')    return 1;
   if (status === 'pending')     return 0;
   if (status === 'in-progress') return 2;
   if (status === 'resolved')    return 3;
@@ -103,7 +103,7 @@ const StatusStepper = ({ status }) => {
       {STEPS.map((step, i) => {
         const done    = i <= currentStep && !isRejected;
         const current = i === currentStep && !isRejected;
-        const rejected = isRejected && i === 1; // mark "assigned" as rejection point
+        const rejected = isRejected && i === 1;
 
         return (
           <div key={step.key} className="flex items-center flex-1 min-w-0">
@@ -139,11 +139,11 @@ const StatusStepper = ({ status }) => {
                       : 'text-gray-300'
                 }`}
               >
-                {step.label}
+                <T en={step.label} />
               </span>
             </div>
 
-            {/* Connector line (skip after last step) */}
+            {/* Connector line */}
             {i < STEPS.length - 1 && (
               <div
                 className={`flex-1 h-0.5 mb-4 mx-1 transition-all ${
@@ -168,7 +168,7 @@ const StatCard = ({ icon: Icon, label, value, color, bg, delay }) => (
   >
     <div className="flex items-center justify-between">
       <div>
-        <p className="text-xs text-gray-500 font-medium">{label}</p>
+        <p className="text-xs text-gray-500 font-medium"><T en={label} /></p>
         <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
       </div>
       <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${bg}`}>
@@ -182,10 +182,12 @@ const StatCard = ({ icon: Icon, label, value, color, bg, delay }) => (
 const ComplaintCard = ({ complaint, index, onView }) => {
   const [expanded, setExpanded] = useState(false);
 
-  const pCfg = PRIORITY_CONFIG[complaint.priority] || PRIORITY_CONFIG.Low;
-  const sCfg = STATUS_CONFIG[complaint.status]     || STATUS_CONFIG.pending;
-  const sla  = getSlaInfo(complaint.createdAt, complaint.slaDeadline);
-  const history = complaint.history || [];
+  const pCfg     = PRIORITY_CONFIG[complaint.priority] || PRIORITY_CONFIG.Low;
+  const sCfg     = STATUS_CONFIG[complaint.status]     || STATUS_CONFIG.pending;
+  const sla      = getSlaInfo(complaint.createdAt, complaint.slaDeadline);
+  const history  = complaint.history || [];
+  const catLabel = CATEGORY_LABEL[complaint.category] || complaint.category;
+  const deptLabel = DEPT_LABEL[complaint.department]  || complaint.department;
 
   return (
     <motion.div
@@ -194,7 +196,7 @@ const ComplaintCard = ({ complaint, index, onView }) => {
       transition={{ delay: index * 0.05 }}
       className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-200"
     >
-      {/* ── Top accent bar matching priority ── */}
+      {/* ── Top accent bar ── */}
       <div
         className={`h-1 w-full ${
           complaint.priority === 'Critical' ? 'bg-red-500' :
@@ -208,10 +210,10 @@ const ComplaintCard = ({ complaint, index, onView }) => {
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>
-              {complaint.priority}
+              <T en={complaint.priority} />
             </span>
             <span className={`px-2 py-0.5 rounded-md text-xs font-semibold ${sCfg.badge}`}>
-              {sCfg.label}
+              <T en={sCfg.label} />
             </span>
             {complaint.ticketId && (
               <span className="text-xs font-mono text-gray-400">{complaint.ticketId}</span>
@@ -228,13 +230,13 @@ const ComplaintCard = ({ complaint, index, onView }) => {
           {complaint.category && (
             <span className="flex items-center gap-1">
               <Tag size={11} className="text-gray-400" />
-              {CATEGORY_LABEL[complaint.category] || complaint.category}
+              <T en={catLabel} />
             </span>
           )}
           {complaint.department && (
             <span className="flex items-center gap-1">
               <Building2 size={11} className="text-gray-400" />
-              {DEPT_LABEL[complaint.department] || complaint.department}
+              <T en={deptLabel} />
             </span>
           )}
           {complaint.location && (
@@ -255,7 +257,7 @@ const ComplaintCard = ({ complaint, index, onView }) => {
               <span>
                 SLA:{' '}
                 <span className={sla.daysLeft <= 0 ? 'text-red-600 font-semibold' : sla.daysLeft <= 2 ? 'text-orange-600 font-medium' : 'text-gray-500'}>
-                  {sla.daysLeft > 0 ? `${sla.daysLeft} days left` : 'Overdue'}
+                  {sla.daysLeft > 0 ? <>{sla.daysLeft} <T en="days left" /></> : <T en="Overdue" />}
                 </span>
               </span>
               <span>{sla.progress}%</span>
@@ -275,11 +277,9 @@ const ComplaintCard = ({ complaint, index, onView }) => {
         {/* Footer row */}
         <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-50">
           <div className="flex items-center gap-4">
-            {/* Submitted date */}
             <span className="text-xs text-gray-400">
-              Submitted {formatDate(complaint.createdAt)}
+              <T en="Submitted" /> {formatDate(complaint.createdAt)}
             </span>
-            {/* Vote count */}
             <span className="flex items-center gap-1 text-xs text-gray-500">
               <ThumbsUp size={11} className="text-gray-400" />
               {complaint.voteCount ?? 0}
@@ -287,22 +287,20 @@ const ComplaintCard = ({ complaint, index, onView }) => {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Expand history */}
             {history.length > 0 && (
               <button
                 onClick={() => setExpanded((v) => !v)}
                 className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
               >
                 {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                {expanded ? 'Hide' : 'History'}
+                {expanded ? <T en="Hide" /> : <T en="History" />}
               </button>
             )}
-            {/* View details */}
             <button
               onClick={() => onView(complaint._id)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 text-white text-xs font-medium rounded-lg hover:bg-teal-700 transition-colors"
             >
-              View Details
+              <T en="View Details" />
               <ArrowRight size={12} />
             </button>
           </div>
@@ -320,7 +318,7 @@ const ComplaintCard = ({ complaint, index, onView }) => {
             >
               <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
                 <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  Status History
+                  <T en="Status History" />
                 </p>
                 {history.map((h, i) => (
                   <div key={i} className="flex items-start gap-2">
@@ -344,7 +342,7 @@ const ComplaintCard = ({ complaint, index, onView }) => {
   );
 };
 
-// ─── Empty State ─────────────────────────────────────────────────────
+// ─── Empty State ──────────────────────────────────────────────────────
 const EmptyState = ({ tab, onSubmit }) => (
   <motion.div
     initial={{ opacity: 0, y: 10 }}
@@ -355,25 +353,27 @@ const EmptyState = ({ tab, onSubmit }) => (
       <FileText size={28} className="text-teal-400" />
     </div>
     <h3 className="font-semibold text-gray-800 text-base mb-1">
-      {tab === 'All' ? 'No complaints yet' : `No ${tab.toLowerCase()} complaints`}
+      {tab === 'All'
+        ? <T en="No complaints yet" />
+        : <><T en="No" /> {tab.toLowerCase()} <T en="complaints" /></>}
     </h3>
     <p className="text-sm text-gray-400 text-center max-w-xs mb-5">
       {tab === 'All'
-        ? "You haven't submitted any complaints yet. Help improve your community by reporting an issue."
-        : `You don't have any complaints with "${tab}" status.`}
+        ? <T en="You haven't submitted any complaints yet. Help improve your community by reporting an issue." />
+        : <><T en="You don't have any complaints with" /> "{tab}" <T en="status." /></>}
     </p>
     {tab === 'All' && (
       <button
         onClick={onSubmit}
         className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-700 transition-colors"
       >
-        Submit Your First Complaint
+        <T en="Submit Your First Complaint" />
       </button>
     )}
   </motion.div>
 );
 
-// ─── Tabs ────────────────────────────────────────────────────────────
+// ─── Tabs ─────────────────────────────────────────────────────────────
 const TABS = ['All', 'Pending', 'In Progress', 'Resolved', 'Rejected'];
 
 // ─── Main Page ────────────────────────────────────────────────────────
@@ -397,17 +397,14 @@ const MyComplaintsPage = () => {
 
   useEffect(() => { fetchComplaints(); }, []);
 
-  // Compute stats
   const total      = complaints.length;
   const pending    = complaints.filter((c) => c.status === 'pending').length;
   const inProgress = complaints.filter((c) => c.status === 'in-progress').length;
   const resolved   = complaints.filter((c) => c.status === 'resolved').length;
   const rejected   = complaints.filter((c) => c.status === 'rejected').length;
 
-  // Tab counts
   const tabCounts = { All: total, Pending: pending, 'In Progress': inProgress, Resolved: resolved, Rejected: rejected };
 
-  // Filtered list
   const filtered = activeTab === 'All'
     ? complaints
     : complaints.filter((c) => {
@@ -420,7 +417,7 @@ const MyComplaintsPage = () => {
 
   return (
     <DashboardLayout>
-      {/* ── Header ────────────────────────────────────────────────── */}
+      {/* ── Header ──────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -453,7 +450,7 @@ const MyComplaintsPage = () => {
         </div>
       </motion.div>
 
-      {/* ── Stat Cards ─────────────────────────────────────────────── */}
+      {/* ── Stat Cards ──────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard icon={FileText}     label="Total Submitted" value={total}      color="text-gray-800"  bg="bg-gray-100"  delay={0.05} />
         <StatCard icon={Clock}        label="Pending"         value={pending}    color="text-gray-600"  bg="bg-gray-100"  delay={0.1}  />
@@ -461,7 +458,7 @@ const MyComplaintsPage = () => {
         <StatCard icon={CheckCircle2} label="Resolved"        value={resolved}   color="text-green-600" bg="bg-green-50"  delay={0.2}  />
       </div>
 
-      {/* ── Resolution rate ────────────────────────────────────────── */}
+      {/* ── Resolution rate ─────────────────────────────────────── */}
       {total > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
@@ -470,7 +467,9 @@ const MyComplaintsPage = () => {
           className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-gray-700">Overall Resolution Rate</span>
+            <span className="text-sm font-semibold text-gray-700">
+              <T en="Overall Resolution Rate" />
+            </span>
             <span className="text-sm font-bold text-teal-600">
               {total > 0 ? Math.round((resolved / total) * 100) : 0}%
             </span>
@@ -482,13 +481,17 @@ const MyComplaintsPage = () => {
             />
           </div>
           <div className="flex items-center justify-between mt-2.5 text-xs text-gray-400">
-            <span>{resolved} resolved out of {total} submitted</span>
-            {rejected > 0 && <span className="text-red-400">{rejected} rejected</span>}
+            <span>
+              {resolved} <T en="resolved out of" /> {total} <T en="submitted" />
+            </span>
+            {rejected > 0 && (
+              <span className="text-red-400">{rejected} <T en="rejected" /></span>
+            )}
           </div>
         </motion.div>
       )}
 
-      {/* ── Tabs ───────────────────────────────────────────────────── */}
+      {/* ── Tabs ────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -505,7 +508,7 @@ const MyComplaintsPage = () => {
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            {tab}
+            <T en={tab} />
             {tabCounts[tab] > 0 && (
               <span
                 className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
@@ -524,11 +527,11 @@ const MyComplaintsPage = () => {
         ))}
       </motion.div>
 
-      {/* ── Complaint List ─────────────────────────────────────────── */}
+      {/* ── Complaint List ───────────────────────────────────────── */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <div className="w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-gray-400">Loading your complaints…</p>
+          <p className="text-sm text-gray-400"><T en="Loading your complaints…" /></p>
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState tab={activeTab} onSubmit={() => navigate('/submit-complaint')} />

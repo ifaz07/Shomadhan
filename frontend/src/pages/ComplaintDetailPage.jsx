@@ -167,12 +167,12 @@ const ComplaintDetailPage = () => {
     <DashboardLayout>
       <div className="text-center py-24">
         <AlertCircle size={40} className="text-gray-300 mx-auto mb-3" />
-        <p className="text-gray-500 font-medium">Complaint not found</p>
+        <p className="text-gray-500 font-medium"><T en="Complaint not found" /></p>
         <button
           onClick={() => navigate(backPath)}
           className="mt-4 text-sm text-teal-600 hover:underline"
         >
-          Go back
+          <T en="Go back" />
         </button>
       </div>
     </DashboardLayout>
@@ -194,12 +194,12 @@ const ComplaintDetailPage = () => {
           className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"
         >
           <ArrowLeft size={15} />
-          {backLabel}
+          <T en={backLabel} />
         </button>
         <span className="text-sm text-gray-400">
           <T en="Viewing as:" />{' '}
           <span className="font-medium text-gray-600">
-            {isMyComplaint ? 'Submitter' : 'User'}
+            <T en={isMyComplaint ? 'Submitter' : 'User'} />
           </span>
         </span>
       </div>
@@ -219,10 +219,10 @@ const ComplaintDetailPage = () => {
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>
-                  {complaint.priority}
+                  <T en={complaint.priority} />
                 </span>
                 <span className={`px-2.5 py-0.5 rounded-md text-xs font-semibold ${sCfg.badge}`}>
-                  {sCfg.label}
+                  <T en={sCfg.label} />
                 </span>
                 {complaint.ticketId && (
                   <span className="text-xs text-gray-400 font-mono">{complaint.ticketId}</span>
@@ -239,12 +239,22 @@ const ComplaintDetailPage = () => {
               >
                 <ThumbsUp size={16} className={hasVoted ? 'text-teal-600' : 'text-gray-400'} />
                 <span className="text-base font-bold leading-none">{voteCount}</span>
-                <span className="text-[11px] text-gray-400 leading-none">Upvotes</span>
+                <span className="text-[11px] text-gray-400 leading-none"><T en="Upvotes" /></span>
               </button>
             </div>
 
             {/* Title */}
             <h1 className="text-xl font-bold text-gray-900 mt-3 mb-2">{complaint.title}</h1>
+
+            {/* Description */}
+            {complaint.description && (
+              <div className="mb-4">
+                <p className="text-xs text-gray-400 mb-1"><T en="Description" /></p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  <T en={complaint.description} />
+                </p>
+              </div>
+            )}
 
             {/* Date + location */}
             <div className="flex items-center gap-4 text-sm text-gray-500 mb-5 flex-wrap">
@@ -263,17 +273,17 @@ const ComplaintDetailPage = () => {
             {/* Category + Department */}
             <div className="grid grid-cols-2 gap-5 mb-5">
               <div>
-                <p className="text-xs text-gray-400 mb-1">Category</p>
+                <p className="text-xs text-gray-400 mb-1"><T en="Category" /></p>
                 <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
                   <Tag size={13} className="text-gray-400" />
-                  {CATEGORY_LABEL[complaint.category] || complaint.category || '—'}
+                  <T en={CATEGORY_LABEL[complaint.category] || complaint.category || '—'} />
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">Department</p>
+                <p className="text-xs text-gray-400 mb-1"><T en="Department" /></p>
                 <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
                   <Building2 size={13} className="text-gray-400" />
-                  {DEPT_LABEL[complaint.department] || complaint.department || '—'}
+                  <T en={DEPT_LABEL[complaint.department] || complaint.department || '—'} />
                 </p>
               </div>
             </div>
@@ -283,9 +293,13 @@ const ComplaintDetailPage = () => {
               {sla ? (
                 <>
                   <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
-                    <span className="font-medium">Resolution Deadline</span>
+                    <span className="font-medium"><T en="Resolution Deadline" /></span>
                     <span className={sla.isOverdue ? 'text-red-600 font-semibold' : sla.hoursLeft <= 24 ? 'text-orange-600 font-semibold' : ''}>
-                      {sla.timeLabel}
+                      {sla.isOverdue
+                        ? <T en="Overdue" />
+                        : sla.hoursLeft <= 24
+                          ? <>{sla.hoursLeft}h <T en="left" /></>
+                          : <>{sla.daysLeft}d <T en="left" /></>}
                     </span>
                   </div>
                   <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -299,7 +313,7 @@ const ComplaintDetailPage = () => {
                   </div>
                 </>
               ) : (
-                <p className="text-xs text-gray-400 italic">No resolution deadline assigned yet — department review pending</p>
+                <p className="text-xs text-gray-400 italic"><T en="No resolution deadline assigned yet — department review pending" /></p>
               )}
             </div>
 
@@ -307,7 +321,7 @@ const ComplaintDetailPage = () => {
             {evidence.length > 0 && (
               <div>
                 <p className="text-sm font-semibold text-gray-700 mb-2">
-                  Attachments ({evidence.length})
+                  <T en="Attachments" /> ({evidence.length})
                 </p>
                 <div className="flex gap-3 flex-wrap">
                   {evidence.map((url, i) =>
@@ -350,7 +364,7 @@ const ComplaintDetailPage = () => {
               transition={{ delay: 0.08 }}
               className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
             >
-              <h2 className="text-base font-bold text-gray-900 mb-5">Activity Timeline</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-5"><T en="Activity Timeline" /></h2>
               <div className="flex flex-col gap-0">
                 {timeline.map((item, i) => {
                   const isSla = item.message?.toLowerCase().includes('sla');
@@ -367,7 +381,7 @@ const ComplaintDetailPage = () => {
                       <div className="flex-1 pb-5">
                         <div className="flex items-center justify-between mb-0.5">
                           <span className="text-sm font-semibold text-gray-800">
-                            {isSla ? 'SLA Update' : 'Status Update'}
+                            {isSla ? <T en="SLA Update" /> : <T en="Status Update" />}
                           </span>
                           <span className="text-xs text-gray-400">
                             {timeAgo(item.updatedAt || item.createdAt)}
@@ -391,7 +405,7 @@ const ComplaintDetailPage = () => {
           >
             <MessageSquare size={30} className="text-gray-300 mb-2" />
             <p className="text-sm text-gray-500 text-center">
-              Users can view and upvote complaints but cannot add comments
+              <T en="Users can view and upvote complaints but cannot add comments" />
             </p>
           </motion.div>
         </div>
@@ -406,7 +420,7 @@ const ComplaintDetailPage = () => {
             transition={{ delay: 0.05 }}
             className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"
           >
-            <h3 className="text-base font-bold text-gray-900 mb-3">Location</h3>
+            <h3 className="text-base font-bold text-gray-900 mb-3"><T en="Location" /></h3>
 
             {hasMap ? (
               <div className="rounded-xl overflow-hidden mb-3 border border-gray-200" style={{ height: '160px' }}>
@@ -436,10 +450,13 @@ const ComplaintDetailPage = () => {
             )}
 
             {complaint.location && (
-              <p className="text-sm text-gray-700 flex items-start gap-1.5">
-                <MapPin size={13} className="text-red-500 flex-shrink-0 mt-0.5" />
-                {complaint.location}
-              </p>
+              <div>
+                <p className="text-xs text-gray-400 mb-1"><T en="Address" /></p>
+                <p className="text-sm text-gray-700 flex items-start gap-1.5">
+                  <MapPin size={13} className="text-red-500 flex-shrink-0 mt-0.5" />
+                  <T en={complaint.location} />
+                </p>
+              </div>
             )}
           </motion.div>
 
@@ -450,18 +467,18 @@ const ComplaintDetailPage = () => {
             transition={{ delay: 0.1 }}
             className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"
           >
-            <h3 className="text-base font-bold text-gray-900 mb-3">Statistics</h3>
+            <h3 className="text-base font-bold text-gray-900 mb-3"><T en="Statistics" /></h3>
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Public Support</span>
-                <span className="text-sm font-bold text-gray-900">{voteCount} votes</span>
+                <span className="text-sm text-gray-600"><T en="Public Support" /></span>
+                <span className="text-sm font-bold text-gray-900">{voteCount} <T en="votes" /></span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Views</span>
+                <span className="text-sm text-gray-600"><T en="Views" /></span>
                 <span className="text-sm font-bold text-gray-900">{complaint.views ?? 0}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Similar Complaints</span>
+                <span className="text-sm text-gray-600"><T en="Similar Complaints" /></span>
                 <span className="text-sm font-bold text-gray-900">{complaint.similarCount ?? 0}</span>
               </div>
             </div>
@@ -474,23 +491,23 @@ const ComplaintDetailPage = () => {
             transition={{ delay: 0.15 }}
             className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"
           >
-            <h3 className="text-base font-bold text-gray-900 mb-3">Submitted By</h3>
+            <h3 className="text-base font-bold text-gray-900 mb-3"><T en="Submitted By" /></h3>
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
                 <User size={16} className="text-gray-500" />
               </div>
               <div>
                 {complaint.isAnonymous ? (
-                  <p className="text-sm font-medium text-gray-700">Anonymous Citizen</p>
+                  <p className="text-sm font-medium text-gray-700"><T en="Anonymous Citizen" /></p>
                 ) : (
                   <>
                     <p className="text-sm font-medium text-gray-700">
-                      {complaint.submittedBy?.name || 'Citizen'}
+                      {complaint.submittedBy?.name || <T en="Citizen" />}
                     </p>
                     {complaint.submittedBy?.isVerified && (
                       <p className="text-xs text-green-600 flex items-center gap-1 mt-0.5">
                         <CheckCircle size={10} />
-                        Verified Citizen
+                        <T en="Verified Citizen" />
                       </p>
                     )}
                   </>
