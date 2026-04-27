@@ -1,20 +1,29 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
-  ArrowLeft, ThumbsUp, MapPin, Clock, Tag, Building2,
-  MessageSquare, User, CheckCircle, Activity, AlertCircle,
+  ArrowLeft,
+  ThumbsUp,
+  MapPin,
+  Clock,
+  Tag,
+  Building2,
+  MessageSquare,
+  User,
+  CheckCircle,
+  Activity,
+  AlertCircle,
   Video as VideoIcon,
-} from 'lucide-react';
-import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import markerIconUrl from 'leaflet/dist/images/marker-icon.png';
-import markerShadowUrl from 'leaflet/dist/images/marker-shadow.png';
-import toast from 'react-hot-toast';
-import { complaintAPI } from '../services/api';
-import DashboardLayout from '../components/layout/DashboardLayout';
-import T from '../components/T';
+} from "lucide-react";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import markerIconUrl from "leaflet/dist/images/marker-icon.png";
+import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
+import toast from "react-hot-toast";
+import { complaintAPI } from "../services/api";
+import DashboardLayout from "../components/layout/DashboardLayout";
+import T from "../components/T";
 
 // Fix Leaflet default icon
 const defaultIcon = L.icon({
@@ -26,50 +35,50 @@ const defaultIcon = L.icon({
 
 // ─── Config ───────────────────────────────────────────────────────────
 const PRIORITY_CONFIG = {
-  Critical: { badge: 'bg-red-500 text-white',   border: 'border-red-400'    },
-  High:     { badge: 'bg-orange-500 text-white', border: 'border-orange-400' },
-  Medium:   { badge: 'bg-yellow-500 text-white', border: 'border-yellow-400' },
-  Low:      { badge: 'bg-green-500 text-white',  border: 'border-green-400'  },
+  Critical: { badge: "bg-red-500 text-white", border: "border-red-400" },
+  High: { badge: "bg-orange-500 text-white", border: "border-orange-400" },
+  Medium: { badge: "bg-yellow-500 text-white", border: "border-yellow-400" },
+  Low: { badge: "bg-green-500 text-white", border: "border-green-400" },
 };
 
 const STATUS_CONFIG = {
-  pending:       { badge: 'bg-gray-100 text-gray-600',   label: 'Pending'     },
-  'in-progress': { badge: 'bg-blue-100 text-blue-700',   label: 'In Progress' },
-  resolved:      { badge: 'bg-green-100 text-green-700', label: 'Resolved'    },
-  rejected:      { badge: 'bg-red-100 text-red-700',     label: 'Rejected'    },
+  pending: { badge: "bg-gray-100 text-gray-600", label: "Pending" },
+  "in-progress": { badge: "bg-blue-100 text-blue-700", label: "In Progress" },
+  resolved: { badge: "bg-green-100 text-green-700", label: "Resolved" },
+  rejected: { badge: "bg-red-100 text-red-700", label: "Rejected" },
 };
 
 const CATEGORY_LABEL = {
-  Road:              'Road & Infrastructure',
-  Waste:             'Sanitation & Waste',
-  Electricity:       'Electricity',
-  Water:             'Water Supply',
-  Safety:            'Public Safety',
-  Environment:       'Environment',
-  'Law Enforcement': 'Law Enforcement',
-  Other:             'Other',
+  Road: "Road & Infrastructure",
+  Waste: "Sanitation & Waste",
+  Electricity: "Electricity",
+  Water: "Water Supply",
+  Safety: "Public Safety",
+  Environment: "Environment",
+  "Law Enforcement": "Law Enforcement",
+  Other: "Other",
 };
 
 const DEPT_LABEL = {
-  public_works:    'Public Works',
-  water_authority: 'Water Authority',
-  electricity:     'Electricity Dept',
-  sanitation:      'Sanitation Dept',
-  public_safety:   'Public Safety',
-  animal_control:  'Animal Control',
+  public_works: "Public Works",
+  water_authority: "Water Authority",
+  electricity: "Electricity Dept",
+  sanitation: "Sanitation Dept",
+  public_safety: "Public Safety",
+  animal_control: "Animal Control",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 const timeAgo = (date) => {
-  if (!date) return '';
+  if (!date) return "";
   const diff = Date.now() - new Date(date).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1)  return 'just now';
-  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`;
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24)  return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+  if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
   const days = Math.floor(hrs / 24);
-  return `${days} day${days === 1 ? '' : 's'} ago`;
+  return `${days} day${days === 1 ? "" : "s"} ago`;
 };
 
 const getSlaInfo = (slaDeadline, slaDurationHours) => {
@@ -79,37 +88,47 @@ const getSlaInfo = (slaDeadline, slaDurationHours) => {
   const totalMs = slaDurationHours * 60 * 60 * 1000;
   const slaSetAt = deadline - totalMs;
   const elapsed = Math.max(0, now - slaSetAt);
-  const progress = Math.min(100, Math.max(0, Math.round((elapsed / totalMs) * 100)));
+  const progress = Math.min(
+    100,
+    Math.max(0, Math.round((elapsed / totalMs) * 100)),
+  );
   const msLeft = deadline - now;
   const hoursLeft = Math.ceil(msLeft / (1000 * 60 * 60));
   const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
   const isOverdue = msLeft <= 0;
-  const timeLabel = isOverdue ? 'Overdue' : hoursLeft <= 24 ? `${hoursLeft}h left` : `${daysLeft}d left`;
+  const timeLabel = isOverdue
+    ? "Overdue"
+    : hoursLeft <= 24
+      ? `${hoursLeft}h left`
+      : `${daysLeft}d left`;
   return { progress, daysLeft, hoursLeft, isOverdue, timeLabel };
 };
 
-const isVideo = (url) => /\.(mp4|mov|avi|webm|mkv)$/i.test(url || '');
+const isVideo = (url) => /\.(mp4|mov|avi|webm|mkv)$/i.test(url || "");
 
 const resolveUrl = (url) => {
-  if (!url) return '';
-  if (url.startsWith('http')) return url;
-  const base = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1')
-    .replace('/api/v1', '');
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  const base = (
+    import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1"
+  ).replace("/api/v1", "");
   return `${base}${url}`;
 };
 
 // ─── Timeline Icon ────────────────────────────────────────────────────
 const TimelineIcon = ({ role }) => {
-  if (role === 'system') return (
-    <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-      <Activity size={14} className="text-purple-600" />
-    </div>
-  );
-  if (role === 'field_inspector') return (
-    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-      <MessageSquare size={14} className="text-green-600" />
-    </div>
-  );
+  if (role === "system")
+    return (
+      <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+        <Activity size={14} className="text-purple-600" />
+      </div>
+    );
+  if (role === "field_inspector")
+    return (
+      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+        <MessageSquare size={14} className="text-green-600" />
+      </div>
+    );
   // officer / department_officer
   return (
     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
@@ -120,26 +139,27 @@ const TimelineIcon = ({ role }) => {
 
 // ─── Main Page ────────────────────────────────────────────────────────
 const ComplaintDetailPage = () => {
-  const { id }       = useParams();
-  const navigate     = useNavigate();
-  const { state }    = useLocation();
-  const backPath     = state?.from  || -1;
-  const backLabel    = state?.label || 'Back';
-  const isMyComplaint = state?.from === '/my-complaints';
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { state } = useLocation();
+  const backPath = state?.from || -1;
+  const backLabel = state?.label || "Back";
+  const isMyComplaint = state?.from === "/my-complaints";
 
   const [complaint, setComplaint] = useState(null);
-  const [loading,   setLoading]   = useState(true);
-  const [hasVoted,  setHasVoted]  = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(0);
 
   useEffect(() => {
-    complaintAPI.getOne(id)
+    complaintAPI
+      .getOne(id)
       .then((res) => {
         const data = res.data.data || res.data;
         setComplaint(data);
         setVoteCount(data.voteCount ?? 0);
       })
-      .catch(() => toast.error('Failed to load complaint'))
+      .catch(() => toast.error("Failed to load complaint"))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -149,43 +169,47 @@ const ComplaintDetailPage = () => {
       setHasVoted((v) => !v);
       setVoteCount((c) => (hasVoted ? c - 1 : c + 1));
     } catch {
-      toast.error('Failed to vote');
+      toast.error("Failed to vote");
     }
   };
 
   // ── Loading ──────────────────────────────────────────────────────
-  if (loading) return (
-    <DashboardLayout>
-      <div className="flex items-center justify-center py-24">
-        <div className="w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin" />
-      </div>
-    </DashboardLayout>
-  );
+  if (loading)
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-24">
+          <div className="w-10 h-10 border-4 border-teal-400 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </DashboardLayout>
+    );
 
   // ── Not found ────────────────────────────────────────────────────
-  if (!complaint) return (
-    <DashboardLayout>
-      <div className="text-center py-24">
-        <AlertCircle size={40} className="text-gray-300 mx-auto mb-3" />
-        <p className="text-gray-500 font-medium">Complaint not found</p>
-        <button
-          onClick={() => navigate(backPath)}
-          className="mt-4 text-sm text-teal-600 hover:underline"
-        >
-          Go back
-        </button>
-      </div>
-    </DashboardLayout>
-  );
+  if (!complaint)
+    return (
+      <DashboardLayout>
+        <div className="text-center py-24">
+          <AlertCircle size={40} className="text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 font-medium">
+            <T en="Complaint not found" />
+          </p>
+          <button
+            onClick={() => navigate(backPath)}
+            className="mt-4 text-sm text-teal-600 hover:underline"
+          >
+            <T en="Go back" />
+          </button>
+        </div>
+      </DashboardLayout>
+    );
 
-  const pCfg    = PRIORITY_CONFIG[complaint.priority] || PRIORITY_CONFIG.Low;
-  const sCfg    = STATUS_CONFIG[complaint.status]     || STATUS_CONFIG.pending;
-  const sla     = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
-  const isResolved = complaint.status === 'resolved';
-  const headerBorder = isResolved ? 'border-gray-200' : pCfg.border;
-  const evidence  = complaint.evidence  || [];
-  const timeline  = complaint.history   || [];
-  const hasMap    = complaint.latitude && complaint.longitude;
+  const pCfg = PRIORITY_CONFIG[complaint.priority] || PRIORITY_CONFIG.Low;
+  const sCfg = STATUS_CONFIG[complaint.status] || STATUS_CONFIG.pending;
+  const sla = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
+  const isResolved = complaint.status === "resolved";
+  const headerBorder = isResolved ? "border-gray-200" : pCfg.border;
+  const evidence = complaint.evidence || [];
+  const timeline = complaint.history || [];
+  const hasMap = complaint.latitude && complaint.longitude;
 
   return (
     <DashboardLayout>
@@ -196,21 +220,19 @@ const ComplaintDetailPage = () => {
           className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"
         >
           <ArrowLeft size={15} />
-          {backLabel}
+          <T en={backLabel} />
         </button>
         <span className="text-sm text-gray-400">
-          <T en="Viewing as:" />{' '}
+          <T en="Viewing as:" />{" "}
           <span className="font-medium text-gray-600">
-            {isMyComplaint ? 'Submitter' : 'User'}
+            <T en={isMyComplaint ? "Submitter" : "User"} />
           </span>
         </span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-
         {/* ══ Left main column ══════════════════════════════════ */}
         <div className="lg:col-span-3 flex flex-col gap-5">
-
           {/* Header card */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -221,15 +243,21 @@ const ComplaintDetailPage = () => {
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-2 flex-wrap">
                 {!isResolved && (
-                  <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}
+                  >
                     {complaint.priority}
                   </span>
                 )}
-                <span className={`px-2.5 py-0.5 rounded-md text-xs font-semibold ${sCfg.badge}`}>
-                  {sCfg.label}
+                <span
+                  className={`px-2.5 py-0.5 rounded-md text-xs font-semibold ${sCfg.badge}`}
+                >
+                  <T en={sCfg.label} />
                 </span>
                 {complaint.ticketId && (
-                  <span className="text-xs text-gray-400 font-mono">{complaint.ticketId}</span>
+                  <span className="text-xs text-gray-400 font-mono">
+                    {complaint.ticketId}
+                  </span>
                 )}
               </div>
 
@@ -237,18 +265,39 @@ const ComplaintDetailPage = () => {
                 onClick={handleVote}
                 className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border transition-all ${
                   hasVoted
-                    ? 'bg-teal-50 border-teal-300 text-teal-700'
-                    : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                    ? "bg-teal-50 border-teal-300 text-teal-700"
+                    : "border-gray-200 text-gray-500 hover:bg-gray-50"
                 }`}
               >
-                <ThumbsUp size={16} className={hasVoted ? 'text-teal-600' : 'text-gray-400'} />
-                <span className="text-base font-bold leading-none">{voteCount}</span>
-                <span className="text-[11px] text-gray-400 leading-none">Upvotes</span>
+                <ThumbsUp
+                  size={16}
+                  className={hasVoted ? "text-teal-600" : "text-gray-400"}
+                />
+                <span className="text-base font-bold leading-none">
+                  {voteCount}
+                </span>
+                <span className="text-[11px] text-gray-400 leading-none">
+                  <T en="Upvotes" />
+                </span>
               </button>
             </div>
 
             {/* Title */}
-            <h1 className="text-xl font-bold text-gray-900 mt-3 mb-2">{complaint.title}</h1>
+            <h1 className="text-xl font-bold text-gray-900 mt-3 mb-2">
+              {complaint.title}
+            </h1>
+
+            {/* Description */}
+            {complaint.description && (
+              <div className="mb-4">
+                <p className="text-xs text-gray-400 mb-1">
+                  <T en="Description" />
+                </p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  <T en={complaint.description} />
+                </p>
+              </div>
+            )}
 
             {/* Date + location */}
             <div className="flex items-center gap-4 text-sm text-gray-500 mb-5 flex-wrap">
@@ -267,17 +316,33 @@ const ComplaintDetailPage = () => {
             {/* Category + Department */}
             <div className="grid grid-cols-2 gap-5 mb-5">
               <div>
-                <p className="text-xs text-gray-400 mb-1">Category</p>
+                <p className="text-xs text-gray-400 mb-1">
+                  <T en="Category" />
+                </p>
                 <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
                   <Tag size={13} className="text-gray-400" />
-                  {CATEGORY_LABEL[complaint.category] || complaint.category || '—'}
+                  <T
+                    en={
+                      CATEGORY_LABEL[complaint.category] ||
+                      complaint.category ||
+                      "—"
+                    }
+                  />
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">Department</p>
+                <p className="text-xs text-gray-400 mb-1">
+                  <T en="Department" />
+                </p>
                 <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
                   <Building2 size={13} className="text-gray-400" />
-                  {DEPT_LABEL[complaint.department] || complaint.department || '—'}
+                  <T
+                    en={
+                      DEPT_LABEL[complaint.department] ||
+                      complaint.department ||
+                      "—"
+                    }
+                  />
                 </p>
               </div>
             </div>
@@ -289,22 +354,36 @@ const ComplaintDetailPage = () => {
                   <>
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
                       <span className="font-medium">Resolution Deadline</span>
-                      <span className={sla.isOverdue ? 'text-red-600 font-semibold' : sla.hoursLeft <= 24 ? 'text-orange-600 font-semibold' : ''}>
+                      <span
+                        className={
+                          sla.isOverdue
+                            ? "text-red-600 font-semibold"
+                            : sla.hoursLeft <= 24
+                              ? "text-orange-600 font-semibold"
+                              : ""
+                        }
+                      >
                         {sla.timeLabel}
                       </span>
                     </div>
                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${
-                          sla.isOverdue ? 'bg-red-500' :
-                          sla.hoursLeft <= 24 ? 'bg-orange-500' : 'bg-teal-600'
+                          sla.isOverdue
+                            ? "bg-red-500"
+                            : sla.hoursLeft <= 24
+                              ? "bg-orange-500"
+                              : "bg-teal-600"
                         }`}
                         style={{ width: `${sla.progress}%` }}
                       />
                     </div>
                   </>
                 ) : (
-                  <p className="text-xs text-gray-400 italic">No resolution deadline assigned yet — department review pending</p>
+                  <p className="text-xs text-gray-400 italic">
+                    No resolution deadline assigned yet — department review
+                    pending
+                  </p>
                 )}
               </div>
             )}
@@ -313,7 +392,7 @@ const ComplaintDetailPage = () => {
             {evidence.length > 0 && (
               <div>
                 <p className="text-sm font-semibold text-gray-700 mb-2">
-                  Attachments ({evidence.length})
+                  <T en="Attachments" /> ({evidence.length})
                 </p>
                 <div className="flex gap-3 flex-wrap">
                   {evidence.map((url, i) =>
@@ -341,7 +420,7 @@ const ComplaintDetailPage = () => {
                           className="w-full h-full object-cover"
                         />
                       </a>
-                    )
+                    ),
                   )}
                 </div>
               </div>
@@ -356,11 +435,13 @@ const ComplaintDetailPage = () => {
               transition={{ delay: 0.08 }}
               className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
             >
-              <h2 className="text-base font-bold text-gray-900 mb-5">Activity Timeline</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-5">
+                <T en="Activity Timeline" />
+              </h2>
               <div className="flex flex-col gap-0">
                 {timeline.map((item, i) => {
-                  const isSla = item.message?.toLowerCase().includes('sla');
-                  const role = isSla ? 'field_inspector' : 'officer';
+                  const isSla = item.message?.toLowerCase().includes("sla");
+                  const role = isSla ? "field_inspector" : "officer";
 
                   return (
                     <div key={i} className="flex gap-3">
@@ -373,7 +454,11 @@ const ComplaintDetailPage = () => {
                       <div className="flex-1 pb-5">
                         <div className="flex items-center justify-between mb-0.5">
                           <span className="text-sm font-semibold text-gray-800">
-                            {isSla ? 'SLA Update' : 'Status Update'}
+                            {isSla ? (
+                              <T en="SLA Update" />
+                            ) : (
+                              <T en="Status Update" />
+                            )}
                           </span>
                           <span className="text-xs text-gray-400">
                             {timeAgo(item.updatedAt || item.createdAt)}
@@ -397,14 +482,13 @@ const ComplaintDetailPage = () => {
           >
             <MessageSquare size={30} className="text-gray-300 mb-2" />
             <p className="text-sm text-gray-500 text-center">
-              Users can view and upvote complaints but cannot add comments
+              <T en="Users can view and upvote complaints but cannot add comments" />
             </p>
           </motion.div>
         </div>
 
         {/* ══ Right sidebar ════════════════════════════════════ */}
         <div className="lg:col-span-2 flex flex-col gap-5">
-
           {/* Location */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -412,14 +496,19 @@ const ComplaintDetailPage = () => {
             transition={{ delay: 0.05 }}
             className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"
           >
-            <h3 className="text-base font-bold text-gray-900 mb-3">Location</h3>
+            <h3 className="text-base font-bold text-gray-900 mb-3">
+              <T en="Location" />
+            </h3>
 
             {hasMap ? (
-              <div className="rounded-xl overflow-hidden mb-3 border border-gray-200" style={{ height: '160px' }}>
+              <div
+                className="rounded-xl overflow-hidden mb-3 border border-gray-200"
+                style={{ height: "160px" }}
+              >
                 <MapContainer
                   center={[complaint.latitude, complaint.longitude]}
                   zoom={15}
-                  style={{ height: '100%', width: '100%' }}
+                  style={{ height: "100%", width: "100%" }}
                   zoomControl={false}
                   scrollWheelZoom={false}
                   dragging={false}
@@ -435,17 +524,25 @@ const ComplaintDetailPage = () => {
             ) : (
               <div
                 className="rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center mb-3"
-                style={{ height: '160px' }}
+                style={{ height: "160px" }}
               >
                 <MapPin size={28} className="text-gray-300" />
               </div>
             )}
 
             {complaint.location && (
-              <p className="text-sm text-gray-700 flex items-start gap-1.5">
-                <MapPin size={13} className="text-red-500 flex-shrink-0 mt-0.5" />
-                {complaint.location}
-              </p>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">
+                  <T en="Address" />
+                </p>
+                <p className="text-sm text-gray-700 flex items-start gap-1.5">
+                  <MapPin
+                    size={13}
+                    className="text-red-500 flex-shrink-0 mt-0.5"
+                  />
+                  <T en={complaint.location} />
+                </p>
+              </div>
             )}
           </motion.div>
 
@@ -456,19 +553,33 @@ const ComplaintDetailPage = () => {
             transition={{ delay: 0.1 }}
             className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"
           >
-            <h3 className="text-base font-bold text-gray-900 mb-3">Statistics</h3>
+            <h3 className="text-base font-bold text-gray-900 mb-3">
+              <T en="Statistics" />
+            </h3>
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Public Support</span>
-                <span className="text-sm font-bold text-gray-900">{voteCount} votes</span>
+                <span className="text-sm text-gray-600">
+                  <T en="Public Support" />
+                </span>
+                <span className="text-sm font-bold text-gray-900">
+                  {voteCount} <T en="votes" />
+                </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Views</span>
-                <span className="text-sm font-bold text-gray-900">{complaint.views ?? 0}</span>
+                <span className="text-sm text-gray-600">
+                  <T en="Views" />
+                </span>
+                <span className="text-sm font-bold text-gray-900">
+                  {complaint.views ?? 0}
+                </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Similar Complaints</span>
-                <span className="text-sm font-bold text-gray-900">{complaint.similarCount ?? 0}</span>
+                <span className="text-sm text-gray-600">
+                  <T en="Similar Complaints" />
+                </span>
+                <span className="text-sm font-bold text-gray-900">
+                  {complaint.similarCount ?? 0}
+                </span>
               </div>
             </div>
           </motion.div>
@@ -480,23 +591,27 @@ const ComplaintDetailPage = () => {
             transition={{ delay: 0.15 }}
             className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"
           >
-            <h3 className="text-base font-bold text-gray-900 mb-3">Submitted By</h3>
+            <h3 className="text-base font-bold text-gray-900 mb-3">
+              <T en="Submitted By" />
+            </h3>
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
                 <User size={16} className="text-gray-500" />
               </div>
               <div>
                 {complaint.isAnonymous ? (
-                  <p className="text-sm font-medium text-gray-700">Anonymous Citizen</p>
+                  <p className="text-sm font-medium text-gray-700">
+                    <T en="Anonymous Citizen" />
+                  </p>
                 ) : (
                   <>
                     <p className="text-sm font-medium text-gray-700">
-                      {complaint.submittedBy?.name || 'Citizen'}
+                      {complaint.submittedBy?.name || <T en="Citizen" />}
                     </p>
                     {complaint.submittedBy?.isVerified && (
                       <p className="text-xs text-green-600 flex items-center gap-1 mt-0.5">
                         <CheckCircle size={10} />
-                        Verified Citizen
+                        <T en="Verified Citizen" />
                       </p>
                     )}
                   </>
@@ -504,7 +619,6 @@ const ComplaintDetailPage = () => {
               </div>
             </div>
           </motion.div>
-
         </div>
       </div>
     </DashboardLayout>

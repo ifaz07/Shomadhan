@@ -69,10 +69,9 @@ const Sidebar = () => {
     },
     { path: "/my-complaints", label: <T en="My Complaints" />, icon: FileText },
     {
-      path: "/analytics",
+      path: "/analytics/dashboard",
       label: <T en="Analytics" />,
       icon: BarChart3,
-      disabled: true,
     },
     {
       path: "/feedback",
@@ -82,7 +81,15 @@ const Sidebar = () => {
     },
   ];
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => {
+    if (path === "/analytics/dashboard") {
+      return (
+        location.pathname === "/analytics" ||
+        location.pathname === "/analytics/dashboard"
+      );
+    }
+    return location.pathname === path;
+  };
 
   const getVerificationBadge = () => {
     const status = user?.verificationDoc?.status || "none";

@@ -14,6 +14,7 @@ import HeatmapPage from "./pages/HeatmapPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import ComplaintDetailPage from "./pages/ComplaintDetailPage";
 import MyComplaintsPage from "./pages/MyComplaintsPage";
+import PublicAnalyticsPage from "./pages/PublicAnalyticsPage";
 import ServantDashboardPage from "./pages/servant/ServantDashboardPage";
 import ServantComplaintsPage from "./pages/servant/ServantComplaintsPage";
 import ServantProfilePage from "./pages/servant/ServantProfilePage";
@@ -180,6 +181,22 @@ function App() {
           element={
             <ProtectedRoute>
               <MyComplaintsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute>
+              <Navigate to="/analytics/dashboard" replace />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analytics/dashboard"
+          element={
+            <ProtectedRoute>
+              <PublicAnalyticsPage />
             </ProtectedRoute>
           }
         />
