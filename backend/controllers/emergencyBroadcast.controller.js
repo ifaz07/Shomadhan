@@ -3,7 +3,7 @@ const User = require('../models/User.model');
 
 // @desc    Create a new emergency broadcast
 // @route   POST /api/v1/emergency-broadcast
-// @access  Private (admin, servant)
+// @access  Private (admin, department_officer)
 const createBroadcast = async (req, res) => {
   try {
     const { title, message, type, severity, affectedArea, targetAudience, scheduledAt, expiresAt, attachments } = req.body;
@@ -102,7 +102,7 @@ const getBroadcast = async (req, res) => {
 
 // @desc    Update emergency broadcast
 // @route   PUT /api/v1/emergency-broadcast/:id
-// @access  Private (admin, servant)
+// @access  Private (admin, department_officer)
 const updateBroadcast = async (req, res) => {
   try {
     const { title, message, type, severity, affectedArea, targetAudience, status, expiresAt, attachments } = req.body;
@@ -143,7 +143,7 @@ const updateBroadcast = async (req, res) => {
 
 // @desc    Cancel emergency broadcast
 // @route   PATCH /api/v1/emergency-broadcast/:id/cancel
-// @access  Private (admin, servant)
+// @access  Private (admin, department_officer)
 const cancelBroadcast = async (req, res) => {
   try {
     const broadcast = await EmergencyBroadcast.findById(req.params.id);

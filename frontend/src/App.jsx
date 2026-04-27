@@ -19,7 +19,7 @@ import ServantComplaintsPage from './pages/servant/ServantComplaintsPage';
 import ServantProfilePage from './pages/servant/ServantProfilePage';
 import ServantHeatmapPage from './pages/servant/ServantHeatmapPage';
 import ServantComplaintDetailPage from './pages/servant/ServantComplaintDetailPage';
-import EmergencyBroadcastPage from './pages/EmergencyBroadcastPage';
+import ServantEmergencyBroadcastPage from './pages/servant/ServantEmergencyBroadcastPage';
 import ResourceTrackerPage from './pages/ResourceTrackerPage';
 import { useAuth } from './context/AuthContext';
 
@@ -104,7 +104,8 @@ function App() {
         <Route path="/servant/complaints/:id" element={<ServantRoute><ServantComplaintDetailPage /></ServantRoute>} />
 
         {/* ─── Emergency & Resource Management (Servants Only) ────── */}
-        <Route path="/emergency-broadcast" element={<ServantRoute><EmergencyBroadcastPage /></ServantRoute>} />
+        <Route path="/servant/emergency-notification" element={<ServantRoute><ServantEmergencyBroadcastPage /></ServantRoute>} />
+        <Route path="/emergency-broadcast" element={<Navigate to="/servant/emergency-notification" replace />} />
         <Route path="/resource-tracker" element={<ServantRoute><ResourceTrackerPage /></ServantRoute>} />
 
         {/* ─── Shared protected routes ──────────────────────────── */}

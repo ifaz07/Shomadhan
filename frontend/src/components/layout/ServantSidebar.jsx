@@ -47,7 +47,7 @@ const ServantSidebar = () => {
       icon: ClipboardList,
     },
     { path: "/servant/heatmap", label: "Heatmap", icon: LayoutDashboard },
-    { path: "/emergency-broadcast", label: "Emergency Broadcast", icon: AlertTriangle },
+    { path: "/servant/emergency-notification", label: "Emergency Notification", icon: AlertTriangle },
     { path: "/resource-tracker", label: "Resource Tracker", icon: Truck },
     { path: "/notifications", label: "Notifications", icon: Bell, badge: 0 },
   ];
