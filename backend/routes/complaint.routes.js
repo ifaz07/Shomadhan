@@ -13,12 +13,18 @@ const {
   getComplaint,
   updateComplaint,
   deleteComplaint,
+  submitFeedback,
+  getMyFeedbackForComplaint,
+  getFeedbackForComplaint,
+  getFeedbackStats,
+  getAllFeedback,
 } = require('../controllers/complaint.controller');
 
 // ── Public routes (NO auth required) ─────────────────────────────────────
 // IMPORTANT: Must come BEFORE /:id routes to prevent 'heatmap'/'nearby' matching as an ID
 router.get('/heatmap', getHeatmapData);
 router.get('/nearby', getNearbyComplaints);
+router.get('/feedback/all', protect, getAllFeedback);
 
 // ── Protected routes ──────────────────────────────────────────────────────
 router.get('/stats', protect, getPublicStats);
@@ -29,5 +35,10 @@ router.post('/:id/vote', protect, voteComplaint);
 router.get('/:id', protect, getComplaint);
 router.put('/:id', protect, updateComplaint);
 router.delete('/:id', protect, deleteComplaint);
+
+router.post('/:complaintId/feedback', protect, submitFeedback);
+router.get('/:complaintId/feedback/me', protect, getMyFeedbackForComplaint);
+router.get('/:complaintId/feedback', getFeedbackForComplaint);
+router.get('/:complaintId/feedback/stats', getFeedbackStats);
 
 module.exports = router;

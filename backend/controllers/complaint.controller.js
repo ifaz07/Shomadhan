@@ -1,9 +1,17 @@
 const Complaint = require("../models/Complaint.model");
+const mongoose = require("mongoose");
 const crypto = require("crypto");
 const { classifyComplaint } = require("../services/nlpService");
-const { checkForDuplicates, analyzePrankPotential } = require("../services/spamDetectionService");
+const {
+  checkForDuplicates,
+  analyzePrankPotential,
+} = require("../services/spamDetectionService");
 const { calculatePriority } = require("../services/priorityService");
-const { sendNotification, sendEmergencyAlertToNearbyUsers } = require("../services/notificationService");
+const {
+  sendNotification,
+  sendEmergencyAlertToNearbyUsers,
+} = require("../services/notificationService");
+const Feedback = require("../models/Feedback.model");
 
 // Helper: Generate unique ticket ID (e.g., SOM-2024-ABC12)
 const generateTicketId = () => {
@@ -74,9 +82,10 @@ const createComplaint = async (req, res, next) => {
       console.warn("[AI Prank Check] Skipped:", aiErr.message);
     }
 
-    const finalStatus = (aiStatus.is_prank && aiStatus.confidence_score >= 0.80) 
-      ? "rejected" 
-      : "pending";
+    const finalStatus =
+      aiStatus.is_prank && aiStatus.confidence_score >= 0.8
+        ? "rejected"
+        : "pending";
 
     // Auto-calculate initial priority (before votes, so voteCount = 0)
     const priority = calculatePriority({
@@ -96,7 +105,9 @@ const createComplaint = async (req, res, next) => {
       location,
       latitude: lat,
       longitude: lng,
-      user: isAnon ? null : req.user?._id,
+      // Keep the private owner link even for anonymous complaints so the
+      // citizen can still track and rate their own case after closure.
+      user: req.user?._id,
       status: finalStatus,
       priority,
       emergencyFlag: emergency,
@@ -109,12 +120,14 @@ const createComplaint = async (req, res, next) => {
     };
 
     if (finalStatus === "rejected") {
-      complaintData.history = [{
-        action: "AI Prank Detection",
-        message: `System automatically rejected this complaint as a likely prank (Confidence: ${(aiStatus.confidence_score * 100).toFixed(1)}%)`,
-        status: "rejected",
-        date: new Date()
-      }];
+      complaintData.history = [
+        {
+          action: "AI Prank Detection",
+          message: `System automatically rejected this complaint as a likely prank (Confidence: ${(aiStatus.confidence_score * 100).toFixed(1)}%)`,
+          status: "rejected",
+          date: new Date(),
+        },
+      ];
     }
 
     // ── Spam / duplicate detection ─────────────────────────────────────
@@ -166,9 +179,9 @@ const createComplaint = async (req, res, next) => {
     // Trigger Notification
     if (complaint.user) {
       await sendNotification(complaint.user, {
-        subject: 'Complaint Received: ' + complaint.ticketId,
+        subject: "Complaint Received: " + complaint.ticketId,
         message: `Your complaint "${complaint.title}" has been received and is currently pending review. Ticket ID: ${complaint.ticketId}`,
-        type: 'info',
+        type: "info",
         relatedTicket: complaint._id,
       });
     }
@@ -192,12 +205,10 @@ const analyzeComplaint = async (req, res, next) => {
   try {
     const { title, description } = req.body;
     if (!title || !description) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Both title and description are required for analysis",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Both title and description are required for analysis",
+      });
     }
     const result = await classifyComplaint(title, description);
     res.status(200).json({ success: true, data: result });
@@ -300,12 +311,10 @@ const getNearbyComplaints = async (req, res, next) => {
     const category = req.query.category;
 
     if (isNaN(lat) || isNaN(lng)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "lat and lng query params are required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "lat and lng query params are required",
+      });
     }
 
     // Rough bounding box for initial DB filter (1 deg lat ≈ 111 km)
@@ -348,12 +357,10 @@ const updateComplaint = async (req, res, next) => {
         .json({ success: false, message: "Complaint not found" });
     }
     if (complaint.user?.toString() !== req.user._id.toString()) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Not authorized to edit this complaint",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to edit this complaint",
+      });
     }
     const timeDiff = Date.now() - new Date(complaint.createdAt).getTime();
     if (timeDiff > 4 * 60 * 1000) {
@@ -418,12 +425,10 @@ const deleteComplaint = async (req, res, next) => {
       req.user.role !== "admin" &&
       complaint.user?.toString() !== req.user._id.toString()
     ) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Not authorized to delete this complaint",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to delete this complaint",
+      });
     }
     await complaint.deleteOne();
     res
@@ -454,12 +459,48 @@ const getPublicStats = async (req, res, next) => {
     };
 
     const deptStats = {
-      public_works: { total: 0, critical: 0, pending: 0, resolved: 0, inProgress: 0 },
-      water_authority: { total: 0, critical: 0, pending: 0, resolved: 0, inProgress: 0 },
-      electricity: { total: 0, critical: 0, pending: 0, resolved: 0, inProgress: 0 },
-      sanitation: { total: 0, critical: 0, pending: 0, resolved: 0, inProgress: 0 },
-      public_safety: { total: 0, critical: 0, pending: 0, resolved: 0, inProgress: 0 },
-      animal_control: { total: 0, critical: 0, pending: 0, resolved: 0, inProgress: 0 },
+      public_works: {
+        total: 0,
+        critical: 0,
+        pending: 0,
+        resolved: 0,
+        inProgress: 0,
+      },
+      water_authority: {
+        total: 0,
+        critical: 0,
+        pending: 0,
+        resolved: 0,
+        inProgress: 0,
+      },
+      electricity: {
+        total: 0,
+        critical: 0,
+        pending: 0,
+        resolved: 0,
+        inProgress: 0,
+      },
+      sanitation: {
+        total: 0,
+        critical: 0,
+        pending: 0,
+        resolved: 0,
+        inProgress: 0,
+      },
+      public_safety: {
+        total: 0,
+        critical: 0,
+        pending: 0,
+        resolved: 0,
+        inProgress: 0,
+      },
+      animal_control: {
+        total: 0,
+        critical: 0,
+        pending: 0,
+        resolved: 0,
+        inProgress: 0,
+      },
     };
 
     let total = 0,
@@ -478,17 +519,18 @@ const getPublicStats = async (req, res, next) => {
         deptStats[deptKey].total++;
         if (c.priority === "Critical") deptStats[deptKey].critical++;
         if (c.status === "pending") deptStats[deptKey].pending++;
-        if (c.status === "in-progress") { deptStats[deptKey].pending++; deptStats[deptKey].inProgress++; }
+        if (c.status === "in-progress") {
+          deptStats[deptKey].pending++;
+          deptStats[deptKey].inProgress++;
+        }
         if (c.status === "resolved") deptStats[deptKey].resolved++;
       }
     });
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        data: { total, critical, inProgress, resolved, departments: deptStats },
-      });
+    res.status(200).json({
+      success: true,
+      data: { total, critical, inProgress, resolved, departments: deptStats },
+    });
   } catch (error) {
     next(error);
   }
@@ -501,14 +543,14 @@ const PRIORITY_SORT_STAGE = {
       $switch: {
         branches: [
           // Critical + Pending gets the absolute highest weight (always on top)
-          { 
-            case: { 
+          {
+            case: {
               $and: [
                 { $eq: ["$priority", "Critical"] },
-                { $eq: ["$status", "pending"] }
-              ] 
-            }, 
-            then: 100 
+                { $eq: ["$status", "pending"] },
+              ],
+            },
+            then: 100,
           },
           // Other Critical cases
           { case: { $eq: ["$priority", "Critical"] }, then: 90 },
@@ -529,9 +571,10 @@ const PRIORITY_SORT_STAGE = {
 const getComplaints = async (req, res, next) => {
   try {
     let query = {};
+    const mineOnly = req.user.role !== "admin" && req.query.mine === "true";
 
     // Admins see everything; ?mine=true scopes to the requester's own complaints
-    if (req.user.role !== "admin" && req.query.mine === "true") {
+    if (mineOnly) {
       query = { user: req.user._id };
     }
 
@@ -551,8 +594,29 @@ const getComplaints = async (req, res, next) => {
     const complaints = await Complaint.aggregate([
       { $match: query },
       PRIORITY_SORT_STAGE,
-      { $sort: { _sortWeight: -1, createdAt: -1 } }
+      { $sort: { _sortWeight: -1, createdAt: -1 } },
     ]);
+
+    if (mineOnly && complaints.length > 0) {
+      const complaintIds = complaints.map((complaint) => complaint._id);
+      const feedbacks = await Feedback.find({
+        complaint: { $in: complaintIds },
+        user: req.user._id,
+      }).select("complaint createdAt averageRating isAnonymous");
+
+      const feedbackMap = new Map(
+        feedbacks.map((feedback) => [feedback.complaint.toString(), feedback]),
+      );
+
+      complaints.forEach((complaint) => {
+        const submittedFeedback = feedbackMap.get(complaint._id.toString());
+        complaint.feedbackSubmitted = Boolean(submittedFeedback);
+        complaint.feedbackSubmittedAt = submittedFeedback?.createdAt || null;
+        complaint.myAverageRating = submittedFeedback?.averageRating || null;
+        complaint.myFeedbackIsAnonymous =
+          submittedFeedback?.isAnonymous ?? null;
+      });
+    }
 
     res
       .status(200)
@@ -567,14 +631,259 @@ const getComplaints = async (req, res, next) => {
 // @access  Private
 const getComplaint = async (req, res, next) => {
   try {
-    const complaint = await Complaint.findById(req.params.id);
+    const complaint = await Complaint.findById(req.params.id).lean();
     if (!complaint) {
       return res
         .status(404)
         .json({ success: false, message: "Complaint not found" });
     }
+
+    const isOwner =
+      complaint.user && complaint.user.toString() === req.user._id.toString();
+
+    if (isOwner) {
+      const myFeedback = await Feedback.findOne({
+        complaint: complaint._id,
+        user: req.user._id,
+      }).select(
+        "resolutionQuality responseTime officerProfessionalism averageRating createdAt",
+      );
+
+      complaint.feedbackSubmitted = Boolean(myFeedback);
+      complaint.feedbackSubmittedAt = myFeedback?.createdAt || null;
+      complaint.myFeedback = myFeedback || null;
+    } else {
+      complaint.feedbackSubmitted = false;
+      complaint.feedbackSubmittedAt = null;
+      complaint.myFeedback = null;
+    }
+
     // Any authenticated user can view any complaint (civic transparency)
     res.status(200).json({ success: true, data: complaint });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── POST /complaints/:complaintId/feedback ──────────────────────
+const submitFeedback = async (req, res, next) => {
+  try {
+    const { complaintId } = req.params;
+    const {
+      resolutionQuality,
+      responseTime,
+      officerProfessionalism,
+      comment,
+      isAnonymous,
+    } = req.body;
+
+    // Validate complaint exists and is resolved
+    const complaint = await Complaint.findById(complaintId);
+    if (!complaint) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Complaint not found" });
+    }
+    if (complaint.status !== "resolved") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Can only rate resolved complaints" });
+    }
+
+    if (!complaint.user || complaint.user.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the citizen who submitted this complaint can rate it",
+      });
+    }
+
+    const existing = await Feedback.findOne({
+      complaint: complaintId,
+      user: req.user.id,
+    });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: "You have already rated this complaint",
+      });
+    }
+
+    // Validate ratings
+    [resolutionQuality, responseTime, officerProfessionalism].forEach(
+      (rating) => {
+        if (!rating || rating < 1 || rating > 5) {
+          throw new Error("Ratings must be between 1 and 5");
+        }
+      },
+    );
+
+    // Create feedback
+    const averageRating =
+      Math.round(
+        ((resolutionQuality + responseTime + officerProfessionalism) / 3) * 10,
+      ) / 10;
+
+    const feedbackData = {
+      complaint: complaintId,
+      resolutionQuality,
+      responseTime,
+      officerProfessionalism,
+      comment: comment?.trim() || "",
+      isAnonymous,
+      averageRating,
+    };
+
+    feedbackData.user = req.user.id;
+    if (!isAnonymous) {
+      feedbackData.userName = req.user.name;
+    } else {
+      feedbackData.userName = "Anonymous Citizen";
+    }
+
+    const feedback = await Feedback.create(feedbackData);
+
+    res.status(201).json({
+      success: true,
+      message: "Feedback submitted successfully",
+      data: feedback,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get current user's feedback status for a complaint
+// @route   GET /api/v1/complaints/:complaintId/feedback/me
+// @access  Private
+const getMyFeedbackForComplaint = async (req, res, next) => {
+  try {
+    const { complaintId } = req.params;
+
+    const complaint = await Complaint.findById(complaintId).select(
+      "status user ticketId",
+    );
+    if (!complaint) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Complaint not found" });
+    }
+
+    const isOwner =
+      complaint.user && complaint.user.toString() === req.user._id.toString();
+    const feedback = isOwner
+      ? await Feedback.findOne({
+          complaint: complaintId,
+          user: req.user._id,
+        }).select(
+          "resolutionQuality responseTime officerProfessionalism averageRating comment isAnonymous createdAt",
+        )
+      : null;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        complaintId,
+        complaintStatus: complaint.status,
+        isOwner,
+        canSubmit: isOwner && complaint.status === "resolved" && !feedback,
+        hasSubmitted: Boolean(feedback),
+        feedback,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── GET /complaints/:complaintId/feedback ──────────────────────
+const getFeedbackForComplaint = async (req, res, next) => {
+  try {
+    const { complaintId } = req.params;
+
+    const feedbacks = await Feedback.find({ complaint: complaintId })
+      .populate("user", "name avatar")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: feedbacks,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── GET /complaints/:complaintId/feedback/stats ──────────────────
+const getFeedbackStats = async (req, res, next) => {
+  try {
+    const { complaintId } = req.params;
+
+    const stats = await Feedback.aggregate([
+      { $match: { complaint: mongoose.Types.ObjectId(complaintId) } },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          avgResolutionQuality: { $avg: "$resolutionQuality" },
+          avgResponseTime: { $avg: "$responseTime" },
+          avgOfficerProfessionalism: { $avg: "$officerProfessionalism" },
+          overallRating: { $avg: "$averageRating" },
+        },
+      },
+    ]);
+
+    const result = stats[0] || {
+      count: 0,
+      avgResolutionQuality: 0,
+      avgResponseTime: 0,
+      avgOfficerProfessionalism: 0,
+      overallRating: 0,
+    };
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get all citizen feedback entries
+// @route   GET /api/v1/complaints/feedback/all
+// @access  Private
+const getAllFeedback = async (req, res, next) => {
+  try {
+    const feedbacks = await Feedback.find()
+      .populate("complaint", "ticketId title category status location")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const stats = await Feedback.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          averageRating: { $avg: "$averageRating" },
+          averageResolutionQuality: { $avg: "$resolutionQuality" },
+          averageResponseTime: { $avg: "$responseTime" },
+          averageOfficerProfessionalism: { $avg: "$officerProfessionalism" },
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      count: feedbacks.length,
+      stats: stats[0] || {
+        total: 0,
+        averageRating: 0,
+        averageResolutionQuality: 0,
+        averageResponseTime: 0,
+        averageOfficerProfessionalism: 0,
+      },
+      data: feedbacks,
+    });
   } catch (error) {
     next(error);
   }
@@ -591,4 +900,9 @@ module.exports = {
   getComplaint,
   updateComplaint,
   deleteComplaint,
+  submitFeedback,
+  getMyFeedbackForComplaint,
+  getFeedbackForComplaint,
+  getFeedbackStats,
+  getAllFeedback,
 };

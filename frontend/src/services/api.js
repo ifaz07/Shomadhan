@@ -85,6 +85,24 @@ export const complaintAPI = {
 
   // Heatmap data — all complaints with lat/lng and priority weight
   getHeatmapData: () => api.get("/complaints/heatmap"),
+
+  // Submit feedback
+  submitFeedback: (complaintId, data) =>
+    api.post(`/complaints/${complaintId}/feedback`, data),
+
+  // Get feedback
+  getFeedback: (complaintId) => api.get(`/complaints/${complaintId}/feedback`),
+
+  // Get the current user's feedback status for a complaint
+  getMyFeedback: (complaintId) =>
+    api.get(`/complaints/${complaintId}/feedback/me`),
+
+  // Get feedback stats
+  getFeedbackStats: (complaintId) =>
+    api.get(`/complaints/${complaintId}/feedback/stats`),
+
+  // Get all citizen feedback entries
+  getAllFeedback: () => api.get("/complaints/feedback/all"),
 };
 
 // ─── Servant (department officer) API calls ───────────────────────────

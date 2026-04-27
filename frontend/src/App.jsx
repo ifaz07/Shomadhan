@@ -15,6 +15,7 @@ import NotificationsPage from "./pages/NotificationsPage";
 import ComplaintDetailPage from "./pages/ComplaintDetailPage";
 import MyComplaintsPage from "./pages/MyComplaintsPage";
 import PublicAnalyticsPage from "./pages/PublicAnalyticsPage";
+import FeedbackPage from "./pages/FeedbackPage";
 import ServantDashboardPage from "./pages/servant/ServantDashboardPage";
 import ServantComplaintsPage from "./pages/servant/ServantComplaintsPage";
 import ServantProfilePage from "./pages/servant/ServantProfilePage";
@@ -181,6 +182,14 @@ function App() {
           element={
             <ProtectedRoute>
               <MyComplaintsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/feedback"
+          element={
+            <ProtectedRoute>
+              <FeedbackPage />
             </ProtectedRoute>
           }
         />

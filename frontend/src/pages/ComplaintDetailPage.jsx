@@ -151,7 +151,8 @@ const ComplaintDetailPage = () => {
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(0);
 
-  useEffect(() => {
+  const loadComplaint = () => {
+    setLoading(true);
     complaintAPI
       .getOne(id)
       .then((res) => {
@@ -161,6 +162,10 @@ const ComplaintDetailPage = () => {
       })
       .catch(() => toast.error("Failed to load complaint"))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadComplaint();
   }, [id]);
 
   const handleVote = async () => {

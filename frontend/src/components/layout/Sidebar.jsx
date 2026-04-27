@@ -77,7 +77,6 @@ const Sidebar = () => {
       path: "/feedback",
       label: <T en="Feedback" />,
       icon: MessageSquare,
-      disabled: true,
     },
   ];
 
@@ -225,11 +224,6 @@ const Sidebar = () => {
               {!isCollapsed && item.badge && (
                 <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                   {item.badge}
-                </span>
-              )}
-              {!isCollapsed && item.disabled && (
-                <span className="ml-auto text-[10px] text-gray-300 bg-gray-50 px-1.5 py-0.5 rounded">
-                  <T en="Soon" />
                 </span>
               )}
             </Link>

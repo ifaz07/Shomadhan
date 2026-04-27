@@ -1,52 +1,61 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
-  FileText, AlertTriangle, Clock, CheckCircle2,
-  ThumbsUp, MapPin, Tag, Filter, Search, Navigation, X,
-} from 'lucide-react';
-import toast from 'react-hot-toast';
-import { complaintAPI } from '../services/api';
-import DashboardLayout from '../components/layout/DashboardLayout';
-import T from '../components/T';
+  FileText,
+  AlertTriangle,
+  Clock,
+  CheckCircle2,
+  ThumbsUp,
+  MapPin,
+  Tag,
+  Filter,
+  Search,
+  Navigation,
+  X,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import { complaintAPI } from "../services/api";
+import DashboardLayout from "../components/layout/DashboardLayout";
+import T from "../components/T";
 
 // ─── Config ───────────────────────────────────────────────────────────
 const PRIORITY_CONFIG = {
-  Critical: { badge: 'bg-red-500 text-white',    border: 'border-red-400'    },
-  High:     { badge: 'bg-orange-500 text-white',  border: 'border-orange-400' },
-  Medium:   { badge: 'bg-yellow-500 text-white',  border: 'border-yellow-400' },
-  Low:      { badge: 'bg-green-500 text-white',   border: 'border-green-400'  },
+  Critical: { badge: "bg-red-500 text-white", border: "border-red-400" },
+  High: { badge: "bg-orange-500 text-white", border: "border-orange-400" },
+  Medium: { badge: "bg-yellow-500 text-white", border: "border-yellow-400" },
+  Low: { badge: "bg-green-500 text-white", border: "border-green-400" },
 };
 
 const STATUS_CONFIG = {
-  pending:       { badge: 'bg-gray-100 text-gray-600',   label: 'Pending'     },
-  'in-progress': { badge: 'bg-blue-100 text-blue-700',   label: 'In Progress' },
-  resolved:      { badge: 'bg-green-100 text-green-700', label: 'Resolved'    },
-  rejected:      { badge: 'bg-red-100 text-red-700',     label: 'Rejected'    },
+  pending: { badge: "bg-gray-100 text-gray-600", label: "Pending" },
+  "in-progress": { badge: "bg-blue-100 text-blue-700", label: "In Progress" },
+  resolved: { badge: "bg-green-100 text-green-700", label: "Resolved" },
+  rejected: { badge: "bg-red-100 text-red-700", label: "Rejected" },
 };
 
 const CATEGORY_LABEL = {
-  Road:              'Road & Infrastructure',
-  Waste:             'Sanitation & Waste',
-  Electricity:       'Electricity',
-  Water:             'Water Supply',
-  Safety:            'Public Safety',
-  Environment:       'Environment',
-  'Law Enforcement': 'Law Enforcement',
-  Other:             'Other',
+  Road: "Road & Infrastructure",
+  Waste: "Sanitation & Waste",
+  Electricity: "Electricity",
+  Water: "Water Supply",
+  Safety: "Public Safety",
+  Environment: "Environment",
+  "Law Enforcement": "Law Enforcement",
+  Other: "Other",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 const timeAgo = (date) => {
-  if (!date) return '';
+  if (!date) return "";
   const diff = Date.now() - new Date(date).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1)  return 'just now';
-  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`;
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24)  return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+  if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
   const days = Math.floor(hrs / 24);
-  return `${days} day${days === 1 ? '' : 's'} ago`;
+  return `${days} day${days === 1 ? "" : "s"} ago`;
 };
 
 const getSlaInfo = (slaDeadline, slaDurationHours) => {
@@ -56,7 +65,10 @@ const getSlaInfo = (slaDeadline, slaDurationHours) => {
   const totalMs = slaDurationHours * 60 * 60 * 1000;
   const slaSetAt = deadline - totalMs;
   const elapsed = Math.max(0, now - slaSetAt);
-  const progress = Math.min(100, Math.max(0, Math.round((elapsed / totalMs) * 100)));
+  const progress = Math.min(
+    100,
+    Math.max(0, Math.round((elapsed / totalMs) * 100)),
+  );
   const msLeft = deadline - now;
   const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
   const isOverdue = msLeft <= 0;
@@ -76,7 +88,9 @@ const StatCard = ({ icon: Icon, label, value, color, bg, delay }) => (
         <p className="text-sm text-gray-500">{label}</p>
         <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
       </div>
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${bg}`}>
+      <div
+        className={`w-12 h-12 rounded-xl flex items-center justify-center ${bg}`}
+      >
         <Icon size={22} className={color} />
       </div>
     </div>
@@ -86,10 +100,10 @@ const StatCard = ({ icon: Icon, label, value, color, bg, delay }) => (
 // ─── Complaint Card ───────────────────────────────────────────────────
 const ComplaintCard = ({ complaint, index, onClick }) => {
   const pCfg = PRIORITY_CONFIG[complaint.priority] || PRIORITY_CONFIG.Low;
-  const sCfg = STATUS_CONFIG[complaint.status]    || STATUS_CONFIG.pending;
-  const sla  = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
-  const isResolved = complaint.status === 'resolved';
-  const cardBorder = isResolved ? 'border-gray-200' : pCfg.border;
+  const sCfg = STATUS_CONFIG[complaint.status] || STATUS_CONFIG.pending;
+  const sla = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
+  const isResolved = complaint.status === "resolved";
+  const cardBorder = isResolved ? "border-gray-200" : pCfg.border;
 
   return (
     <motion.div
@@ -105,20 +119,28 @@ const ComplaintCard = ({ complaint, index, onClick }) => {
           {/* Badges row */}
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             {!isResolved && (
-              <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>
+              <span
+                className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}
+              >
                 {complaint.priority}
               </span>
             )}
-            <span className={`px-2.5 py-0.5 rounded-md text-xs font-semibold ${sCfg.badge}`}>
+            <span
+              className={`px-2.5 py-0.5 rounded-md text-xs font-semibold ${sCfg.badge}`}
+            >
               {sCfg.label}
             </span>
             {complaint.ticketId && (
-              <span className="text-xs text-gray-400 font-mono">{complaint.ticketId}</span>
+              <span className="text-xs text-gray-400 font-mono">
+                {complaint.ticketId}
+              </span>
             )}
           </div>
 
           {/* Title */}
-          <h3 className="font-bold text-gray-900 text-base mb-1.5 truncate">{complaint.title}</h3>
+          <h3 className="font-bold text-gray-900 text-base mb-1.5 truncate">
+            {complaint.title}
+          </h3>
 
           {/* Meta row */}
           <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
@@ -143,24 +165,32 @@ const ComplaintCard = ({ complaint, index, onClick }) => {
             <div className="mt-3">
               <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                 <span>
-                  SLA Deadline:{' '}
-                  {sla.isOverdue ? 'Overdue' : `${sla.daysLeft} day${sla.daysLeft === 1 ? '' : 's'} left`}
+                  SLA Deadline:{" "}
+                  {sla.isOverdue
+                    ? "Overdue"
+                    : `${sla.daysLeft} day${sla.daysLeft === 1 ? "" : "s"} left`}
                 </span>
                 <span>{sla.progress}%</span>
               </div>
               <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${
-                    sla.isOverdue ? 'bg-red-500' :
-                    sla.daysLeft <= 1 ? 'bg-red-500' :
-                    sla.daysLeft <= 3 ? 'bg-orange-500' : 'bg-gray-800'
+                    sla.isOverdue
+                      ? "bg-red-500"
+                      : sla.daysLeft <= 1
+                        ? "bg-red-500"
+                        : sla.daysLeft <= 3
+                          ? "bg-orange-500"
+                          : "bg-gray-800"
                   }`}
                   style={{ width: `${sla.progress}%` }}
                 />
               </div>
             </div>
           ) : !isResolved ? (
-            <p className="mt-3 text-xs text-gray-400 italic">No deadline assigned yet</p>
+            <p className="mt-3 text-xs text-gray-400 italic">
+              No deadline assigned yet
+            </p>
           ) : null}
         </div>
 
@@ -179,22 +209,28 @@ const ComplaintCard = ({ complaint, index, onClick }) => {
 
 // ─── Dashboard Page ───────────────────────────────────────────────────
 const DashboardPage = () => {
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
   const debounceRef = useRef(null);
 
-  const [stats, setStats]           = useState({ total: 0, critical: 0, inProgress: 0, resolved: 0 });
+  const [stats, setStats] = useState({
+    total: 0,
+    critical: 0,
+    inProgress: 0,
+    resolved: 0,
+  });
   const [complaints, setComplaints] = useState([]);
-  const [loading, setLoading]       = useState(true);
+  const [loading, setLoading] = useState(true);
   const [listLoading, setListLoading] = useState(false);
 
-  const [priorityFilter, setPriorityFilter] = useState('All');
-  const [statusFilter,   setStatusFilter]   = useState('All');
-  const [locationSearch, setLocationSearch] = useState('');
-  const [nearMode, setNearMode]             = useState(false); // GPS near-me mode
+  const [priorityFilter, setPriorityFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [locationSearch, setLocationSearch] = useState("");
+  const [nearMode, setNearMode] = useState(false); // GPS near-me mode
 
   // Fetch stats once on mount
   useEffect(() => {
-    complaintAPI.getStats()
+    complaintAPI
+      .getStats()
       .then((r) => setStats(r.data.data || {}))
       .catch(() => {});
   }, []);
@@ -207,16 +243,17 @@ const DashboardPage = () => {
     const doFetch = () => {
       setListLoading(true);
       const params = {};
-      if (priorityFilter !== 'All') params.priority = priorityFilter;
-      if (statusFilter   !== 'All') params.status   = statusFilter;
-      if (locationSearch.trim())    params.location  = locationSearch.trim();
+      if (priorityFilter !== "All") params.priority = priorityFilter;
+      if (statusFilter !== "All") params.status = statusFilter;
+      if (locationSearch.trim()) params.location = locationSearch.trim();
 
-      complaintAPI.getAll(params)
+      complaintAPI
+        .getAll(params)
         .then((r) => {
           const raw = r.data.data;
           setComplaints(Array.isArray(raw) ? raw : raw?.complaints || []);
         })
-        .catch(() => toast.error('Failed to load complaints'))
+        .catch(() => toast.error("Failed to load complaints"))
         .finally(() => {
           setLoading(false);
           setListLoading(false);
@@ -236,7 +273,7 @@ const DashboardPage = () => {
   // "Near Me" — get GPS then call /complaints/nearby
   const handleNearMe = () => {
     if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
+      toast.error("Geolocation is not supported by your browser");
       return;
     }
     setNearMode(true);
@@ -244,26 +281,29 @@ const DashboardPage = () => {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        complaintAPI.getNearby(latitude, longitude, 5) // 5 km radius
+        complaintAPI
+          .getNearby(latitude, longitude, 5) // 5 km radius
           .then((r) => {
             const raw = r.data.data;
             setComplaints(Array.isArray(raw) ? raw : []);
-            toast.success('Showing complaints within 5 km of you');
+            toast.success("Showing complaints within 5 km of you");
           })
-          .catch(() => toast.error('Failed to fetch nearby complaints'))
+          .catch(() => toast.error("Failed to fetch nearby complaints"))
           .finally(() => setListLoading(false));
       },
       () => {
-        toast.error('Could not get your location. Please allow location access.');
+        toast.error(
+          "Could not get your location. Please allow location access.",
+        );
         setNearMode(false);
         setListLoading(false);
-      }
+      },
     );
   };
 
   const clearNearMe = () => {
     setNearMode(false);
-    setLocationSearch('');
+    setLocationSearch("");
   };
 
   const filtered = complaints; // filtering is now done server-side
@@ -273,20 +313,36 @@ const DashboardPage = () => {
       {/* ─── Stat Cards ─────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
-          icon={FileText}      label={<T en="Total Complaints" />}
-          value={stats.total}      color="text-blue-600"  bg="bg-blue-50"  delay={0.05}
+          icon={FileText}
+          label={<T en="Total Complaints" />}
+          value={stats.total}
+          color="text-blue-600"
+          bg="bg-blue-50"
+          delay={0.05}
         />
         <StatCard
-          icon={AlertTriangle} label={<T en="Critical" />}
-          value={stats.critical}   color="text-red-600"   bg="bg-red-50"   delay={0.1}
+          icon={AlertTriangle}
+          label={<T en="Critical" />}
+          value={stats.critical}
+          color="text-red-600"
+          bg="bg-red-50"
+          delay={0.1}
         />
         <StatCard
-          icon={Clock}         label={<T en="In Progress" />}
-          value={stats.inProgress} color="text-blue-600"  bg="bg-blue-50"  delay={0.15}
+          icon={Clock}
+          label={<T en="In Progress" />}
+          value={stats.inProgress}
+          color="text-blue-600"
+          bg="bg-blue-50"
+          delay={0.15}
         />
         <StatCard
-          icon={CheckCircle2}  label={<T en="Resolved" />}
-          value={stats.resolved}   color="text-green-600" bg="bg-green-50" delay={0.2}
+          icon={CheckCircle2}
+          label={<T en="Resolved" />}
+          value={stats.resolved}
+          color="text-green-600"
+          bg="bg-green-50"
+          delay={0.2}
         />
       </div>
 
@@ -304,7 +360,10 @@ const DashboardPage = () => {
 
         <select
           value={priorityFilter}
-          onChange={(e) => { setPriorityFilter(e.target.value); setNearMode(false); }}
+          onChange={(e) => {
+            setPriorityFilter(e.target.value);
+            setNearMode(false);
+          }}
           className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
         >
           <option value="All">All Priorities</option>
@@ -316,7 +375,10 @@ const DashboardPage = () => {
 
         <select
           value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setNearMode(false); }}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setNearMode(false);
+          }}
           className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
         >
           <option value="All">All Status</option>
@@ -338,7 +400,10 @@ const DashboardPage = () => {
               className="text-sm text-gray-700 outline-none bg-transparent w-36 placeholder-gray-400"
             />
             {locationSearch && (
-              <button onClick={() => setLocationSearch('')} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={() => setLocationSearch("")}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <X size={13} />
               </button>
             )}
@@ -369,8 +434,8 @@ const DashboardPage = () => {
           {listLoading && (
             <span className="w-4 h-4 border-2 border-teal-400 border-t-transparent rounded-full animate-spin inline-block" />
           )}
-          <T en="Showing" />{' '}
-          <span className="font-medium text-gray-700">{filtered.length}</span>{' '}
+          <T en="Showing" />{" "}
+          <span className="font-medium text-gray-700">{filtered.length}</span>{" "}
           <T en="complaints" />
         </span>
       </motion.div>
@@ -388,10 +453,14 @@ const DashboardPage = () => {
         >
           <FileText size={32} className="text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">
-            {complaints.length === 0 ? 'No complaints submitted yet' : 'No complaints match your filters'}
+            {complaints.length === 0
+              ? "No complaints submitted yet"
+              : "No complaints match your filters"}
           </p>
           {complaints.length > 0 && (
-            <p className="text-sm text-gray-400 mt-1">Try adjusting the filters above</p>
+            <p className="text-sm text-gray-400 mt-1">
+              Try adjusting the filters above
+            </p>
           )}
         </motion.div>
       ) : (
