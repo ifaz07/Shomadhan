@@ -1,8 +1,0 @@
-flask
-pymongo
-celery
-redis
-firebase-admin
-resend
-requests
-python-dotenv
