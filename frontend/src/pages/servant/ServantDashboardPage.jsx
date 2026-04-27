@@ -111,22 +111,26 @@ const DepartmentComplaintCard = ({ complaint, index }) => {
   const pCfg = PRIORITY_CONFIG[complaint.priority] || PRIORITY_CONFIG.Low;
   const sCfg = STATUS_STYLE[complaint.status] || STATUS_STYLE.pending;
   const sla  = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
+  const isResolved = complaint.status === "resolved";
+  const cardBorder = isResolved ? "border-gray-200" : pCfg.border;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04 }}
-      className={`bg-white rounded-2xl p-5 shadow-sm border-2 ${pCfg.border} hover:shadow-md transition-all duration-200`}
+      className={`bg-white rounded-2xl p-5 shadow-sm border-2 ${cardBorder} hover:shadow-md transition-all duration-200`}
     >
       <div className="flex items-start gap-4">
         {/* Main content */}
         <div className="flex-1 min-w-0">
           {/* Badges row */}
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>
-              {complaint.priority}
-            </span>
+            {!isResolved && (
+              <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>
+                {complaint.priority}
+              </span>
+            )}
             <span className={`px-2.5 py-0.5 rounded-md text-xs font-semibold ${sCfg.bg} ${sCfg.text}`}>
               {sCfg.label}
             </span>
@@ -162,7 +166,7 @@ const DepartmentComplaintCard = ({ complaint, index }) => {
           </div>
 
           {/* SLA bar */}
-          {sla ? (
+          {sla && !isResolved ? (
             <div className="mt-3">
               <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                 <span className={sla.isOverdue ? "text-red-600 font-medium" : sla.hoursLeft <= 24 ? "text-orange-600 font-medium" : ""}>
@@ -177,11 +181,11 @@ const DepartmentComplaintCard = ({ complaint, index }) => {
                 />
               </div>
             </div>
-          ) : (
+          ) : !isResolved ? (
             <p className="mt-3 text-xs text-gray-400 italic">
               No deadline set — awaiting department review
             </p>
-          )}
+          ) : null}
 
           {/* Link */}
           <Link

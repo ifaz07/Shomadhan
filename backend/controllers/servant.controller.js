@@ -109,6 +109,36 @@ const getDepartmentComplaints = async (req, res, next) => {
   }
 };
 
+// @desc    Get a single complaint for the officer's department with reporter details
+// @route   GET /api/v1/servant/complaints/:id
+// @access  Private (department_officer only)
+const getDepartmentComplaintById = async (req, res, next) => {
+  try {
+    const complaint = await Complaint.findById(req.params.id).populate({
+      path: "user",
+      select: "name email phone avatar presentAddress isVerified",
+    });
+
+    if (!complaint) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Complaint not found" });
+    }
+
+    const categories = DEPT_CATEGORY_MAP[req.user.department] || [];
+    if (!categories.includes(complaint.category)) {
+      return res.status(403).json({
+        success: false,
+        message: "This complaint does not belong to your department.",
+      });
+    }
+
+    res.status(200).json({ success: true, data: complaint });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Assign or update SLA for a department complaint
 // @route   PUT /api/v1/servant/complaints/:id/sla
 // @access  Private (department_officer only)
@@ -143,6 +173,13 @@ const setComplaintSLA = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: `Cannot update SLA for a '${complaint.status}' complaint.`,
+      });
+    }
+
+    if (complaint.slaDeadline && new Date(complaint.slaDeadline).getTime() > Date.now()) {
+      return res.status(400).json({
+        success: false,
+        message: "The deadline is already active and cannot be updated until the current time window is over.",
       });
     }
 
@@ -315,6 +352,7 @@ const updateComplaintStatus = async (req, res, next) => {
 
 module.exports = {
   getDepartmentComplaints,
+  getDepartmentComplaintById,
   getDepartmentStats,
   updateComplaintStatus,
   setComplaintSLA,

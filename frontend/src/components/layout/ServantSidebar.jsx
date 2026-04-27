@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -14,6 +14,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { notificationAPI } from "../../services/api";
 
 const DEPT_DISPLAY = {
   public_works: "Public Works",
@@ -33,6 +34,23 @@ const ServantSidebar = () => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await notificationAPI.getAll();
+        const unread = res.data.data.filter((n) => !n.isRead).length;
+        setUnreadCount(unread);
+      } catch (err) {
+        console.error("Failed to fetch unread count:", err);
+      }
+    };
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, [location.pathname]);
 
   const deptLabel = DEPT_DISPLAY[user?.department] || "Department";
 
@@ -44,7 +62,12 @@ const ServantSidebar = () => {
       label: "Department Complaints",
       icon: ClipboardList,
     },
-    { path: "/notifications", label: "Notifications", icon: Bell, badge: 0 },
+    {
+      path: "/servant/notifications",
+      label: "Notifications",
+      icon: Bell,
+      badge: unreadCount > 0 ? unreadCount : null,
+    },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -124,7 +147,7 @@ const ServantSidebar = () => {
               )}
               <Icon size={18} className={active ? "text-blue-600" : ""} />
               {!isCollapsed && <span>{item.label}</span>}
-              {!isCollapsed && item.badge > 0 && (
+              {!isCollapsed && item.badge && (
                 <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                   {item.badge}
                 </span>

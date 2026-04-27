@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, MapPin, Clock, Tag, Building2, ThumbsUp,
   CheckCircle, Activity, MessageSquare, AlertCircle,
-  Shield, Timer, X, Loader2,
+  Shield, Timer, X, Loader2, Mail, Phone, UserCircle,
   Video as VideoIcon,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
@@ -13,7 +13,7 @@ import "leaflet/dist/leaflet.css";
 import markerIconUrl from "leaflet/dist/images/marker-icon.png";
 import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
 import toast from "react-hot-toast";
-import { complaintAPI, servantAPI } from "../../services/api";
+import { servantAPI } from "../../services/api";
 import ServantLayout from "../../components/layout/ServantLayout";
 import T from "../../components/T";
 
@@ -148,7 +148,7 @@ const ServantComplaintDetailPage = () => {
   const [slaSaving, setSlaSaving] = useState(false);
 
   useEffect(() => {
-    complaintAPI.getOne(id)
+    servantAPI.getComplaint(id)
       .then((res) => {
         const data = res.data.data || res.data;
         setComplaint(data);
@@ -158,6 +158,10 @@ const ServantComplaintDetailPage = () => {
   }, [id]);
 
   const isClosed = complaint?.status === "resolved" || complaint?.status === "rejected";
+  const isResolved = complaint?.status === "resolved";
+  const hasActiveDeadline = Boolean(
+    complaint?.slaDeadline && new Date(complaint.slaDeadline).getTime() > Date.now()
+  );
 
   // ── Status update ──────────────────────────────────────────────
   const handleStatusSave = async () => {
@@ -243,10 +247,14 @@ const ServantComplaintDetailPage = () => {
   const pCfg     = PRIORITY_CONFIG[complaint.priority] || PRIORITY_CONFIG.Low;
   const sCfg     = STATUS_CONFIG[complaint.status]     || STATUS_CONFIG.pending;
   const sla      = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
+  const headerBorder = isResolved ? "border-gray-200" : pCfg.border;
   const evidence = complaint.evidence  || [];
   const timeline = complaint.history   || [];
   const hasMap   = complaint.latitude && complaint.longitude;
   const deptName = CATEGORY_TO_DEPT[complaint.category] || "General Administration";
+  const reporter = complaint.user;
+  const reporterAddress = reporter?.presentAddress?.address || "";
+  const reporterAvatar = resolveUrl(reporter?.avatar);
 
   const allowedNext = {
     pending:       ["in-progress", "rejected"],
@@ -281,15 +289,17 @@ const ServantComplaintDetailPage = () => {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`bg-white rounded-2xl shadow-sm border-2 ${pCfg.border} overflow-hidden`}
+            className={`bg-white rounded-2xl shadow-sm border-2 ${headerBorder} overflow-hidden`}
           >
             {/* Coloured header strip */}
             <div className={`${pCfg.headerBg} px-6 py-4 border-b border-gray-100`}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>
-                    {complaint.priority}
-                  </span>
+                  {!isResolved && (
+                    <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>
+                      {complaint.priority}
+                    </span>
+                  )}
                   <span className={`px-2.5 py-0.5 rounded-md text-xs font-semibold ${sCfg.badge}`}>
                     {sCfg.label}
                   </span>
@@ -351,37 +361,39 @@ const ServantComplaintDetailPage = () => {
               </div>
 
               {/* SLA bar */}
-              <div className="mb-5">
-                {sla ? (
-                  <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                    <div className="flex items-center justify-between text-xs mb-2">
-                      <span className="font-semibold text-blue-800 flex items-center gap-1.5">
-                        <Timer size={12} /> <T en="Resolution Deadline" />
-                      </span>
-                      <span className={`font-semibold ${sla.isOverdue ? "text-red-600" : sla.hoursLeft <= 24 ? "text-orange-600" : "text-blue-700"}`}>
-                        {sla.timeLabel} · <span className="text-gray-500 font-normal">{sla.deadlineStr}</span>
-                      </span>
+              {!isResolved && (
+                <div className="mb-5">
+                  {sla ? (
+                    <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                      <div className="flex items-center justify-between text-xs mb-2">
+                        <span className="font-semibold text-blue-800 flex items-center gap-1.5">
+                          <Timer size={12} /> <T en="Resolution Deadline" />
+                        </span>
+                        <span className={`font-semibold ${sla.isOverdue ? "text-red-600" : sla.hoursLeft <= 24 ? "text-orange-600" : "text-blue-700"}`}>
+                          {sla.timeLabel} · <span className="text-gray-500 font-normal">{sla.deadlineStr}</span>
+                        </span>
+                      </div>
+                      <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            sla.isOverdue ? "bg-red-500" :
+                            sla.hoursLeft <= 24 ? "bg-orange-500" : "bg-teal-600"
+                          }`}
+                          style={{ width: `${sla.progress}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">{sla.progress}% elapsed of {complaint.slaDurationHours}h window</p>
                     </div>
-                    <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          sla.isOverdue ? "bg-red-500" :
-                          sla.hoursLeft <= 24 ? "bg-orange-500" : "bg-teal-600"
-                        }`}
-                        style={{ width: `${sla.progress}%` }}
-                      />
+                  ) : (
+                    <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 flex items-center gap-2">
+                      <Timer size={14} className="text-amber-500 flex-shrink-0" />
+                      <p className="text-sm text-amber-700 font-medium">
+                        <T en="No resolution deadline set yet" />
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">{sla.progress}% elapsed of {complaint.slaDurationHours}h window</p>
-                  </div>
-                ) : (
-                  <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 flex items-center gap-2">
-                    <Timer size={14} className="text-amber-500 flex-shrink-0" />
-                    <p className="text-sm text-amber-700 font-medium">
-                      <T en="No resolution deadline set yet" />
-                    </p>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {/* ── Officer Action Buttons (inside card) ── */}
               {!isClosed ? (
@@ -397,8 +409,19 @@ const ServantComplaintDetailPage = () => {
                     </span>
                   </button>
                   <button
-                    onClick={() => setSlaOpen(true)}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm"
+                    onClick={() => {
+                      if (hasActiveDeadline) {
+                        toast.error("The current deadline is still active. You can update it after the time is over.");
+                        return;
+                      }
+                      setSlaOpen(true);
+                    }}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm ${
+                      hasActiveDeadline
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-teal-600 hover:bg-teal-700"
+                    }`}
+                    disabled={hasActiveDeadline}
                   >
                     <Timer size={15} />
                     {sla ? <T en="Update Deadline" /> : <T en="Set Deadline" />}
@@ -531,12 +554,22 @@ const ServantComplaintDetailPage = () => {
                 <span className="text-gray-500"><T en="Priority" /></span>
                 <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>{complaint.priority}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500"><T en="Deadline" /></span>
-                <span className={`text-xs font-semibold ${!sla ? "text-amber-600" : sla.isOverdue ? "text-red-600" : sla.hoursLeft <= 24 ? "text-orange-600" : "text-teal-700"}`}>
-                  {sla ? sla.timeLabel : "Not set"}
-                </span>
-              </div>
+              {!isResolved && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500"><T en="Deadline" /></span>
+                    <span className={`text-xs font-semibold ${!sla ? "text-amber-600" : sla.isOverdue ? "text-red-600" : sla.hoursLeft <= 24 ? "text-orange-600" : "text-teal-700"}`}>
+                      {sla ? sla.timeLabel : "Not set"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500"><T en="Deadline Edit" /></span>
+                    <span className={`text-xs font-semibold ${hasActiveDeadline ? "text-gray-500" : "text-teal-700"}`}>
+                      {hasActiveDeadline ? "Locked until expiry" : "Available"}
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-gray-500"><T en="Submitted" /></span>
                 <span className="text-gray-700 text-xs">{timeAgo(complaint.createdAt)}</span>
@@ -595,24 +628,57 @@ const ServantComplaintDetailPage = () => {
           >
             <h3 className="text-sm font-bold text-gray-900 mb-3"><T en="Submitted By" /></h3>
             <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <CheckCircle size={16} className="text-blue-500" />
-              </div>
+              {reporterAvatar && !complaint.isAnonymous ? (
+                <img
+                  src={reporterAvatar}
+                  alt={reporter?.name || "Citizen"}
+                  className="w-10 h-10 rounded-full object-cover border border-blue-100 flex-shrink-0"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle size={16} className="text-blue-500" />
+                </div>
+              )}
               <div>
                 {complaint.isAnonymous ? (
                   <p className="text-sm font-medium text-gray-700"><T en="Anonymous Citizen" /></p>
                 ) : (
                   <>
                     <p className="text-sm font-medium text-gray-700">
-                      {complaint.user?.name || complaint.submittedBy?.name || "Citizen"}
+                      {reporter?.name || "Citizen"}
                     </p>
                     <p className="text-xs text-gray-400">
-                      {complaint.user?.email || complaint.submittedBy?.email || ""}
+                      {reporter?.email || ""}
                     </p>
                   </>
                 )}
               </div>
             </div>
+            {!complaint.isAnonymous && (
+              <div className="space-y-2 mb-3">
+                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                  <p className="text-xs text-gray-400 mb-1"><T en="Reporter Contact" /></p>
+                  <div className="space-y-1.5 text-sm text-gray-700">
+                    <p className="flex items-center gap-2">
+                      <Mail size={13} className="text-gray-400 flex-shrink-0" />
+                      <span>{reporter?.email || "Not provided"}</span>
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <Phone size={13} className="text-gray-400 flex-shrink-0" />
+                      <span>{reporter?.phone || "Not provided"}</span>
+                    </p>
+                    <p className="flex items-start gap-2">
+                      <MapPin size={13} className="text-gray-400 flex-shrink-0 mt-0.5" />
+                      <span>{reporterAddress || "Address not provided"}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700 flex items-start gap-2">
+                  <UserCircle size={14} className="flex-shrink-0 mt-0.5" />
+                  <span>This reporter information is visible only to the responsible department handling this complaint.</span>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                 <p className="text-xs text-gray-400 mb-0.5"><T en="Public Support" /></p>
@@ -709,7 +775,7 @@ const ServantComplaintDetailPage = () => {
 
       {/* ══ SLA Modal ════════════════════════════════════════════ */}
       <AnimatePresence>
-        {slaOpen && (
+        {slaOpen && !hasActiveDeadline && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

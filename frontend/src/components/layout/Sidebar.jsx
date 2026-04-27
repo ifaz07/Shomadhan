@@ -21,10 +21,12 @@ import { notificationAPI } from "../../services/api";
 import LanguageToggle from "../LanguageToggle";
 import T from "../T";
 
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1').replace('/api/v1', '');
+const API_BASE = (
+  import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1"
+).replace("/api/v1", "");
 const resolveAvatar = (url) => {
   if (!url) return null;
-  return url.startsWith('http') ? url : `${API_BASE}${url}`;
+  return url.startsWith("http") ? url : `${API_BASE}${url}`;
 };
 
 const Sidebar = () => {
@@ -38,7 +40,7 @@ const Sidebar = () => {
     const fetchUnread = async () => {
       try {
         const res = await notificationAPI.getAll();
-        const unread = res.data.data.filter(n => !n.isRead).length;
+        const unread = res.data.data.filter((n) => !n.isRead).length;
         setUnreadCount(unread);
       } catch (err) {
         console.error("Failed to fetch unread count:", err);
@@ -51,14 +53,33 @@ const Sidebar = () => {
   }, [location.pathname]);
 
   const navItems = [
-    { path: "/profile",          label: <T en="My Profile" />,        icon: User },
-    { path: "/dashboard",        label: <T en="Dashboard" />,         icon: LayoutDashboard },
-    { path: "/submit-complaint", label: <T en="Submit Complaint" />,  icon: PlusCircle },
-    { path: "/heatmap",          label: <T en="Complaint Heatmap" />, icon: Map },
-    { path: "/notifications",    label: <T en="Notifications" />,     icon: Bell, badge: unreadCount > 0 ? unreadCount : null },
-    { path: "/my-complaints",    label: <T en="My Complaints" />,     icon: FileText },
-    { path: "/analytics",        label: <T en="Analytics" />,         icon: BarChart3,     disabled: true },
-    { path: "/feedback",         label: <T en="Feedback" />,          icon: MessageSquare, disabled: true },
+    { path: "/profile", label: <T en="My Profile" />, icon: User },
+    { path: "/dashboard", label: <T en="Dashboard" />, icon: LayoutDashboard },
+    {
+      path: "/submit-complaint",
+      label: <T en="Submit Complaint" />,
+      icon: PlusCircle,
+    },
+    { path: "/heatmap", label: <T en="Complaint Heatmap" />, icon: Map },
+    {
+      path: "/notifications",
+      label: <T en="Notifications" />,
+      icon: Bell,
+      badge: unreadCount > 0 ? unreadCount : null,
+    },
+    { path: "/my-complaints", label: <T en="My Complaints" />, icon: FileText },
+    {
+      path: "/analytics",
+      label: <T en="Analytics" />,
+      icon: BarChart3,
+      disabled: true,
+    },
+    {
+      path: "/feedback",
+      label: <T en="Feedback" />,
+      icon: MessageSquare,
+      disabled: true,
+    },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -66,10 +87,22 @@ const Sidebar = () => {
   const getVerificationBadge = () => {
     const status = user?.verificationDoc?.status || "none";
     const map = {
-      none:     { color: "bg-gray-100 text-gray-500",    label: <T en="Not Verified" /> },
-      pending:  { color: "bg-yellow-100 text-yellow-700",label: <T en="Pending" /> },
-      approved: { color: "bg-green-100 text-green-700",  label: <T en="Verified" /> },
-      rejected: { color: "bg-red-100 text-red-700",      label: <T en="Rejected" /> },
+      none: {
+        color: "bg-gray-100 text-gray-500",
+        label: <T en="Not Verified" />,
+      },
+      pending: {
+        color: "bg-yellow-100 text-yellow-700",
+        label: <T en="Pending" />,
+      },
+      approved: {
+        color: "bg-green-100 text-green-700",
+        label: <T en="Verified" />,
+      },
+      rejected: {
+        color: "bg-red-100 text-red-700",
+        label: <T en="Rejected" />,
+      },
     };
     return map[status];
   };
@@ -83,11 +116,15 @@ const Sidebar = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center flex-shrink-0">
-              <span className="text-lg font-bold text-white font-bengali">স</span>
+              <span className="text-lg font-bold text-white font-bengali">
+                স
+              </span>
             </div>
             {!isCollapsed && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <h1 className="text-lg font-bold text-gray-900 font-bengali">সমাধান</h1>
+                <h1 className="text-lg font-bold text-gray-900 font-bengali">
+                  সমাধান
+                </h1>
                 <p className="text-[10px] text-gray-400 -mt-0.5">Somadhan</p>
               </motion.div>
             )}
@@ -101,13 +138,17 @@ const Sidebar = () => {
         to="/profile"
         onClick={() => setIsOpen(false)}
         className={`p-4 border-b border-gray-100 block transition-colors ${
-          isActive("/profile") ? "bg-gradient-to-r from-teal-50 to-blue-50" : "hover:bg-gray-50"
+          isActive("/profile")
+            ? "bg-gradient-to-r from-teal-50 to-blue-50"
+            : "hover:bg-gray-50"
         }`}
       >
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full flex-shrink-0 ring-2 transition-all overflow-hidden ${
-            isActive("/profile") ? "ring-teal-400" : "ring-transparent"
-          }`}>
+          <div
+            className={`w-10 h-10 rounded-full flex-shrink-0 ring-2 transition-all overflow-hidden ${
+              isActive("/profile") ? "ring-teal-400" : "ring-transparent"
+            }`}
+          >
             {resolveAvatar(user?.avatar) ? (
               <img
                 src={resolveAvatar(user?.avatar)}
@@ -115,9 +156,13 @@ const Sidebar = () => {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${
-                isActive("/profile") ? "from-teal-200 to-blue-200" : "from-teal-100 to-blue-100"
-              }`}>
+              <div
+                className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${
+                  isActive("/profile")
+                    ? "from-teal-200 to-blue-200"
+                    : "from-teal-100 to-blue-100"
+                }`}
+              >
                 <span className="text-sm font-bold text-teal-700">
                   {user?.name?.charAt(0)?.toUpperCase() || "U"}
                 </span>
@@ -126,9 +171,13 @@ const Sidebar = () => {
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">{user?.name}</p>
+              <p className="text-sm font-semibold text-gray-900 truncate">
+                {user?.name}
+              </p>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${verBadge.color}`}>
+                <span
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${verBadge.color}`}
+                >
                   {user?.isVerified && <ShieldCheck size={10} />}
                   {verBadge.label}
                 </span>
@@ -147,7 +196,9 @@ const Sidebar = () => {
             <Link
               key={item.path}
               to={item.disabled ? "#" : item.path}
-              onClick={() => { if (!item.disabled) setIsOpen(false); }}
+              onClick={() => {
+                if (!item.disabled) setIsOpen(false);
+              }}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative ${
                 item.disabled
                   ? "text-gray-300 cursor-not-allowed"
@@ -186,7 +237,11 @@ const Sidebar = () => {
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all w-full"
         >
           <LogOut size={18} />
-          {!isCollapsed && <span><T en="Sign out" /></span>}
+          {!isCollapsed && (
+            <span>
+              <T en="Sign out" />
+            </span>
+          )}
         </button>
       </div>
     </div>

@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import DashboardLayout from "../components/layout/DashboardLayout";
+import ServantLayout from "../components/layout/ServantLayout";
 import { Link } from "react-router-dom";
 import { notificationAPI } from "../services/api";
 import toast from "react-hot-toast";
@@ -22,6 +23,8 @@ const NotificationsPage = () => {
   const { user } = useAuth();
   const [dbNotifications, setDbNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const isServant = user?.role === "department_officer";
+  const Layout = isServant ? ServantLayout : DashboardLayout;
 
   useEffect(() => {
     fetchNotifications();
@@ -127,7 +130,7 @@ const NotificationsPage = () => {
       color: "border-teal-200 bg-teal-50",
       titleColor: "text-teal-700",
     }] : []),
-    getVerificationNotification()
+    ...(!isServant ? [getVerificationNotification()] : [])
   ];
 
   const allNotifications = [
@@ -140,12 +143,16 @@ const NotificationsPage = () => {
       createdAt: n.createdAt,
       isRead: n.isRead,
       isDb: true,
-      to: n.relatedTicket ? `/complaints/${n.relatedTicket}` : null
+      to: n.relatedTicket
+        ? isServant
+          ? `/servant/complaints/${n.relatedTicket}`
+          : `/complaints/${n.relatedTicket}`
+        : null
     }))
   ];
 
   return (
-    <DashboardLayout>
+    <Layout>
       <div className="max-w-2xl mx-auto py-8 px-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -243,7 +250,7 @@ const NotificationsPage = () => {
           )}
         </div>
       </div>
-    </DashboardLayout>
+    </Layout>
   );
 };
 

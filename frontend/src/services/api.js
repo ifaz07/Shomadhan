@@ -91,6 +91,7 @@ export const complaintAPI = {
 export const servantAPI = {
   getStats: () => api.get("/servant/stats"),
   getComplaints: (params = {}) => api.get("/servant/complaints", { params }),
+  getComplaint: (id) => api.get(`/servant/complaints/${id}`),
   updateStatus: (id, status, note = "") =>
     api.put(`/servant/complaints/${id}/status`, { status, note }),
   setSLA: (id, hours) => api.put(`/servant/complaints/${id}/sla`, { hours }),

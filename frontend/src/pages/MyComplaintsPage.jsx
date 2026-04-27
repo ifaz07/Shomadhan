@@ -186,6 +186,7 @@ const ComplaintCard = ({ complaint, index, onView }) => {
   const sCfg = STATUS_CONFIG[complaint.status]     || STATUS_CONFIG.pending;
   const sla  = getSlaInfo(complaint.createdAt, complaint.slaDeadline);
   const history = complaint.history || [];
+  const isResolved = complaint.status === 'resolved';
 
   return (
     <motion.div
@@ -197,9 +198,11 @@ const ComplaintCard = ({ complaint, index, onView }) => {
       {/* ── Top accent bar matching priority ── */}
       <div
         className={`h-1 w-full ${
-          complaint.priority === 'Critical' ? 'bg-red-500' :
-          complaint.priority === 'High'     ? 'bg-orange-500' :
-          complaint.priority === 'Medium'   ? 'bg-yellow-500' : 'bg-green-500'
+          isResolved
+            ? 'bg-green-500'
+            : complaint.priority === 'Critical' ? 'bg-red-500' :
+              complaint.priority === 'High'     ? 'bg-orange-500' :
+              complaint.priority === 'Medium'   ? 'bg-yellow-500' : 'bg-green-500'
         }`}
       />
 
@@ -207,9 +210,11 @@ const ComplaintCard = ({ complaint, index, onView }) => {
         {/* Header row */}
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>
-              {complaint.priority}
-            </span>
+            {!isResolved && (
+              <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>
+                {complaint.priority}
+              </span>
+            )}
             <span className={`px-2 py-0.5 rounded-md text-xs font-semibold ${sCfg.badge}`}>
               {sCfg.label}
             </span>
