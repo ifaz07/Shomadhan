@@ -181,6 +181,8 @@ const ComplaintDetailPage = () => {
   const pCfg    = PRIORITY_CONFIG[complaint.priority] || PRIORITY_CONFIG.Low;
   const sCfg    = STATUS_CONFIG[complaint.status]     || STATUS_CONFIG.pending;
   const sla     = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
+  const isResolved = complaint.status === 'resolved';
+  const headerBorder = isResolved ? 'border-gray-200' : pCfg.border;
   const evidence  = complaint.evidence  || [];
   const timeline  = complaint.history   || [];
   const hasMap    = complaint.latitude && complaint.longitude;
@@ -213,14 +215,16 @@ const ComplaintDetailPage = () => {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+            className={`bg-white rounded-2xl p-6 shadow-sm border ${headerBorder}`}
           >
             {/* Badges + upvote */}
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>
-                  {complaint.priority}
-                </span>
+                {!isResolved && (
+                  <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>
+                    {complaint.priority}
+                  </span>
+                )}
                 <span className={`px-2.5 py-0.5 rounded-md text-xs font-semibold ${sCfg.badge}`}>
                   {sCfg.label}
                 </span>
@@ -279,29 +283,31 @@ const ComplaintDetailPage = () => {
             </div>
 
             {/* SLA */}
-            <div className="mb-5">
-              {sla ? (
-                <>
-                  <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
-                    <span className="font-medium">Resolution Deadline</span>
-                    <span className={sla.isOverdue ? 'text-red-600 font-semibold' : sla.hoursLeft <= 24 ? 'text-orange-600 font-semibold' : ''}>
-                      {sla.timeLabel}
-                    </span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        sla.isOverdue ? 'bg-red-500' :
-                        sla.hoursLeft <= 24 ? 'bg-orange-500' : 'bg-teal-600'
-                      }`}
-                      style={{ width: `${sla.progress}%` }}
-                    />
-                  </div>
-                </>
-              ) : (
-                <p className="text-xs text-gray-400 italic">No resolution deadline assigned yet — department review pending</p>
-              )}
-            </div>
+            {!isResolved && (
+              <div className="mb-5">
+                {sla ? (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+                      <span className="font-medium">Resolution Deadline</span>
+                      <span className={sla.isOverdue ? 'text-red-600 font-semibold' : sla.hoursLeft <= 24 ? 'text-orange-600 font-semibold' : ''}>
+                        {sla.timeLabel}
+                      </span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          sla.isOverdue ? 'bg-red-500' :
+                          sla.hoursLeft <= 24 ? 'bg-orange-500' : 'bg-teal-600'
+                        }`}
+                        style={{ width: `${sla.progress}%` }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-gray-400 italic">No resolution deadline assigned yet — department review pending</p>
+                )}
+              </div>
+            )}
 
             {/* Attachments */}
             {evidence.length > 0 && (

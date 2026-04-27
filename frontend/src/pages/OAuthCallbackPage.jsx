@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import { useAuth } from '../context/AuthContext';
+import { useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import toast from "react-hot-toast";
+import { useAuth } from "../context/AuthContext";
 
 // This page handles the redirect from the backend after Google/Facebook OAuth.
-// The backend redirects to: /auth/callback?token=JWT_TOKEN
+// The backend now redirects to: /auth/oauth-completion?token=JWT_TOKEN&isNew=true/false
+// This page is kept for backward compatibility or direct token-based login
 const OAuthCallbackPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -15,23 +16,24 @@ const OAuthCallbackPage = () => {
     if (handled.current) return;
     handled.current = true;
 
-    const token = searchParams.get('token');
-    const error = searchParams.get('error');
+    const token = searchParams.get("token");
+    const error = searchParams.get("error");
 
     if (error || !token) {
-      toast.error('Social login failed. Please try again.');
-      navigate('/login', { replace: true });
+      toast.error("Social login failed. Please try again.");
+      navigate("/login", { replace: true });
       return;
     }
 
+    // Legacy flow: directly log in (no verification required)
     loginWithToken(token)
       .then(() => {
-        toast.success('Welcome!');
-        navigate('/dashboard', { replace: true });
+        toast.success("Welcome!");
+        navigate("/dashboard", { replace: true });
       })
       .catch(() => {
-        toast.error('Failed to sign in. Please try again.');
-        navigate('/login', { replace: true });
+        toast.error("Failed to sign in. Please try again.");
+        navigate("/login", { replace: true });
       });
   }, []);
 
