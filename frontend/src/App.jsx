@@ -19,6 +19,8 @@ import ServantComplaintsPage from './pages/servant/ServantComplaintsPage';
 import ServantProfilePage from './pages/servant/ServantProfilePage';
 import ServantHeatmapPage from './pages/servant/ServantHeatmapPage';
 import ServantComplaintDetailPage from './pages/servant/ServantComplaintDetailPage';
+import EmergencyBroadcastPage from './pages/EmergencyBroadcastPage';
+import ResourceTrackerPage from './pages/ResourceTrackerPage';
 import { useAuth } from './context/AuthContext';
 
 // ─── Citizen-only route (redirect servants away) ──────────────────────
@@ -100,6 +102,10 @@ function App() {
         <Route path="/servant/profile" element={<ServantRoute><ServantProfilePage /></ServantRoute>} />
         <Route path="/servant/heatmap" element={<ServantRoute><ServantHeatmapPage /></ServantRoute>} />
         <Route path="/servant/complaints/:id" element={<ServantRoute><ServantComplaintDetailPage /></ServantRoute>} />
+
+        {/* ─── Emergency & Resource Management (Servants Only) ────── */}
+        <Route path="/emergency-broadcast" element={<ServantRoute><EmergencyBroadcastPage /></ServantRoute>} />
+        <Route path="/resource-tracker" element={<ServantRoute><ResourceTrackerPage /></ServantRoute>} />
 
         {/* ─── Shared protected routes ──────────────────────────── */}
         <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />

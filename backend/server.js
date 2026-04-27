@@ -14,6 +14,8 @@ const path = require('path');
 const authRoutes = require('./routes/auth.routes');
 const complaintRoutes = require('./routes/complaint.routes');
 const servantRoutes = require('./routes/servant.routes');
+const emergencyBroadcastRoutes = require('./routes/emergencyBroadcast.routes');
+const resourceRoutes = require('./routes/resource.routes');
 const { errorHandler } = require('./middleware/error.middleware');
 
 const app = express();
@@ -61,6 +63,8 @@ const authLimiter = rateLimit({
 app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/complaints', complaintRoutes);
 app.use('/api/v1/servant', servantRoutes);
+app.use('/api/v1/emergency-broadcast', emergencyBroadcastRoutes);
+app.use('/api/v1/resources', resourceRoutes);
 
 // Health check
 app.get('/api/v1/health', (req, res) => {

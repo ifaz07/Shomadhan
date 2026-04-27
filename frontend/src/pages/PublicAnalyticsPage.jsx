@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   BarChart3, CheckCircle2, Clock, FileText, AlertTriangle,
   TrendingUp, Hammer, Droplets, Zap, Trash2, Shield, Leaf,
-  RefreshCw, MapPin, Tag, ChevronRight, Activity,
+  RefreshCw, MapPin, Tag, ChevronRight, Activity, X, Eye,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { complaintAPI } from '../services/api';
@@ -87,6 +87,11 @@ const PublicAnalyticsPage = () => {
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingMine, setLoadingMine] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
+  
+  // Department detail modal state
+  const [selectedDept, setSelectedDept] = useState(null);
+  const [deptComplaints, setDeptComplaints] = useState([]);
+  const [loadingDeptComplaints, setLoadingDeptComplaints] = useState(false);
 
   const fetchStats = async () => {
     try {
@@ -117,6 +122,41 @@ const PublicAnalyticsPage = () => {
     fetchStats();
     fetchMyComplaints();
   }, []);
+
+  // Fetch complaints for a specific department
+  const fetchDeptComplaints = async (deptKey) => {
+    try {
+      setLoadingDeptComplaints(true);
+      // Get all complaints and filter by department
+      const res = await complaintAPI.getAll({ limit: 100 });
+      const allComplaints = res.data.data || [];
+      
+      // Map department keys to categories
+      const deptCategories = {
+        public_works: ['Road', 'Environment'],
+        water_authority: ['Water'],
+        electricity: ['Electricity'],
+        sanitation: ['Waste'],
+        public_safety: ['Safety', 'Law Enforcement'],
+        animal_control: ['Other'],
+      };
+      
+      const categories = deptCategories[deptKey] || [];
+      const filtered = allComplaints.filter(c => categories.includes(c.category));
+      setDeptComplaints(filtered);
+    } catch (error) {
+      console.error('Failed to fetch department complaints:', error);
+      setDeptComplaints([]);
+    } finally {
+      setLoadingDeptComplaints(false);
+    }
+  };
+
+  // Handle department card click
+  const handleDeptClick = (deptKey) => {
+    setSelectedDept(deptKey);
+    fetchDeptComplaints(deptKey);
+  };
 
   const resolutionRate = stats && stats.total > 0
     ? Math.round((stats.resolved / stats.total) * 100)
@@ -253,7 +293,8 @@ const PublicAnalyticsPage = () => {
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.28 + i * 0.05 }}
-                    className={`bg-white rounded-2xl p-5 shadow-sm border ${cfg.border} hover:shadow-md transition-all`}
+                    onClick={() => handleDeptClick(key)}
+                    className={`bg-white rounded-2xl p-5 shadow-sm border ${cfg.border} hover:shadow-md transition-all cursor-pointer group`}
                   >
                     {/* Header */}
                     <div className="flex items-center gap-3 mb-4">
@@ -273,6 +314,7 @@ const PublicAnalyticsPage = () => {
                           {dept.critical} <T en="critical" />
                         </span>
                       )}
+                      <Eye size={16} className="text-gray-300 group-hover:text-teal-500 transition-colors" />
                     </div>
 
                     {/* Resolution bar */}
@@ -434,6 +476,121 @@ const PublicAnalyticsPage = () => {
           >
             <T en="Last updated" />: {lastUpdated.toLocaleTimeString()}
           </motion.p>
+        )}
+
+        {/* ─── Department Detail Modal ──────────────────────────────── */}
+        {selectedDept && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col"
+            >
+              {/* Modal Header */}
+              <div className="p-5 border-b flex items-center justify-between bg-gray-50">
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    const cfg = DEPT_CONFIG[selectedDept];
+                    const Icon = cfg?.icon;
+                    return Icon ? (
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${cfg.bg}`}>
+                        <Icon size={20} className={cfg.color} />
+                      </div>
+                    ) : null;
+                  })()}
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">
+                      <T en={DEPT_CONFIG[selectedDept]?.label || selectedDept} />
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      {deptComplaints.length} {deptComplaints.length === 1 ? 'complaint' : 'complaints'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedDept(null)}
+                  className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  <X size={20} className="text-gray-500" />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="flex-1 overflow-y-auto p-5">
+                {loadingDeptComplaints ? (
+                  <div className="flex justify-center py-8">
+                    <div className="w-8 h-8 border-4 border-teal-400 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : deptComplaints.length === 0 ? (
+                  <div className="text-center py-8">
+                    <FileText size={48} className="text-gray-200 mx-auto mb-3" />
+                    <p className="text-gray-500 text-sm">
+                      <T en="No complaints exist yet for this department." />
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {deptComplaints.map((complaint, idx) => {
+                      const sc = STATUS_CONFIG[complaint.status] || STATUS_CONFIG.pending;
+                      return (
+                        <motion.div
+                          key={complaint._id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.03 }}
+                          onClick={() => {
+                            setSelectedDept(null);
+                            navigate(`/complaints/${complaint._id}`);
+                          }}
+                          className="p-4 border border-gray-100 rounded-xl hover:border-teal-200 hover:shadow-md transition-all cursor-pointer"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-semibold text-gray-900 truncate">
+                                  {complaint.title}
+                                </p>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${PRIORITY_BADGE[complaint.priority] || ''}`}>
+                                  <T en={complaint.priority} />
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                <span className="text-[11px] text-gray-400 font-mono">{complaint.ticketId}</span>
+                                {complaint.location && (
+                                  <span className="flex items-center gap-1 text-[11px] text-gray-400">
+                                    <MapPin size={10} />
+                                    {complaint.location.length > 25 ? complaint.location.slice(0, 25) + '…' : complaint.location}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <span className={`text-[11px] font-medium px-2 py-0.5 rounded-lg ${sc.badge} flex-shrink-0`}>
+                              <T en={sc.label} />
+                            </span>
+                          </div>
+                          {complaint.description && (
+                            <p className="text-xs text-gray-500 mt-2 line-clamp-2">
+                              {complaint.description}
+                            </p>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t bg-gray-50">
+                <button
+                  onClick={() => setSelectedDept(null)}
+                  className="w-full py-2.5 rounded-xl text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-all"
+                >
+                  <T en="Close" />
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
 
       </div>

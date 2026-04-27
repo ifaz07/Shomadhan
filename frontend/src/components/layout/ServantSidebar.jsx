@@ -12,6 +12,8 @@ import {
   Briefcase,
   Bell,
   ShieldCheck,
+  AlertTriangle,
+  Truck,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
@@ -44,6 +46,9 @@ const ServantSidebar = () => {
       label: "Department Complaints",
       icon: ClipboardList,
     },
+    { path: "/servant/heatmap", label: "Heatmap", icon: LayoutDashboard },
+    { path: "/emergency-broadcast", label: "Emergency Broadcast", icon: AlertTriangle },
+    { path: "/resource-tracker", label: "Resource Tracker", icon: Truck },
     { path: "/notifications", label: "Notifications", icon: Bell, badge: 0 },
   ];
 
