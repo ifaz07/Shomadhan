@@ -12,7 +12,7 @@ const initEscalationEngine = () => {
     
     try {
       // For testing: Check for anything older than 1 minute
-      const oneMinuteAgo = new Date(Date.now() - 1 * 60 * 1000);
+      const oneMinuteAgo = new Date(Date.now() - 48 * 60  * 60 * 1000);
 
       // 1. Query for candidates
       const complaints = await Complaint.find({
