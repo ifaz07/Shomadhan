@@ -71,7 +71,7 @@ export const complaintAPI = {
   analyze: (title, description) =>
     api.post("/complaints/analyze", { title, description }),
   getAll: (params = {}) => api.get("/complaints", { params }),
-  getStats: () => api.get("/complaints/stats"),
+  getStats: (params = {}) => api.get("/complaints/stats", { params }),
   getOne: (id) => api.get(`/complaints/${id}`),
 
   // Upvote / un-vote toggle
@@ -89,7 +89,7 @@ export const complaintAPI = {
 
 // ─── Servant (department officer) API calls ───────────────────────────
 export const servantAPI = {
-  getStats: () => api.get("/servant/stats"),
+  getStats: (params = {}) => api.get("/servant/stats", { params }),
   getComplaints: (params = {}) => api.get("/servant/complaints", { params }),
   getComplaint: (id) => api.get(`/servant/complaints/${id}`),
   updateStatus: (id, status, note = "") =>

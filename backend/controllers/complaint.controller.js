@@ -439,18 +439,26 @@ const deleteComplaint = async (req, res, next) => {
 // @access  Private
 const getPublicStats = async (req, res, next) => {
   try {
-    const all = await Complaint.find({ status: { $ne: "rejected" } }).select(
-      "category priority status",
-    );
+    const { filter } = req.query; // 'monthly' or 'yearly'
+    let dateFilter = { status: { $ne: 'rejected' } };
+
+    if (filter === 'monthly') {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
+      dateFilter.createdAt = { $gte: startOfMonth };
+    } else if (filter === 'yearly') {
+      const startOfYear = new Date();
+      startOfYear.setMonth(0, 1); startOfYear.setHours(0,0,0,0);
+      dateFilter.createdAt = { $gte: startOfYear };
+    }
+
+    const all = await Complaint.find(dateFilter).select('category priority status');
 
     const CATEGORY_TO_DEPT = {
-      Road: "public_works",
-      Waste: "sanitation",
-      Electricity: "electricity",
-      Water: "water_authority",
-      Safety: "public_safety",
-      Environment: "public_works",
-      Other: null,
+      Road: 'public_works', Waste: 'sanitation', Electricity: 'electricity',
+      Water: 'water_authority', Safety: 'public_safety',
+      'Law Enforcement': 'public_safety', Environment: 'public_works',
+      Other: 'other'
     };
 
     const deptStats = {
@@ -462,33 +470,28 @@ const getPublicStats = async (req, res, next) => {
       animal_control: { total: 0, critical: 0, pending: 0, resolved: 0, inProgress: 0 },
     };
 
-    let total = 0,
-      critical = 0,
-      inProgress = 0,
-      resolved = 0;
+    let total = 0, critical = 0, inProgress = 0, resolved = 0;
 
     all.forEach((c) => {
       total++;
-      if (c.priority === "Critical") critical++;
-      if (c.status === "in-progress") inProgress++;
-      if (c.status === "resolved") resolved++;
+      if (c.priority === 'Critical') critical++;
+      if (c.status === 'in-progress') inProgress++;
+      if (c.status === 'resolved') resolved++;
 
       const deptKey = CATEGORY_TO_DEPT[c.category];
       if (deptKey && deptStats[deptKey]) {
         deptStats[deptKey].total++;
-        if (c.priority === "Critical") deptStats[deptKey].critical++;
-        if (c.status === "pending") deptStats[deptKey].pending++;
-        if (c.status === "in-progress") { deptStats[deptKey].pending++; deptStats[deptKey].inProgress++; }
-        if (c.status === "resolved") deptStats[deptKey].resolved++;
+        if (c.priority === 'Critical') deptStats[deptKey].critical++;
+        if (c.status === 'pending') deptStats[deptKey].pending++;
+        if (c.status === 'in-progress') { deptStats[deptKey].pending++; deptStats[deptKey].inProgress++; }
+        if (c.status === 'resolved') deptStats[deptKey].resolved++;
       }
     });
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        data: { total, critical, inProgress, resolved, departments: deptStats },
-      });
+    res.status(200).json({
+      success: true,
+      data: { total, critical, inProgress, resolved, departments: deptStats },
+    });
   } catch (error) {
     next(error);
   }
@@ -530,9 +533,21 @@ const getComplaints = async (req, res, next) => {
   try {
     let query = {};
 
-    // Admins see everything; ?mine=true scopes to the requester's own complaints
+    // Scoping to user
     if (req.user.role !== "admin" && req.query.mine === "true") {
-      query = { user: req.user._id };
+      query.user = req.user._id;
+    }
+
+    // Time-based filtering
+    const { filter } = req.query;
+    if (filter === 'monthly') {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
+      query.createdAt = { $gte: startOfMonth };
+    } else if (filter === 'yearly') {
+      const startOfYear = new Date();
+      startOfYear.setMonth(0, 1); startOfYear.setHours(0,0,0,0);
+      query.createdAt = { $gte: startOfYear };
     }
 
     // Optional server-side text filter on location field
