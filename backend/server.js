@@ -15,6 +15,9 @@ const authRoutes = require('./routes/auth.routes');
 const complaintRoutes = require('./routes/complaint.routes');
 const servantRoutes = require('./routes/servant.routes');
 const notificationRoutes = require('./routes/notification.routes');
+const adminRoutes = require('./routes/admin.routes');
+const mayorRoutes = require('./routes/mayor.routes');
+const volunteerRoutes = require('./routes/volunteer.routes');
 const { errorHandler } = require('./middleware/error.middleware');
 const { initEscalationEngine } = require('./services/escalationService');
 
@@ -33,6 +36,7 @@ app.use(cookieParser());
 app.use('/uploads/evidence', express.static(path.join(__dirname, 'uploads/evidence')));
 app.use('/uploads/verification', express.static(path.join(__dirname, 'uploads/verification')));
 app.use('/uploads/avatars', express.static(path.join(__dirname, 'uploads/avatars')));
+app.use('/uploads/volunteer', express.static(path.join(__dirname, 'uploads/volunteer')));
 
 // CORS — allow frontend origin
 app.use(cors({
@@ -64,6 +68,9 @@ app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/complaints', complaintRoutes);
 app.use('/api/v1/servant', servantRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/mayor', mayorRoutes);
+app.use('/api/v1/volunteer-ads', volunteerRoutes);
 
 // Health check
 app.get('/api/v1/health', (req, res) => {

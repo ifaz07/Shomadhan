@@ -33,6 +33,22 @@ const STATUS_CONFIG = {
   rejected:      { badge: 'bg-red-100 text-red-700',     label: 'Rejected' },
 };
 
+const buildDepartmentStats = (items = []) => {
+  const grouped = items.reduce((acc, complaint) => {
+    const key = complaint.category || 'Uncategorized';
+    if (!acc[key]) {
+      acc[key] = { _id: key, resolved: 0, total: 0 };
+    }
+    acc[key].total += 1;
+    if (complaint.status === 'resolved') {
+      acc[key].resolved += 1;
+    }
+    return acc;
+  }, {});
+
+  return Object.values(grouped).sort((a, b) => b.total - a.total);
+};
+
 // ─── Sub-Components ───────────────────────────────────────────────────
 
 const StatCard = ({ icon: Icon, label, value, color, bg, delay, onClick, isActive }) => (
@@ -108,6 +124,7 @@ const MayorDashboard = () => {
   const [loading, setLoading] = useState(true);
   
   // List management
+  const [allComplaints, setAllComplaints] = useState([]);
   const [complaints, setComplaints] = useState([]);
   const [listLoading, setListLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState('total'); // 'total', 'pending', 'in-progress', 'resolved', 'critical'
@@ -121,6 +138,7 @@ const MayorDashboard = () => {
   useEffect(() => {
     fetchStats();
     fetchComplaints('total');
+    fetchAllComplaints();
   }, []);
 
   const fetchStats = async () => {
@@ -150,6 +168,16 @@ const MayorDashboard = () => {
       toast.error('Failed to load complaints');
     } finally {
       setListLoading(false);
+    }
+  };
+
+  const fetchAllComplaints = async () => {
+    try {
+      const { data } = await complaintAPI.getAll();
+      const complaintList = Array.isArray(data.data) ? data.data : (data.data?.complaints || []);
+      setAllComplaints(complaintList);
+    } catch (error) {
+      console.error('Failed to load all complaints for department stats', error);
     }
   };
 
@@ -183,6 +211,9 @@ const MayorDashboard = () => {
       </DashboardLayout>
     );
   }
+
+  const departmentStats =
+    stats?.departments?.length > 0 ? stats.departments : buildDepartmentStats(allComplaints);
 
   return (
     <DashboardLayout>
@@ -279,7 +310,7 @@ const MayorDashboard = () => {
                 City Efficiency
               </h2>
               <div className="space-y-5">
-                {stats?.departments?.slice(0, 5).map((dept, i) => {
+                {departmentStats.slice(0, 5).map((dept, i) => {
                   const resolutionRate = dept.total > 0 ? Math.round((dept.resolved / dept.total) * 100) : 0;
                   return (
                     <div key={i} className="space-y-2">
@@ -297,6 +328,11 @@ const MayorDashboard = () => {
                     </div>
                   );
                 })}
+                {departmentStats.length === 0 && (
+                  <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center">
+                    <p className="text-xs font-medium text-gray-400">No department performance data yet.</p>
+                  </div>
+                )}
               </div>
             </section>
 
