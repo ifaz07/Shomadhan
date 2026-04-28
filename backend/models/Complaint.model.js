@@ -141,6 +141,8 @@ const complaintSchema = new mongoose.Schema(
 // Index for geospatial queries
 complaintSchema.index({ latitude: 1, longitude: 1 });
 complaintSchema.index({ priority: 1 });
+complaintSchema.index({ status: 1 });
+complaintSchema.index({ category: 1 });
 complaintSchema.index({ voteCount: -1 });
 
 module.exports = mongoose.model("Complaint", complaintSchema);

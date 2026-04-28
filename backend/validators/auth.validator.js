@@ -25,10 +25,10 @@ const registerValidator = [
     .trim()
     .matches(/^(\+880|0)?1[3-9]\d{8}$/).withMessage('Please provide a valid BD phone number'),
 
-  // ─── Public Servant conditional validations ────────────────────
+  // ─── Role conditional validations ────────────────────
   body('role')
     .optional()
-    .isIn(['citizen', 'department_officer']).withMessage('Invalid role selection'),
+    .isIn(['citizen', 'department_officer', 'mayor']).withMessage('Invalid role selection'),
 
   body('department')
     .if(body('role').equals('department_officer'))

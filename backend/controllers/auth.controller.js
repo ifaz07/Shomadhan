@@ -55,10 +55,22 @@ const register = async (req, res, next) => {
       });
     }
 
-    // Build user data — only include public servant fields if role is department_officer
+    // Build user data
     const userData = { name, email, password, phone };
 
-    if (role === 'department_officer') {
+    // Smart Detection: If designation contains "Mayor", force the Mayor workflow
+    const isMayorRequest = role === 'mayor' || (designation && designation.toLowerCase().includes('mayor'));
+
+    if (isMayorRequest) {
+      userData.role = 'mayor';
+      userData.designation = designation || 'Mayor';
+      userData.isVerified = false; 
+      userData.isActive = true; // Allow login to see pending status
+      userData.verificationDoc = {
+        status: 'pending',
+        submittedAt: new Date(),
+      };
+    } else if (role === 'department_officer') {
       if (!nidNumber || String(nidNumber).length !== 10) {
         return res.status(400).json({ success: false, message: 'NID number must be exactly 10 digits.' });
       }
@@ -67,7 +79,6 @@ const register = async (req, res, next) => {
       userData.employeeId = employeeId;
       userData.governmentEmail = governmentEmail;
       userData.designation = designation;
-      // Auto-verify public servants via their NID at registration
       userData.isVerified = true;
       userData.verificationDoc = {
         docType: 'nid',
@@ -77,7 +88,6 @@ const register = async (req, res, next) => {
         verifiedAt: new Date(),
       };
     }
-    // Note: 'admin' and 'mayor' roles cannot be self-assigned via signup
 
     const user = await User.create(userData);
 
@@ -229,14 +239,13 @@ const verifyAccount = async (req, res, next) => {
     }
 
     const user = await User.findById(req.user.id);
-    user.isVerified = true;
+    user.isVerified = false; // Admin must approve
     user.verificationDoc = {
       docType,
       documentNumber,
       fileUrl: `/uploads/verification/${req.file.filename}`,
-      status: 'approved',
+      status: 'pending',
       submittedAt: new Date(),
-      verifiedAt: new Date(),
     };
 
     // Ensure Mongoose detects the object change

@@ -18,13 +18,24 @@ import ServantComplaintsPage from './pages/servant/ServantComplaintsPage';
 import ServantProfilePage from './pages/servant/ServantProfilePage';
 import ServantHeatmapPage from './pages/servant/ServantHeatmapPage';
 import ServantComplaintDetailPage from './pages/servant/ServantComplaintDetailPage';
+import MayorDashboard from './pages/MayorDashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import MayorPendingPage from './pages/MayorPendingPage';
 import { useAuth } from './context/AuthContext';
 
-// ─── Citizen-only route (redirect servants away) ──────────────────────
+// ─── Shared protected route logic (Allows Citizen, Approved Mayor & Admin) ──
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
+  
+  // Public Servant has their own layout/dashboard
   if (user.role === 'department_officer') return <Navigate to="/servant/dashboard" replace />;
+  
+  // Mayor must be approved
+  if (user.role === 'mayor' && user.verificationDoc?.status !== 'approved') {
+    return <Navigate to="/mayor/pending" replace />;
+  }
+
   return children;
 };
 
@@ -36,11 +47,49 @@ const ServantRoute = ({ children }) => {
   return children;
 };
 
-// ─── Guest route (redirect logged-in users to their dashboard) ────────
+// ─── Mayor-only route ─────────────────────────────────────────────────
+const MayorRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'mayor') return <Navigate to="/dashboard" replace />;
+  
+  // If not approved by admin, redirect to pending page
+  if (user.verificationDoc?.status !== 'approved') {
+    return <Navigate to="/mayor/pending" replace />;
+  }
+  
+  return children;
+};
+
+// ─── Mayor Pending Page Guard ─────────────────────────────────────────
+const MayorPendingRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'mayor') return <Navigate to="/dashboard" replace />;
+  
+  // If already approved, redirect to dashboard
+  if (user.verificationDoc?.status === 'approved') {
+    return <Navigate to="/mayor/dashboard" replace />;
+  }
+  
+  return children;
+};
+
+// ─── Admin-only route ─────────────────────────────────────────────────
+const AdminRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  return children;
+};
+
+// ─── Guest route (redirect logged-in users to their respective dashboards) ──
 const GuestRoute = ({ children }) => {
   const { user } = useAuth();
   if (user) {
     if (user.role === 'department_officer') return <Navigate to="/servant/dashboard" replace />;
+    if (user.role === 'mayor') return <Navigate to="/mayor/dashboard" replace />;
+    if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />;
     return <Navigate to="/dashboard" replace />;
   }
   return children;
@@ -101,6 +150,11 @@ function App() {
 
         {/* ─── Shared protected routes ──────────────────────────── */}
         <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+
+        {/* ─── Mayor & Admin Pages ──────────────────────────────── */}
+        <Route path="/mayor/dashboard" element={<MayorRoute><MayorDashboard /></MayorRoute>} />
+        <Route path="/mayor/pending" element={<MayorPendingRoute><MayorPendingPage /></MayorPendingRoute>} />
+        <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
 
         {/* ─── Fallback ─────────────────────────────────────────── */}
         <Route path="*" element={<Navigate to="/login" replace />} />

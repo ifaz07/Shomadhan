@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,15 +15,19 @@ import {
   MessageSquare,
   PlusCircle,
   Map,
+  Users,
+  Check,
 } from "lucide-react";
+import axios from 'axios';
+import { toast } from 'react-hot-toast';
 import { useAuth } from "../../context/AuthContext";
 import LanguageToggle from "../LanguageToggle";
 import T from "../T";
 
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1').replace('/api/v1', '');
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1');
 const resolveAvatar = (url) => {
   if (!url) return null;
-  return url.startsWith('http') ? url : `${API_BASE}${url}`;
+  return url.startsWith('http') ? url : `${API_BASE.replace('/api/v1', '')}${url}`;
 };
 
 const Sidebar = () => {
@@ -31,17 +35,43 @@ const Sidebar = () => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [volunteerAds, setVolunteerAds] = useState([]);
+  const [selectedAd, setSelectedAd] = useState(null); // For Modal
+
+  useEffect(() => {
+    fetchActiveAds();
+  }, []);
+
+  const fetchActiveAds = async () => {
+    try {
+      const { data } = await axios.get(`${API_BASE}/volunteer-ads/active`);
+      if (data.success) {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0); // Start of today
+        const futureAds = data.data.filter(ad => new Date(ad.dateOfEvent) >= now);
+        setVolunteerAds(futureAds);
+      }
+    } catch (error) {
+      console.error('Failed to fetch volunteer ads', error);
+    }
+  };
 
   const navItems = [
     { path: "/profile",          label: <T en="My Profile" />,        icon: User },
-    { path: "/dashboard",        label: <T en="Dashboard" />,         icon: LayoutDashboard },
-    { path: "/submit-complaint", label: <T en="Submit Complaint" />,  icon: PlusCircle },
+    { 
+      path: user?.role === 'mayor' ? "/mayor/dashboard" : user?.role === 'admin' ? "/admin/dashboard" : user?.role === 'department_officer' ? "/servant/dashboard" : "/dashboard", 
+      label: <T en="Dashboard" />,         
+      icon: LayoutDashboard 
+    },
+    { path: "/submit-complaint", label: <T en="Submit Complaint" />,  icon: PlusCircle, roles: ['citizen'] },
     { path: "/heatmap",          label: <T en="Complaint Heatmap" />, icon: Map },
     { path: "/notifications",    label: <T en="Notifications" />,     icon: Bell },
-    { path: "/my-complaints",    label: <T en="My Complaints" />,     icon: FileText },
+    { path: "/my-complaints",    label: <T en="My Complaints" />,     icon: FileText, roles: ['citizen'] },
     { path: "/analytics",        label: <T en="Analytics" />,         icon: BarChart3,     disabled: true },
     { path: "/feedback",         label: <T en="Feedback" />,          icon: MessageSquare, disabled: true },
   ];
+
+  const filteredNavItems = navItems.filter(item => !item.roles || item.roles.includes(user?.role));
 
   const isActive = (path) => location.pathname === path;
 
@@ -57,6 +87,72 @@ const Sidebar = () => {
   };
 
   const verBadge = getVerificationBadge();
+
+  const VolunteerDetailModal = ({ ad, onClose }) => {
+    if (!ad) return null;
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+        <motion.div 
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          onClick={onClose} className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          className="relative bg-white w-full max-w-sm rounded-[1.5rem] overflow-hidden shadow-xl border border-gray-100"
+        >
+          <button onClick={onClose} className="absolute top-3 right-3 p-1.5 bg-black/20 hover:bg-black/40 rounded-full text-white z-10 transition-colors">
+            <X size={16} />
+          </button>
+          
+          <div className="h-40 relative">
+            <img src={resolveAvatar(ad.posterUrl)} alt={ad.title} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+            <div className="absolute bottom-4 left-4 right-4 text-white">
+              <h2 className="text-lg font-bold leading-tight">{ad.title}</h2>
+              <p className="text-[10px] font-medium text-white/80 uppercase tracking-widest mt-1">
+                {new Date(ad.dateOfEvent).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </p>
+            </div>
+          </div>
+
+          <div className="p-5 space-y-4">
+            <div>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Description</h3>
+              <p className="text-xs text-gray-600 leading-relaxed line-clamp-4">{ad.description}</p>
+            </div>
+
+            <div className="flex items-center justify-between py-3 border-y border-gray-50">
+              <div className="flex items-center gap-2">
+                <Users size={14} className="text-teal-500" />
+                <span className="text-[11px] font-bold text-gray-700">{ad.requiredVolunteers} Needed</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-teal-50 px-2 py-1 rounded-lg">
+                <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-teal-700 uppercase">Active</span>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100/50">
+              <h3 className="text-[10px] font-bold text-amber-800 uppercase tracking-widest flex items-center gap-1.5 mb-1.5">
+                <MessageSquare size={12} />
+                Contact to Register
+              </h3>
+              <p className="text-xs text-amber-900 font-bold">{ad.contactDetails}</p>
+            </div>
+
+            <button 
+              onClick={onClose}
+              className="w-full py-3 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-gray-800 transition-all active:scale-[0.98]"
+            >
+              Done
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -122,7 +218,7 @@ const Sidebar = () => {
 
       {/* ─── Navigation ─────────────────────────────────────────── */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {filteredNavItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
           return (
@@ -159,6 +255,47 @@ const Sidebar = () => {
             </Link>
           );
         })}
+
+        {/* ─── Volunteer Ads Section (Citizens Only) ──────────────── */}
+        {user?.role === 'citizen' && !isCollapsed && volunteerAds.length > 0 && (
+          <div className="mt-8 px-1 pb-4">
+            <h3 className="px-3 mb-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <Users size={12} className="text-teal-500" />
+              <T en="Volunteer Opportunities" />
+            </h3>
+            <div className="space-y-4">
+              {volunteerAds.map(ad => (
+                <motion.div 
+                  key={ad._id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white border border-gray-100 rounded-2xl p-3 shadow-sm hover:shadow-md transition-all group"
+                >
+                  <div className="relative h-24 w-full mb-3 overflow-hidden rounded-xl">
+                    <img 
+                      src={resolveAvatar(ad.posterUrl)} 
+                      alt={ad.title} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg text-[10px] text-white font-bold">
+                      {new Date(ad.dateOfEvent).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                    </div>
+                  </div>
+                  <h4 className="text-xs font-bold text-gray-800 line-clamp-1 mb-1">{ad.title}</h4>
+                  <p className="text-[10px] text-gray-500 line-clamp-2 leading-relaxed mb-3">
+                    {ad.description}
+                  </p>
+                  <button
+                    onClick={() => setSelectedAd(ad)}
+                    className="w-full py-2 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-2 bg-teal-600 text-white shadow-lg shadow-teal-500/20 hover:bg-teal-700 active:scale-95"
+                  >
+                    <T en="View Details" />
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* ─── Bottom actions ─────────────────────────────────────── */}
@@ -183,6 +320,16 @@ const Sidebar = () => {
       >
         <Menu size={22} className="text-gray-700" />
       </button>
+
+      {/* ─── Volunteer Detail Modal ─────────────────────────────── */}
+      <AnimatePresence>
+        {selectedAd && (
+          <VolunteerDetailModal 
+            ad={selectedAd} 
+            onClose={() => setSelectedAd(null)} 
+          />
+        )}
+      </AnimatePresence>
 
       {/* ─── Mobile overlay ───────────────────────────────────────── */}
       <AnimatePresence>

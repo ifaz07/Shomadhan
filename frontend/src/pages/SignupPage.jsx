@@ -71,6 +71,7 @@ const SignupPage = () => {
   const [focusedField, setFocusedField] = useState(null);
 
   const isPublicServant = formData.role === 'department_officer';
+  const isMayor = formData.role === 'mayor';
   const totalSteps = 3;
 
   // ─── Validation per step ─────────────────────────────────────────
@@ -89,12 +90,12 @@ const SignupPage = () => {
     if (formData.phone && !/^(\+880|0)?1[3-9]\d{8}$/.test(formData.phone)) {
       newErrors.phone = 'Please enter a valid BD phone number';
     }
-    // Public servant extra fields
-    if (isPublicServant) {
-      if (!formData.department) newErrors.department = 'Department is required';
+    // Public servant & Mayor extra fields
+    if (isPublicServant || isMayor) {
+      if (isPublicServant && !formData.department) newErrors.department = 'Department is required';
       if (!formData.employeeId.trim()) newErrors.employeeId = 'Employee ID is required';
       if (!formData.governmentEmail.trim()) {
-        newErrors.governmentEmail = 'Government email is required';
+        newErrors.governmentEmail = 'Official email is required';
       } else if (!/^\S+@\S+\.\S+$/.test(formData.governmentEmail)) {
         newErrors.governmentEmail = 'Please enter a valid email';
       }
@@ -169,15 +170,21 @@ const SignupPage = () => {
         email: formData.email,
         phone: formData.phone || undefined,
         password: formData.password,
+        role: formData.role || 'citizen', // Default to citizen if empty
       };
+      
       if (isPublicServant) {
-        payload.role = 'department_officer';
         payload.department = formData.department;
         payload.employeeId = formData.employeeId;
         payload.governmentEmail = formData.governmentEmail;
         payload.designation = formData.designation;
         payload.nidNumber = formData.nidNumber;
       }
+
+      if (formData.role === 'mayor') {
+        payload.designation = 'Mayor';
+      }
+
       await register(payload);
     } catch (error) {
       const msg =
@@ -370,6 +377,26 @@ const SignupPage = () => {
                   </div>
                   <ArrowRight size={18} className="text-gray-300 group-hover:text-blue-500 transition-colors" />
                 </motion.button>
+
+                {/* Mayor Card */}
+                <motion.button
+                  type="button"
+                  onClick={() => selectRole('mayor')}
+                  className="group relative flex items-center gap-4 p-5 rounded-xl border-2 border-gray-200 bg-white text-left hover:border-purple-400 hover:bg-purple-50/50 transition-all duration-200"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                >
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center flex-shrink-0 group-hover:from-purple-200 group-hover:to-purple-300 transition-colors">
+                    <Shield size={22} className="text-purple-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900"><T en="Mayor / City Executive" /></h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      <T en="Access city-wide analytics and mobilize community volunteers" />
+                    </p>
+                  </div>
+                  <ArrowRight size={18} className="text-gray-300 group-hover:text-purple-500 transition-colors" />
+                </motion.button>
               </div>
             </motion.div>
           )}
@@ -419,61 +446,63 @@ const SignupPage = () => {
                   optional: true,
                 })}
 
-                {/* ─── Public Servant Extra Fields ─────────────────── */}
-                {isPublicServant && (
+                {/* ─── Public Servant & Mayor Extra Fields ─────────────────── */}
+                {(isPublicServant || isMayor) && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     className="space-y-3.5 pt-2 border-t border-gray-100"
                   >
                     <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">
-                      <T en="Official Details" />
+                      {isMayor ? <T en="Executive Details" /> : <T en="Official Details" />}
                     </p>
 
-                    {/* Department Dropdown */}
-                    <div>
-                      <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1.5">
-                        <T en="Department" />
-                      </label>
-                      <div className="relative">
-                        <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 ${
-                          focusedField === 'department' ? 'text-teal-500' : 'text-gray-400'
-                        }`}>
-                          <Building2 size={18} />
+                    {/* Department Dropdown (Only for servants) */}
+                    {isPublicServant && (
+                      <div>
+                        <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1.5">
+                          <T en="Department" />
+                        </label>
+                        <div className="relative">
+                          <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 ${
+                            focusedField === 'department' ? 'text-teal-500' : 'text-gray-400'
+                          }`}>
+                            <Building2 size={18} />
+                          </div>
+                          <select
+                            id="department"
+                            name="department"
+                            value={formData.department}
+                            onChange={handleChange}
+                            onFocus={() => setFocusedField('department')}
+                            onBlur={() => setFocusedField(null)}
+                            className={`input-field pl-11 appearance-none cursor-pointer ${errors.department ? 'input-error' : ''}`}
+                          >
+                            <option value=""><T en="Select your department" /></option>
+                            {DEPARTMENTS.map((d) => (
+                              <option key={d.value} value={d.value}>{d.label}</option>
+                            ))}
+                          </select>
                         </div>
-                        <select
-                          id="department"
-                          name="department"
-                          value={formData.department}
-                          onChange={handleChange}
-                          onFocus={() => setFocusedField('department')}
-                          onBlur={() => setFocusedField(null)}
-                          className={`input-field pl-11 appearance-none cursor-pointer ${errors.department ? 'input-error' : ''}`}
-                        >
-                          <option value=""><T en="Select your department" /></option>
-                          {DEPARTMENTS.map((d) => (
-                            <option key={d.value} value={d.value}>{d.label}</option>
-                          ))}
-                        </select>
+                        <AnimatePresence>
+                          {errors.department && (
+                            <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="text-red-500 text-xs mt-1.5">
+                              {errors.department}
+                            </motion.p>
+                          )}
+                        </AnimatePresence>
                       </div>
-                      <AnimatePresence>
-                        {errors.department && (
-                          <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="text-red-500 text-xs mt-1.5">
-                            {errors.department}
-                          </motion.p>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                    )}
 
                     {renderInput({
                       name: 'employeeId',
-                      label: <T en="Employee ID" />,
+                      label: isMayor ? <T en="Executive ID" /> : <T en="Employee ID" />,
                       icon: CreditCard,
-                      placeholder: 'e.g. GOV-2024-1234',
+                      placeholder: isMayor ? 'e.g. MAYOR-2024-001' : 'e.g. GOV-2024-1234',
                     })}
                     {renderInput({
                       name: 'governmentEmail',
-                      label: <T en="Government Email" />,
+                      label: isMayor ? <T en="Official Email" /> : <T en="Government Email" />,
                       type: 'email',
                       icon: BadgeCheck,
                       placeholder: 'you@govt.bd',
@@ -482,7 +511,7 @@ const SignupPage = () => {
                       name: 'designation',
                       label: <T en="Designation / Rank" />,
                       icon: Briefcase,
-                      placeholder: 'e.g. Junior Engineer, Inspector',
+                      placeholder: isMayor ? 'e.g. Mayor of Dhaka South' : 'e.g. Junior Engineer, Inspector',
                     })}
                     {renderInput({
                       name: 'nidNumber',
