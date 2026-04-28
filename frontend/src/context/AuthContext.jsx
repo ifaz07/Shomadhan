@@ -27,10 +27,13 @@ export const AuthProvider = ({ children }) => {
   const fetchUser = async () => {
     try {
       const { data } = await authAPI.getMe();
-      setUser(data.data.user);
+      const nextUser = data.data.user;
+      setUser(nextUser);
+      return nextUser;
     } catch {
       localStorage.removeItem('token');
       setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -60,7 +63,7 @@ export const AuthProvider = ({ children }) => {
   const loginWithToken = async (token) => {
     localStorage.setItem('token', token);
     localStorage.setItem('loginTime', new Date().toISOString());
-    await fetchUser();
+    return await fetchUser();
   };
 
   const logout = async () => {

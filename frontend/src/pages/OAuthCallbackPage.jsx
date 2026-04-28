@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
+import { getDefaultDashboardRoute } from "../utils/roleRoutes";
 
 // This page handles the redirect from the backend after Google/Facebook OAuth.
 // The backend now redirects to: /auth/oauth-completion?token=JWT_TOKEN&isNew=true/false
@@ -27,9 +28,9 @@ const OAuthCallbackPage = () => {
 
     // Legacy flow: directly log in (no verification required)
     loginWithToken(token)
-      .then(() => {
+      .then((user) => {
         toast.success("Welcome!");
-        navigate("/dashboard", { replace: true });
+        navigate(getDefaultDashboardRoute(user?.role), { replace: true });
       })
       .catch(() => {
         toast.error("Failed to sign in. Please try again.");

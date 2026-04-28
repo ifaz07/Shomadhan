@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Upload, CheckCircle, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
+import { getDefaultDashboardRoute } from "../utils/roleRoutes";
 import T from "../components/T";
 
 const OAuthCompletionPage = () => {
@@ -43,9 +44,9 @@ const OAuthCompletionPage = () => {
     if (!isNew) {
       setStep("completing");
       loginWithToken(token)
-        .then(() => {
+        .then((user) => {
           toast.success("Welcome back!");
-          navigate("/dashboard", { replace: true });
+          navigate(getDefaultDashboardRoute(user?.role), { replace: true });
         })
         .catch(() => {
           toast.error("Failed to sign in. Please try again.");
@@ -120,8 +121,8 @@ const OAuthCompletionPage = () => {
       setStep("completing");
 
       // Log in the user
-      await loginWithToken(token);
-      navigate("/dashboard", { replace: true });
+      const user = await loginWithToken(token);
+      navigate(getDefaultDashboardRoute(user?.role), { replace: true });
     } catch (err) {
       toast.error(err.message || "Verification failed. Please try again.");
     } finally {

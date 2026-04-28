@@ -16,51 +16,77 @@ import ComplaintDetailPage from "./pages/ComplaintDetailPage";
 import MyComplaintsPage from "./pages/MyComplaintsPage";
 import PublicAnalyticsPage from "./pages/PublicAnalyticsPage";
 import FeedbackPage from "./pages/FeedbackPage";
+import AdminDashboard from "./pages/AdminDashboard";
+import MayorDashboard from "./pages/MayorDashboard";
 import ServantDashboardPage from "./pages/servant/ServantDashboardPage";
 import ServantComplaintsPage from "./pages/servant/ServantComplaintsPage";
 import ServantProfilePage from "./pages/servant/ServantProfilePage";
 import ServantHeatmapPage from "./pages/servant/ServantHeatmapPage";
 import ServantComplaintDetailPage from "./pages/servant/ServantComplaintDetailPage";
 import { useAuth } from "./context/AuthContext";
+import { getDefaultDashboardRoute } from "./utils/roleRoutes";
 
-// ─── Citizen-only route (redirect servants away) ──────────────────────
-const ProtectedRoute = ({ children }) => {
+const AuthenticatedRoute = ({ children }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role === "department_officer")
+  return children;
+};
+
+const CitizenRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "citizen") {
+    return <Navigate to={getDefaultDashboardRoute(user.role)} replace />;
+  }
+  return children;
+};
+
+const NonServantRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === "department_officer") {
     return <Navigate to="/servant/dashboard" replace />;
+  }
   return children;
 };
 
-// ─── Shared protected route (allows both citizens and servants) ────────
-const SharedRoute = ({ children }) => {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
-  return children;
-};
-
-// ─── Servant-only route ───────────────────────────────────────────────
 const ServantRoute = ({ children }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== "department_officer")
-    return <Navigate to="/dashboard" replace />;
+  if (user.role !== "department_officer") {
+    return <Navigate to={getDefaultDashboardRoute(user.role)} replace />;
+  }
   return children;
 };
 
-// ─── Guest route (redirect logged-in users to their dashboard) ────────
+const MayorRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "mayor") {
+    return <Navigate to={getDefaultDashboardRoute(user.role)} replace />;
+  }
+  return children;
+};
+
+const AdminRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "admin") {
+    return <Navigate to={getDefaultDashboardRoute(user.role)} replace />;
+  }
+  return children;
+};
+
 const GuestRoute = ({ children }) => {
   const { user } = useAuth();
   if (user) {
-    if (user.role === "department_officer")
-      return <Navigate to="/servant/dashboard" replace />;
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={getDefaultDashboardRoute(user.role)} replace />;
   }
   return children;
 };
 
 function App() {
-  const { loading } = useAuth();
+  const { loading, user } = useAuth();
 
   if (loading) {
     return (
@@ -87,7 +113,6 @@ function App() {
         }}
       />
       <Routes>
-        {/* ─── Auth Pages (guest only) ──────────────────────────── */}
         <Route
           path="/login"
           element={
@@ -121,96 +146,109 @@ function App() {
           }
         />
 
-        {/* ─── OAuth callback (no guard — token arrives here) ───── */}
         <Route path="/auth/callback" element={<OAuthCallbackPage />} />
         <Route
           path="/auth/oauth-completion"
           element={<OAuthCompletionPage />}
         />
 
-        {/* ─── Citizen Pages ────────────────────────────────────── */}
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <CitizenRoute>
               <DashboardPage />
-            </ProtectedRoute>
+            </CitizenRoute>
           }
         />
         <Route
           path="/submit-complaint"
           element={
-            <ProtectedRoute>
+            <CitizenRoute>
               <ComplaintPage />
-            </ProtectedRoute>
+            </CitizenRoute>
           }
         />
         <Route
           path="/verify"
           element={
-            <ProtectedRoute>
+            <NonServantRoute>
               <VerificationPage />
-            </ProtectedRoute>
+            </NonServantRoute>
           }
         />
         <Route
           path="/profile"
           element={
-            <ProtectedRoute>
+            <NonServantRoute>
               <ProfilePage />
-            </ProtectedRoute>
+            </NonServantRoute>
           }
         />
         <Route
           path="/heatmap"
           element={
-            <ProtectedRoute>
+            <NonServantRoute>
               <HeatmapPage />
-            </ProtectedRoute>
+            </NonServantRoute>
           }
         />
         <Route
           path="/complaints/:id"
           element={
-            <ProtectedRoute>
+            <NonServantRoute>
               <ComplaintDetailPage />
-            </ProtectedRoute>
+            </NonServantRoute>
           }
         />
         <Route
           path="/my-complaints"
           element={
-            <ProtectedRoute>
+            <NonServantRoute>
               <MyComplaintsPage />
-            </ProtectedRoute>
+            </NonServantRoute>
           }
         />
         <Route
           path="/feedback"
           element={
-            <ProtectedRoute>
+            <NonServantRoute>
               <FeedbackPage />
-            </ProtectedRoute>
+            </NonServantRoute>
           }
         />
         <Route
           path="/analytics"
           element={
-            <ProtectedRoute>
+            <NonServantRoute>
               <Navigate to="/analytics/dashboard" replace />
-            </ProtectedRoute>
+            </NonServantRoute>
           }
         />
         <Route
           path="/analytics/dashboard"
           element={
-            <ProtectedRoute>
+            <NonServantRoute>
               <PublicAnalyticsPage />
-            </ProtectedRoute>
+            </NonServantRoute>
+          }
+        />
+        <Route
+          path="/mayor/dashboard"
+          element={
+            <MayorRoute>
+              <MayorDashboard />
+            </MayorRoute>
+          }
+        />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
           }
         />
 
-        {/* ─── Public Servant Pages ─────────────────────────────── */}
         <Route
           path="/servant/dashboard"
           element={
@@ -252,13 +290,12 @@ function App() {
           }
         />
 
-        {/* ─── Shared protected routes ──────────────────────────── */}
         <Route
           path="/notifications"
           element={
-            <ProtectedRoute>
+            <NonServantRoute>
               <NotificationsPage />
-            </ProtectedRoute>
+            </NonServantRoute>
           }
         />
         <Route
@@ -270,7 +307,14 @@ function App() {
           }
         />
 
-        {/* ─── Fallback ─────────────────────────────────────────── */}
+        <Route
+          path="/"
+          element={
+            <AuthenticatedRoute>
+              <Navigate to={getDefaultDashboardRoute(user?.role)} replace />
+            </AuthenticatedRoute>
+          }
+        />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </>

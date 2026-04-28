@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import AuthLayout from '../components/auth/AuthLayout';
 import { authAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { getDefaultDashboardRoute } from '../utils/roleRoutes';
 import T from '../components/T';
 
 const ResetPasswordPage = () => {
@@ -49,9 +50,9 @@ const ResetPasswordPage = () => {
     try {
       const { data } = await authAPI.resetPassword(token, { password: formData.password });
       // Log the user in with the returned token
-      await loginWithToken(data.data.token);
+      const user = await loginWithToken(data.data.token);
       toast.success('Password reset successfully!');
-      navigate('/dashboard', { replace: true });
+      navigate(getDefaultDashboardRoute(user?.role), { replace: true });
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to reset password. The link may have expired.';
       toast.error(msg);

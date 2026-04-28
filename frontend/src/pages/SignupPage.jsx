@@ -78,7 +78,6 @@ const reverseGeocode = async (lat, lng, setAddress) => {
   }
 };
 
-// ─── Department options ──────────────────────────────────────────────
 const DEPARTMENTS = [
   { value: "public_works", label: <T en="Public Works" /> },
   { value: "water_authority", label: <T en="Water Authority" /> },
@@ -135,7 +134,6 @@ const SignupPage = () => {
     }));
   }, []);
 
-  // ─── Validation per step ─────────────────────────────────────────
   const validateStep2 = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = "Name is required";

@@ -60,11 +60,23 @@ const getDepartmentComplaints = async (req, res, next) => {
   try {
     const categories = DEPT_CATEGORY_MAP[req.user.department] || [];
 
-    const { status, priority, location, page = 1, limit = 20 } = req.query;
+    const { status, priority, location, filter, page = 1, limit = 20 } = req.query;
 
     const matchStage = { category: { $in: categories } };
+    
     if (status && status !== "all") matchStage.status = status;
     if (priority && priority !== "all") matchStage.priority = priority;
+    
+    if (filter === 'monthly') {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
+      matchStage.createdAt = { $gte: startOfMonth };
+    } else if (filter === 'yearly') {
+      const startOfYear = new Date();
+      startOfYear.setMonth(0, 1); startOfYear.setHours(0,0,0,0);
+      matchStage.createdAt = { $gte: startOfYear };
+    }
+
     if (location && String(location).trim()) {
       matchStage.location = {
         $regex: String(location).trim(),
@@ -208,34 +220,28 @@ const setComplaintSLA = async (req, res, next) => {
 const getDepartmentStats = async (req, res, next) => {
   try {
     const categories = DEPT_CATEGORY_MAP[req.user.department] || [];
+    const { filter } = req.query;
+    let dateFilter = { category: { $in: categories } };
+
+    if (filter === 'monthly') {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
+      dateFilter.createdAt = { $gte: startOfMonth };
+    } else if (filter === 'yearly') {
+      const startOfYear = new Date();
+      startOfYear.setMonth(0, 1); startOfYear.setHours(0,0,0,0);
+      dateFilter.createdAt = { $gte: startOfYear };
+    }
 
     const [total, pending, inProgress, resolved, rejected, critical, high] =
       await Promise.all([
-        Complaint.countDocuments({ category: { $in: categories } }),
-        Complaint.countDocuments({
-          category: { $in: categories },
-          status: "pending",
-        }),
-        Complaint.countDocuments({
-          category: { $in: categories },
-          status: "in-progress",
-        }),
-        Complaint.countDocuments({
-          category: { $in: categories },
-          status: "resolved",
-        }),
-        Complaint.countDocuments({
-          category: { $in: categories },
-          status: "rejected",
-        }),
-        Complaint.countDocuments({
-          category: { $in: categories },
-          priority: "Critical",
-        }),
-        Complaint.countDocuments({
-          category: { $in: categories },
-          priority: "High",
-        }),
+        Complaint.countDocuments(dateFilter),
+        Complaint.countDocuments({ ...dateFilter, status: "pending" }),
+        Complaint.countDocuments({ ...dateFilter, status: "in-progress" }),
+        Complaint.countDocuments({ ...dateFilter, status: "resolved" }),
+        Complaint.countDocuments({ ...dateFilter, status: "rejected" }),
+        Complaint.countDocuments({ ...dateFilter, priority: "Critical" }),
+        Complaint.countDocuments({ ...dateFilter, priority: "High" }),
       ]);
 
     // Recent 5 critical/high complaints (sorted Critical first, then High)
