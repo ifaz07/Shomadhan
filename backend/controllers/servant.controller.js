@@ -1,4 +1,5 @@
 const Complaint = require("../models/Complaint.model");
+const User = require("../models/User.model");
 const { sendNotification } = require("../services/notificationService");
 
 const DEPT_CATEGORY_MAP = {
@@ -340,11 +341,64 @@ const updateComplaintStatus = async (req, res, next) => {
     complaint.history.push(historyEntry);
     await complaint.save();
 
+    // ─── REWARD SYSTEM LOGIC ─────────────────────────────────────────
+    if (status === "resolved") {
+      // 1. Award +50 to the creator
+      if (complaint.user) {
+        await User.findByIdAndUpdate(complaint.user, { 
+          $inc: { points: 50 },
+          $push: { 
+            pointHistory: { 
+              amount: 50, 
+              reason: `Complaint Resolved: ${complaint.title}`, 
+              type: 'earn',
+              complaintId: complaint._id
+            } 
+          }
+        });
+      }
+      
+      // 2. Award +15 to all users who voted
+      if (complaint.votes && complaint.votes.length > 0) {
+        const voterIds = complaint.votes.map(v => v.user || v); 
+        await User.updateMany(
+          { _id: { $in: voterIds } },
+          { 
+            $inc: { points: 15 },
+            $push: { 
+              pointHistory: { 
+                amount: 15, 
+                reason: `Voted Complaint Resolved: ${complaint.title}`, 
+                type: 'earn',
+                complaintId: complaint._id
+              } 
+            }
+          }
+        );
+      }
+    } else if (status === "rejected") {
+      // Deduct -10 for prank/dismissed complaints
+      if (complaint.user) {
+        await User.findByIdAndUpdate(complaint.user, { 
+          $inc: { points: -10 },
+          $push: { 
+            pointHistory: { 
+              amount: -10, 
+              reason: `Complaint Rejected (Prank/Dismissed): ${complaint.title}`, 
+              type: 'penalty',
+              complaintId: complaint._id
+            } 
+          }
+        });
+      }
+    }
+    // ───────────────────────────────────────────────────────────────
+
     // Trigger Notification
     if (complaint.user) {
       await sendNotification(complaint.user, {
         subject: `Complaint Status Updated: ${status.toUpperCase()}`,
-        message: `Your complaint "${complaint.title}" (Ticket: ${complaint.ticketId}) has been updated to "${status}".${note ? ` Note: ${note}` : ""}`,
+        message: `Your complaint "${complaint.title}" (Ticket: ${complaint.ticketId}) has been updated to "${status}".${note ? ` Note: ${note}` : ""}${status === "resolved" ? " You earned +50 points!" : status === "rejected" ? " You lost -10 points." : ""}`,
         type: status === "resolved" ? "success" : "info",
         relatedTicket: complaint._id,
       });

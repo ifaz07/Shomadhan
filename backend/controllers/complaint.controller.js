@@ -1,4 +1,5 @@
 const Complaint = require("../models/Complaint.model");
+const User = require("../models/User.model");
 const mongoose = require("mongoose");
 const crypto = require("crypto");
 const { classifyComplaint } = require("../services/nlpService");
@@ -459,6 +460,10 @@ const getPublicStats = async (req, res, next) => {
 
     const all = await Complaint.find(dateFilter).select('category priority status');
 
+    // Fetch the current Good Citizen of the month
+    const goodCitizen = await User.findOne({ isGoodCitizen: true })
+      .select('name avatar points');
+
     const CATEGORY_TO_DEPT = {
       Road: 'public_works', Waste: 'sanitation', Electricity: 'electricity',
       Water: 'water_authority', Safety: 'public_safety',
@@ -534,7 +539,7 @@ const getPublicStats = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: { total, critical, inProgress, resolved, departments: deptStats },
+      data: { total, critical, inProgress, resolved, departments: deptStats, goodCitizen },
     });
   } catch (error) {
     next(error);
@@ -576,9 +581,10 @@ const PRIORITY_SORT_STAGE = {
 const getComplaints = async (req, res, next) => {
   try {
     let query = {};
-    const mineOnly = req.user.role !== "admin" && req.query.mine === "true";
+    const isExecutive = ["admin", "mayor"].includes(req.user.role);
+    const mineOnly = !isExecutive && req.query.mine === "true";
 
-    // Admins see everything; ?mine=true scopes to the requester's own complaints
+    // Executive roles see everything; others see their own if mine=true
     if (mineOnly) {
       query = { user: req.user._id };
     }

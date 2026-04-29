@@ -18,6 +18,7 @@ import PublicAnalyticsPage from "./pages/PublicAnalyticsPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import MayorDashboard from "./pages/MayorDashboard";
+import MayorPendingPage from "./pages/MayorPendingPage";
 import ServantDashboardPage from "./pages/servant/ServantDashboardPage";
 import ServantComplaintsPage from "./pages/servant/ServantComplaintsPage";
 import ServantProfilePage from "./pages/servant/ServantProfilePage";
@@ -64,6 +65,9 @@ const MayorRoute = ({ children }) => {
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== "mayor") {
     return <Navigate to={getDefaultDashboardRoute(user.role)} replace />;
+  }
+  if (!user.isActive) {
+    return <Navigate to="/mayor/pending" replace />;
   }
   return children;
 };
@@ -240,6 +244,7 @@ function App() {
             </MayorRoute>
           }
         />
+        <Route path="/mayor/pending" element={<MayorPendingPage />} />
         <Route
           path="/admin/dashboard"
           element={

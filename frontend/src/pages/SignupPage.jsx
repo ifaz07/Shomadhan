@@ -125,6 +125,8 @@ const SignupPage = () => {
   const [focusedField, setFocusedField] = useState(null);
 
   const isPublicServant = formData.role === "department_officer";
+  const isMayor = formData.role === "mayor";
+  const needsNid = isPublicServant || isMayor;
   const totalSteps = 4;
 
   const setAddressLabel = useCallback((addr) => {
@@ -148,8 +150,7 @@ const SignupPage = () => {
       newErrors.phone = "Invalid BD phone number";
     }
 
-    if (isPublicServant) {
-      if (!formData.department) newErrors.department = "Department is required";
+    if (needsNid) {
       if (!formData.nidNumber.trim()) newErrors.nidNumber = "NID required";
       else if (formData.nidNumber.trim().length !== 10)
         newErrors.nidNumber = "NID must be 10 digits";
@@ -161,6 +162,10 @@ const SignupPage = () => {
         newErrors.governmentEmail = "Valid email required";
       if (!formData.designation.trim())
         newErrors.designation = "Designation is required";
+    }
+
+    if (isPublicServant) {
+      if (!formData.department) newErrors.department = "Department is required";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -266,7 +271,16 @@ const SignupPage = () => {
         },
       };
       await register(payload);
-      toast.success("Account created successfully!");
+      
+      if (formData.role === 'mayor') {
+        toast.success("Mayor account created! Please wait for admin verification.");
+        // Wait 2 seconds so the user can see the toast before reload
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        toast.success("Account created successfully!");
+      }
     } catch (error) {
       if (error.response?.data?.errors) {
         const backendErrors = {};
@@ -383,6 +397,20 @@ const SignupPage = () => {
                     </p>
                   </div>
                 </button>
+                <button
+                  onClick={() => selectRole("mayor")}
+                  className="flex items-center gap-4 p-5 rounded-xl border-2 hover:border-amber-400 text-left transition-all"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
+                    <Shield />
+                  </div>
+                  <div>
+                    <h3 className="font-bold">Mayor</h3>
+                    <p className="text-xs text-gray-500">
+                      City-wide oversight
+                    </p>
+                  </div>
+                </button>
               </div>
             </motion.div>
           )}
@@ -413,33 +441,35 @@ const SignupPage = () => {
                 icon: Phone,
                 placeholder: "01XXXXXXXXX",
               })}
-              {isPublicServant && (
+              {needsNid && (
                 <>
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between">
-                      <label className="text-sm font-medium text-gray-700">
-                        Department
-                      </label>
-                      {errors.department && (
-                        <span className="text-[10px] font-bold text-rose-500">
-                          {errors.department}
-                        </span>
-                      )}
+                  {isPublicServant && (
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between">
+                        <label className="text-sm font-medium text-gray-700">
+                          Department
+                        </label>
+                        {errors.department && (
+                          <span className="text-[10px] font-bold text-rose-500">
+                            {errors.department}
+                          </span>
+                        )}
+                      </div>
+                      <select
+                        name="department"
+                        value={formData.department}
+                        onChange={handleChange}
+                        className={`input-field ${errors.department ? "border-rose-400" : ""}`}
+                      >
+                        <option value="">Select Department</option>
+                        {DEPARTMENTS.map((d) => (
+                          <option key={d.value} value={d.value}>
+                            {d.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <select
-                      name="department"
-                      value={formData.department}
-                      onChange={handleChange}
-                      className={`input-field ${errors.department ? "border-rose-400" : ""}`}
-                    >
-                      <option value="">Select Department</option>
-                      {DEPARTMENTS.map((d) => (
-                        <option key={d.value} value={d.value}>
-                          {d.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  )}
                   {renderInput({
                     name: "nidNumber",
                     label: "NID Number",

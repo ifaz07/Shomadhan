@@ -103,8 +103,21 @@ const register = async (req, res, next) => {
         submittedAt: new Date(),
         verifiedAt: new Date(),
       };
+    } else if (role === "mayor") {
+      userData.role = "mayor";
+      userData.isVerified = false;
+      userData.isActive = false; // Mayors need admin approval
+      userData.employeeId = employeeId;
+      userData.governmentEmail = governmentEmail;
+      userData.designation = designation;
+      userData.verificationDoc = {
+        docType: "nid",
+        documentNumber: String(nidNumber || ""),
+        status: "pending",
+        submittedAt: new Date(),
+      };
     }
-    // Note: 'admin' and 'mayor' roles cannot be self-assigned via signup
+    // Note: 'admin' role cannot be self-assigned via signup
 
     const user = await User.create(userData);
 
@@ -141,7 +154,7 @@ const login = async (req, res, next) => {
     if (!user.isActive) {
       return res.status(403).json({
         success: false,
-        message: "This account has been deactivated. Contact support.",
+        message: "This account is inactive. Please wait for admin approval.",
       });
     }
 

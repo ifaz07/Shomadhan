@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Mail, Phone, Lock, Eye, EyeOff, Shield, ShieldCheck, ShieldX,
   Camera, Save, Loader2, Building2, Briefcase, CreditCard, Clock,
-  ArrowRight, Pencil, X, Check, Trash2, MapPin, Navigation, Search, MousePointer2
+  ArrowRight, Pencil, X, Check, Trash2, MapPin, Navigation, Search, MousePointer2,
+  Trophy, History, TrendingUp, TrendingDown
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
@@ -349,6 +350,7 @@ const ProfilePage = () => {
 
   const tabs = [
     { id: 'profile',      label: <T en="Profile" />,      icon: User   },
+    { id: 'rewards',      label: <T en="Points & Rewards" />, icon: Trophy },
     { id: 'security',     label: <T en="Security" />,     icon: Lock   },
     { id: 'verification', label: <T en="Verification" />, icon: Shield },
   ];
@@ -358,7 +360,18 @@ const ProfilePage = () => {
   return (
     <DashboardLayout>
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold text-gray-900 mb-6"><T en="My Profile" /></h1>
+        <div className="flex items-center justify-between mb-6">
+           <h1 className="text-2xl font-bold text-gray-900"><T en="My Profile" /></h1>
+           {user?.points !== undefined && (
+             <div className="flex items-center gap-2 bg-teal-50 px-4 py-2 rounded-xl border border-teal-100 shadow-sm">
+                <Trophy size={18} className="text-teal-600" />
+                <div>
+                   <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest leading-none">Total Points</p>
+                   <p className="text-lg font-black text-teal-900 leading-tight">{user.points}</p>
+                </div>
+             </div>
+           )}
+        </div>
       </motion.div>
 
       {/* ─── Tabs ──────────────────────────────────────────────── */}
@@ -659,6 +672,84 @@ const ProfilePage = () => {
                   <InfoRow icon={Briefcase}  label={<T en="Designation" />}      value={user?.designation} />
                 </>
               )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ─── Rewards Tab ─────────────────────────────────────── */}
+        {activeTab === 'rewards' && (
+          <motion.div
+            key="rewards"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 10 }}
+            className="space-y-6 max-w-2xl"
+          >
+            {/* Points Summary Card */}
+            <div className="bg-gradient-to-br from-teal-600 to-teal-700 rounded-2xl p-8 text-white shadow-lg relative overflow-hidden">
+               <div className="relative z-10">
+                  <div className="flex items-center gap-3 opacity-90 mb-2">
+                    <Trophy size={20} />
+                    <span className="text-xs font-bold uppercase tracking-[0.2em]">Citizen Reputation</span>
+                  </div>
+                  <h3 className="text-4xl font-black">{user?.points || 0}</h3>
+                  <p className="text-teal-100 text-sm mt-1">Accumulated solving city issues</p>
+                  
+                  <div className="mt-8 flex gap-4">
+                    <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 flex-1 border border-white/10">
+                       <p className="text-[10px] font-bold text-teal-200 uppercase mb-1">Status</p>
+                       <p className="text-sm font-bold">{user?.isGoodCitizen ? '⭐ Good Citizen' : 'Active Contributor'}</p>
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 flex-1 border border-white/10">
+                       <p className="text-[10px] font-bold text-teal-200 uppercase mb-1">Badges</p>
+                       <p className="text-sm font-bold">{user?.badges?.length || 0} Earned</p>
+                    </div>
+                  </div>
+               </div>
+               {/* Decorative background shape */}
+               <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+            </div>
+
+            {/* History Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-5 border-b border-gray-50 flex items-center justify-between">
+                <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                  <History size={18} className="text-teal-500" />
+                  Point History
+                </h4>
+              </div>
+              
+              <div className="divide-y divide-gray-50">
+                {!user?.pointHistory || user.pointHistory.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <History size={32} className="mx-auto text-gray-200 mb-2" />
+                    <p className="text-sm text-gray-400 font-medium">No point transactions yet.</p>
+                  </div>
+                ) : (
+                  [...user.pointHistory].reverse().map((item, idx) => (
+                    <div key={idx} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          item.type === 'earn' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                        }`}>
+                          {item.type === 'earn' ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900 leading-none mb-1">{item.reason}</p>
+                          <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
+                            {new Date(item.createdAt).toLocaleDateString()} • {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`text-sm font-black ${
+                        item.type === 'earn' ? 'text-emerald-600' : 'text-rose-600'
+                      }`}>
+                        {item.type === 'earn' ? '+' : ''}{item.amount}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </motion.div>
         )}

@@ -31,7 +31,7 @@ const registerValidator = [
   // ─── Public Servant conditional validations ────────────────────
   body('role')
     .optional()
-    .isIn(['citizen', 'department_officer']).withMessage('Invalid role selection'),
+    .isIn(['citizen', 'department_officer', 'mayor']).withMessage('Invalid role selection'),
 
   body('department')
     .if(body('role').equals('department_officer'))
@@ -42,23 +42,23 @@ const registerValidator = [
     ]).withMessage('Invalid department'),
 
   body('nidNumber')
-    .if(body('role').equals('department_officer'))
+    .if(body('role').isIn(['department_officer', 'mayor']))
     .notEmpty().withMessage('NID number is required')
     .isLength({ min: 10, max: 10 }).withMessage('NID number must be exactly 10 digits')
     .isNumeric().withMessage('NID must contain only digits'),
 
   body('employeeId')
-    .if(body('role').equals('department_officer'))
-    .notEmpty().withMessage('Employee ID is required for public servants')
+    .if(body('role').isIn(['department_officer', 'mayor']))
+    .notEmpty().withMessage('Employee ID is required for officials')
     .trim(),
 
   body('governmentEmail')
-    .if(body('role').equals('department_officer'))
+    .if(body('role').isIn(['department_officer', 'mayor']))
     .notEmpty().withMessage('Government email is required')
     .isEmail().withMessage('Please provide a valid government email'),
 
   body('designation')
-    .if(body('role').equals('department_officer'))
+    .if(body('role').isIn(['department_officer', 'mayor']))
     .notEmpty().withMessage('Designation is required')
     .trim()
     .isLength({ max: 100 }).withMessage('Designation cannot exceed 100 characters'),

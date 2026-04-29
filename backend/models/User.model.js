@@ -33,6 +33,29 @@ const userSchema = new mongoose.Schema(
       trim: true,
       match: [/^(\+880|0)?1[3-9]\d{8}$/, 'Please provide a valid BD phone number'],
     },
+    points: {
+      type: Number,
+      default: 0,
+    },
+    pointHistory: [
+      {
+        amount: Number,
+        reason: String,
+        type: { type: String, enum: ['earn', 'penalty'] },
+        complaintId: { type: mongoose.Schema.Types.ObjectId, ref: 'Complaint' },
+        createdAt: { type: Date, default: Date.now }
+      }
+    ],
+    isGoodCitizen: {
+      type: Boolean,
+      default: false,
+    },
+    badges: [
+      {
+        name: { type: String },
+        awardedAt: { type: Date, default: Date.now },
+      },
+    ],
     role: {
       type: String,
       enum: ['citizen', 'department_officer', 'admin', 'mayor'],
@@ -108,7 +131,6 @@ const userSchema = new mongoose.Schema(
 
     // ─── Reputation & Badges ─────────────────────────────────────
     reputation: { type: Number, default: 0 },
-    badges: [{ type: String }],
 
     // ─── Password Reset ──────────────────────────────────────────
     resetPasswordToken: { type: String },

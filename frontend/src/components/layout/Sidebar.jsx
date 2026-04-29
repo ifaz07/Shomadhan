@@ -26,6 +26,7 @@ import { notificationAPI } from "../../services/api";
 import { getDefaultDashboardRoute } from "../../utils/roleRoutes";
 import LanguageToggle from "../LanguageToggle";
 import T from "../T";
+import GoodCitizenStar from "../GoodCitizenStar";
 
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1');
 const resolveAvatar = (url) => {
@@ -187,7 +188,10 @@ const Sidebar = () => {
             </div>
             {!isCollapsed && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <h1 className="text-lg font-bold text-gray-900 font-bengali">সমাধান</h1>
+                <div className="flex items-center gap-1.5">
+                   <h1 className="text-lg font-bold text-gray-900 font-bengali">সমাধান</h1>
+                   {user?.isGoodCitizen && <GoodCitizenStar size={14} />}
+                </div>
                 <p className="text-[10px] text-gray-400 -mt-0.5">Somadhan</p>
               </motion.div>
             )}
