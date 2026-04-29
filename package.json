@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "groq-sdk": "^1.1.2",
     "node-cron": "^4.2.1"
   }
 }
