@@ -192,4 +192,188 @@ async function checkForDuplicates(title, description, latitude, longitude, userI
   return { isSpam: false };
 }
 
-module.exports = { checkForDuplicates };
+module.exports = { checkForDuplicates, detectPrankComplaint };
+
+/**
+ * AI-Based Prank/Fake Complaint Detection
+ * 
+ * Uses multiple heuristics to detect potentially fake or prank complaints:
+ * 1. Text analysis - checks for suspicious patterns, excessive punctuation, all caps
+ * 2. Keyword matching - looks for prank keywords and patterns
+ * 3. Length analysis - very short or very long descriptions
+ * 4. Sentiment analysis - extreme or inappropriate sentiment
+ * 5. Semantic analysis - uses HF model for deeper analysis if available
+ * 
+ * @param {string} title - Complaint title
+ * @param {string} description - Complaint description
+ * @returns {Promise<{
+ *   isPrank: boolean,
+ *   confidence: number,
+ *   reasons: string[],
+ *   modelVersion: string,
+ * }>}
+ */
+async function detectPrankComplaint(title, description) {
+  const reasons = [];
+  let prankScore = 0;
+  const MODEL_VERSION = '1.0.0';
+  
+  const combinedText = `${title} ${description}`.toLowerCase();
+  
+  // 1. Check for prank keywords and patterns
+  const prankKeywords = [
+    'joke', 'prank', 'fake', 'lol', 'haha', 'just kidding', 'not real',
+    'testing', 'funny', 'hilarious', 'bomb', 'attack', 'kill', 'die',
+    'fake news', 'hoax', 'scam', 'fraud', 'lie', 'stupid', 'idiot',
+    'waste of time', 'nonsense', 'rubbish', 'bullshit', 'fuck', 'shit',
+    'ass', 'bitch', 'damn', 'hell', 'crap', 'suck', 'dumb', 'loser'
+  ];
+  
+  const foundPrankKeywords = prankKeywords.filter(keyword => 
+    combinedText.includes(keyword)
+  );
+  
+  if (foundPrankKeywords.length > 0) {
+    const keywordScore = Math.min(foundPrankKeywords.length * 0.15, 0.5);
+    prankScore += keywordScore;
+    reasons.push(`Suspicious keywords detected: ${foundPrankKeywords.join(', ')}`);
+  }
+  
+  // 2. Check for excessive punctuation or all caps
+  const exclamationCount = (title.match(/!/g) || []).length + (description.match(/!/g) || []).length;
+  const questionCount = (title.match(/\?/g) || []).length + (description.match(/\?/g) || []).length;
+  
+  if (exclamationCount > 3) {
+    prankScore += 0.2;
+    reasons.push('Excessive exclamation marks detected');
+  }
+  
+  if (questionCount > 5) {
+    prankScore += 0.15;
+    reasons.push('Excessive question marks detected');
+  }
+  
+  // Check for ALL CAPS (more than 50% of words)
+  const words = title.split(/\s+/) + description.split(/\s+/);
+  const uppercaseWords = words.filter(w => w.length > 2 && w === w.toUpperCase());
+  if (uppercaseWords.length / words.length > 0.5) {
+    prankScore += 0.25;
+    reasons.push('Excessive use of capital letters detected');
+  }
+  
+  // 3. Check text length (very short or very long)
+  if (description.length < 10) {
+    prankScore += 0.3;
+    reasons.push('Description too short (likely not genuine)');
+  }
+  
+  if (description.length > 5000) {
+    prankScore += 0.15;
+    reasons.push('Description unusually long');
+  }
+  
+  // 4. Check for repeated characters (e.g., "sooooo", "haaaa")
+  const repeatedChars = combinedText.match(/(.)\1{3,}/g);
+  if (repeatedChars && repeatedChars.length > 2) {
+    prankScore += 0.2;
+    reasons.push('Excessive repeated characters detected');
+  }
+  
+  // 5. Check for emoji-only or symbol-only content
+  const emojiPattern = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu;
+  const emojis = combinedText.match(emojiPattern);
+  if (emojis && emojis.length > 5) {
+    prankScore += 0.2;
+    reasons.push('Excessive emoji usage detected');
+  }
+  
+  // 6. Check for generic/location-less complaints
+  const hasLocation = combinedText.includes('road') || 
+                     combinedText.includes('street') || 
+                     combinedText.includes('area') ||
+                     combinedText.includes('location') ||
+                     combinedText.includes('address');
+  
+  if (!hasLocation && description.length < 50) {
+    prankScore += 0.15;
+    reasons.push('No clear location mentioned in short complaint');
+  }
+  
+  // 7. Try HF semantic analysis if available
+  if (HF_API_KEY && HF_API_KEY !== 'your_huggingface_api_key_here') {
+    try {
+      const semanticScore = await analyzeWithHF(title, description);
+      if (semanticScore > 0.7) {
+        prankScore += semanticScore * 0.3;
+        reasons.push(`AI semantic analysis flagged as suspicious (${Math.round(semanticScore * 100)}%)`);
+      }
+    } catch (err) {
+      console.warn('[PrankDetection] HF analysis failed:', err.message);
+    }
+  }
+  
+  // 8. Check for time-based patterns (submitted at unusual hours)
+  const hour = new Date().getHours();
+  if (hour >= 0 && hour < 5) {
+    // Late night submissions - slightly increase score
+    prankScore += 0.05;
+    reasons.push('Submitted during unusual hours (late night)');
+  }
+  
+  // Normalize score to 0-1 range
+  const normalizedScore = Math.min(prankScore, 1);
+  
+  // Consider it a prank if confidence is above 0.5
+  const isPrank = normalizedScore >= 0.5;
+  
+  return {
+    isPrank,
+    confidence: Math.round(normalizedScore * 100) / 100,
+    reasons: reasons.length > 0 ? reasons : ['No issues detected'],
+    modelVersion: MODEL_VERSION,
+  };
+}
+
+/**
+ * Use HuggingFace model for semantic analysis of prank content
+ */
+async function analyzeWithHF(title, description) {
+  // Use a text classification model for sentiment/toxicity detection
+  const HF_CLASSIFY_URL = 'https://router.huggingface.co/hf-inference/models/facebook/roberta-hate-speech-detector';
+  
+  const response = await fetch(HF_CLASSIFY_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${HF_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      inputs: `${title}. ${description}`.slice(0, 512),
+    }),
+  });
+  
+  if (!response.ok) {
+    throw new Error(`HF Classification API ${response.status}`);
+  }
+  
+  const result = await response.json();
+  
+  // Extract hate speech probability (higher = more likely to be inappropriate)
+  if (Array.isArray(result) && result[0]) {
+    const labelScores = result[0];
+    // Find the highest score among negative labels
+    const negativeLabels = ['hate', 'toxic', 'offensive', 'inappropriate'];
+    let maxNegativeScore = 0;
+    
+    for (const item of labelScores) {
+      const label = item.label.toLowerCase();
+      if (negativeLabels.some(neg => label.includes(neg))) {
+        maxNegativeScore = Math.max(maxNegativeScore, item.score);
+      }
+    }
+    
+    return maxNegativeScore;
+  }
+  
+  return 0;
+}

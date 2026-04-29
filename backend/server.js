@@ -10,7 +10,13 @@ require('dotenv').config();
 const path = require('path');
 const authRoutes = require('./routes/auth.routes');
 const complaintRoutes = require('./routes/complaint.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
+const volunteerRoutes = require('./routes/volunteer.routes');
+const announcementRoutes = require('./routes/announcement.routes');
+const caseRoutes = require('./routes/case.routes');
+const escalationRoutes = require('./routes/escalation.routes');
 const { errorHandler } = require('./middleware/error.middleware');
+const { processOverdueComplaints } = require('./services/escalationService');
 
 const app = express();
 
@@ -43,6 +49,11 @@ const authLimiter = rateLimit({
 // ─── Routes ──────────────────────────────────────────────────────────
 app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/complaints', complaintRoutes);
+app.use('/api/v1/dashboard', dashboardRoutes);
+app.use('/api/v1/volunteers', volunteerRoutes);
+app.use('/api/v1/announcements', announcementRoutes);
+app.use('/api/v1/cases', caseRoutes);
+app.use('/api/v1/escalations', escalationRoutes);
 
 // Health check
 app.get('/api/v1/health', (req, res) => {
@@ -58,14 +69,65 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // ─── Database Connection & Server Start ──────────────────────────────
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5003;
+
+// Schedule automatic escalation check every 5 minutes
+const ESCALATION_INTERVAL = process.env.ESCALATION_INTERVAL || 5 * 60 * 1000; // 5 minutes
 
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('✅ MongoDB connected');
-    app.listen(PORT, () => {
+    
+    // Start the server
+    const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
+    });
+    
+    // Start automatic escalation job
+    console.log(`[Server] Starting automatic escalation job (every ${ESCALATION_INTERVAL / 60000} minutes)`);
+    
+    // Run initial check
+    setTimeout(async () => {
+      try {
+        await processOverdueComplaints();
+      } catch (err) {
+        console.error('[Server] Initial escalation check failed:', err.message);
+      }
+    }, 10000); // Wait 10 seconds after startup
+    
+    // Schedule periodic checks
+    const escalationInterval = setInterval(async () => {
+      try {
+        await processOverdueComplaints();
+      } catch (err) {
+        console.error('[Server] Escalation job failed:', err.message);
+      }
+    }, ESCALATION_INTERVAL);
+    
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('[Server] SIGTERM received, shutting down...');
+      clearInterval(escalationInterval);
+      server.close(() => {
+        console.log('[Server] HTTP server closed');
+        mongoose.connection.close(false, () => {
+          console.log('[Server] MongoDB connection closed');
+          process.exit(0);
+        });
+      });
+    });
+    
+    process.on('SIGINT', () => {
+      console.log('[Server] SIGINT received, shutting down...');
+      clearInterval(escalationInterval);
+      server.close(() => {
+        console.log('[Server] HTTP server closed');
+        mongoose.connection.close(false, () => {
+          console.log('[Server] MongoDB connection closed');
+          process.exit(0);
+        });
+      });
     });
   })
   .catch((err) => {

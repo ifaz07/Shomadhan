@@ -12,9 +12,11 @@ const sendTokenResponse = (user, statusCode, res) => {
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   };
 
-  // Update last login
-  user.lastLogin = new Date();
-  user.save({ validateBeforeSave: false });
+  // Update last login without triggering pre-save hooks on the password
+  User.findByIdAndUpdate(user._id, { lastLogin: new Date() }).exec();
+
+  // Ensure password is not sent in the response
+  user.password = undefined;
 
   res
     .status(statusCode)
@@ -86,6 +88,24 @@ const login = async (req, res, next) => {
     }
 
     const { email, password } = req.body;
+
+    // --- ⚠️ DEV-ONLY: Mayor Login Backdoor ───────────────────────────────────
+    // This allows logging in as the mayor without a password in development.
+    // This MUST be removed before going to production.
+    if (process.env.NODE_ENV === 'development' && email === 'dhkmayor@mayordev.com') {
+      const mayor = await User.findOne({ email });
+      if (mayor) {
+        console.warn('✅ DEV-ONLY: Bypassing password check for mayor login.');
+        return sendTokenResponse(mayor, 200, res);
+      } else {
+        // If mayor doesn't exist, run the seeder.
+        return res.status(401).json({
+          success: false,
+          message: 'Mayor account not found. Please run the seeder script: npm run seed',
+        });
+      }
+    }
+    // ──────────────────────────────────────────────────────────────────────
 
     // Find user and include password field
     const user = await User.findOne({ email }).select('+password');
@@ -208,7 +228,7 @@ const verifyAccount = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'NID must be exactly 10 digits.' });
     }
     if (docType === 'birth_certificate' && documentNumber.length !== 17) {
-      return toast.error('Birth Certificate number must be exactly 17 digits.');
+      return res.status(400).json({ success: false, message: 'Birth Certificate number must be exactly 17 digits.' });
     }
     if (docType === 'passport' && documentNumber.length !== 9) {
       return res.status(400).json({ success: false, message: 'Passport number must be exactly 9 characters.' });

@@ -1,7 +1,8 @@
 const Complaint = require('../models/Complaint.model');
+const User = require('../models/User.model');
 const crypto = require('crypto');
 const { classifyComplaint } = require('../services/nlpService');
-const { checkForDuplicates } = require('../services/spamDetectionService');
+const { checkForDuplicates, detectPrankComplaint } = require('../services/spamDetectionService');
 const { calculatePriority } = require('../services/priorityService');
 
 // Helper: Generate unique ticket ID (e.g., SOM-2024-ABC12)
@@ -27,117 +28,149 @@ const haversineKm = (lat1, lon1, lat2, lon2) => {
 
 // @desc    Submit a new complaint
 // @route   POST /api/v1/complaints
-// @access  Private (Verified account required)
+// @access  Private
 const createComplaint = async (req, res, next) => {
   try {
-    const { title, description, category, isAnonymous, location, latitude, longitude, emergencyFlag } = req.body;
+    const { title, description, category, location, emergencyFlag } = req.body;
+    let latitude = req.body.latitude;
+    let longitude = req.body.longitude;
+    const isAnonymous = req.body.isAnonymous === 'true' || req.body.isAnonymous === true;
 
-    // Check if user is verified
-    if (!req.user.isVerified) {
-      return res.status(403).json({
-        success: false,
-        message: 'Your account must be verified to submit a complaint. Please provide NID, Birth Certificate, or Passport in your profile.',
-      });
+    if (!title || !description) return res.status(400).json({ success: false, message: 'Title and description are required' });
+
+    // ── Identity Verification Check ───────────────────────────────────────
+    // Users must verify their identity using NID, Passport, or Birth Certificate
+    // to create a complaint (non-anonymous posts)
+    if (!isAnonymous) {
+      const user = await User.findById(req.user._id);
+      if (user) {
+        const isVerified = user.isVerified === true || 
+                         (user.verificationDoc && user.verificationDoc.status === 'approved');
+        
+        if (!isVerified) {
+          return res.status(403).json({
+            success: false,
+            message: 'Identity verification required. Please verify your identity using NID, Passport, or Birth Certificate before posting complaints.',
+            verificationRequired: true,
+          });
+        }
+      }
     }
 
-    let evidence = [];
-    if (req.files && req.files.length > 0) {
-      evidence = req.files.map((file) => {
-        let type = 'image';
-        if (file.mimetype.startsWith('video/')) type = 'video';
-        if (file.mimetype.startsWith('audio/')) type = 'audio';
-        return { url: `/uploads/evidence/${file.filename}`, type };
-      });
+    latitude = latitude != null ? parseFloat(latitude) : null;
+    longitude = longitude != null ? parseFloat(longitude) : null;
+
+    // Run NLP classification (will fallback to rule-based if HF key missing)
+    const nlp = await classifyComplaint(title, description);
+
+    // Determine submitting user (anonymous complaints have no user)
+    const userId = isAnonymous ? null : req.user?._id;
+
+    // Spam / duplicate check
+    let spamResult = { isSpam: false };
+    try {
+      spamResult = await checkForDuplicates(title, description, latitude, longitude, userId);
+    } catch (err) {
+      console.warn('[Complaint] Spam check failed:', err.message);
     }
 
-    const isAnon = isAnonymous === 'true' || isAnonymous === true;
-    const emergency = emergencyFlag === 'true' || emergencyFlag === true;
-    const lat = latitude ? Number(latitude) : null;
-    const lng = longitude ? Number(longitude) : null;
+    // AI-Based Prank/Fake Detection
+    let prankResult = { isPrank: false, confidence: 0, reasons: [], modelVersion: '1.0.0' };
+    try {
+      prankResult = await detectPrankComplaint(title, description);
+    } catch (err) {
+      console.warn('[Complaint] Prank detection failed:', err.message);
+    }
 
-    // Auto-calculate initial priority (before votes, so voteCount = 0)
+    // Priority calculation
     const priority = calculatePriority({
-      category,
-      emergencyFlag: emergency,
+      category: category || nlp.category,
+      emergencyFlag: emergencyFlag === 'true' || emergencyFlag === true,
       voteCount: 0,
       location: location || '',
     });
 
-    const complaintData = {
+    // Calculate SLA deadline based on priority
+    const slaHours = { Critical: 4, High: 24, Medium: 72, Low: 168 };
+    const slaDeadline = new Date();
+    slaDeadline.setHours(slaDeadline.getHours() + (slaHours[priority] || 168));
+
+    // Calculate edit window (4 minutes)
+    const editWindowExpires = new Date();
+    editWindowExpires.setMinutes(editWindowExpires.getMinutes() + 4);
+
+    // Prepare complaint document
+    const complaint = new Complaint({
       ticketId: generateTicketId(),
       title,
       description,
-      category,
-      evidence,
-      isAnonymous: isAnon,
+      category: category || nlp.category,
+      isAnonymous,
+      user: userId,
       location,
-      latitude: lat,
-      longitude: lng,
-      user: isAnon ? null : req.user?._id,
-      status: 'pending',
+      latitude,
+      longitude,
       priority,
-      emergencyFlag: emergency,
-      voteCount: 0,
-      votes: [],
-    };
-
-    // ── Spam / duplicate detection ─────────────────────────────────────
-    try {
-      const spam = await checkForDuplicates(title, description, lat, lng, complaintData.user);
-      if (spam.isSpam) {
-        return res.status(409).json({
-          success: false,
-          message:
-            'A similar complaint from the same area was already submitted within the last 24 hours. ' +
-            'Please check the existing ticket before submitting again.',
-          duplicate: {
-            ticketId: spam.originalTicketId,
-            similarity: spam.similarity,
-            method: spam.method,
-          },
-        });
-      }
-    } catch (spamErr) {
-      console.warn('[SpamDetection] Check skipped:', spamErr.message);
-    }
-
-    // ── NLP classification ────────────────────────────────────────────
-    let nlpAnalysis = null;
-    try {
-      const nlp = await classifyComplaint(title, description);
-      nlpAnalysis = {
+      emergencyFlag: emergencyFlag === 'true' || emergencyFlag === true,
+      nlpAnalysis: {
         suggestedCategory: nlp.category,
         suggestedDepartment: nlp.department,
         keywords: nlp.keywords,
         confidence: nlp.confidence,
         source: nlp.source,
         analyzedAt: new Date(),
-      };
-    } catch (nlpErr) {
-      console.warn('[NLP] Classification skipped:', nlpErr.message);
+      },
+      spamCheck: spamResult.isSpam
+        ? {
+            isDuplicate: true,
+            originalTicketId: spamResult.originalTicketId,
+            similarTo: spamResult.originalId,
+            similarity: spamResult.similarity,
+            method: spamResult.method,
+            checkedAt: new Date(),
+          }
+        : { isDuplicate: false },
+      // AI-Based Prank Detection
+      prankDetection: {
+        isPrank: prankResult.isPrank,
+        confidence: prankResult.confidence,
+        reasons: prankResult.reasons,
+        modelVersion: prankResult.modelVersion,
+        analyzedAt: new Date(),
+      },
+      // SLA Configuration
+      sla: {
+        deadline: slaDeadline,
+        breached: false,
+        responseTime: null,
+        resolutionTime: null,
+      },
+      // Edit Window
+      editWindow: {
+        expiresAt: editWindowExpires,
+        lastEditedAt: null,
+        editCount: 0,
+      },
+    });
+
+    // If evidence files were uploaded by `upload.middleware`, attach them
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+      complaint.evidence = req.files.map((f) => ({ url: f.path || f.filename || f.location || f.secure_url, type: 'image', publicId: f.filename || f.public_id || '' }));
     }
 
-    if (nlpAnalysis) complaintData.nlpAnalysis = nlpAnalysis;
+    await complaint.save();
 
-    const complaint = await Complaint.create(complaintData);
-
-    res.status(201).json({ success: true, data: complaint });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// @desc    Analyze complaint text with NLP (preview before submission)
-// @route   POST /api/v1/complaints/analyze
-// @access  Private
-const analyzeComplaint = async (req, res, next) => {
-  try {
-    const { title, description } = req.body;
-    if (!title || !description) {
-      return res.status(400).json({ success: false, message: 'Both title and description are required for analysis' });
+    // Return appropriate message based on prank detection
+    if (prankResult.isPrank) {
+      return res.status(201).json({
+        success: true,
+        data: complaint,
+        warning: 'Your complaint has been flagged as potentially fake or prank. It will be reviewed by moderators.',
+        prankDetection: prankResult,
+      });
     }
-    const result = await classifyComplaint(title, description);
-    res.status(200).json({ success: true, data: result });
+
+    return res.status(201).json({ success: true, data: complaint });
   } catch (error) {
     next(error);
   }
@@ -274,11 +307,17 @@ const updateComplaint = async (req, res, next) => {
     if (complaint.user?.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized to edit this complaint' });
     }
-    const timeDiff = Date.now() - new Date(complaint.createdAt).getTime();
-    if (timeDiff > 4 * 60 * 1000) {
+    
+    // Check edit window (3-4 minutes based on requirement)
+    const now = new Date();
+    const createdAt = new Date(complaint.createdAt);
+    const editWindowMs = 4 * 60 * 1000; // 4 minutes in milliseconds
+    
+    if (now - createdAt > editWindowMs) {
       return res.status(403).json({
         success: false,
-        message: 'Edit window expired. Complaints can only be edited within 4 minutes of submission.',
+        message: 'Edit window expired. Complaints can only be edited within 4 minutes of submission. After this, only delete is available.',
+        canDelete: true,
       });
     }
 
@@ -292,9 +331,24 @@ const updateComplaint = async (req, res, next) => {
       location: location || complaint.location || '',
     });
 
+    // Update complaint with edit tracking
     complaint = await Complaint.findByIdAndUpdate(
       req.params.id,
-      { title, description, category, location, latitude, longitude, emergencyFlag: emergency, priority: newPriority },
+      { 
+        title, 
+        description, 
+        category, 
+        location, 
+        latitude, 
+        longitude, 
+        emergencyFlag: emergency, 
+        priority: newPriority,
+        editWindow: {
+          expiresAt: complaint.editWindow?.expiresAt || new Date(createdAt.getTime() + editWindowMs),
+          lastEditedAt: now,
+          editCount: (complaint.editWindow?.editCount || 0) + 1,
+        },
+      },
       { new: true, runValidators: true }
     );
 
@@ -352,6 +406,22 @@ const getComplaint = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Not authorized to view this' });
     }
     res.status(200).json({ success: true, data: complaint });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Analyze complaint text with NLP (without saving)
+// @route   POST /api/v1/complaints/analyze
+// @access  Private
+const analyzeComplaint = async (req, res, next) => {
+  try {
+    const { title, description } = req.body;
+    if (!title || !description) {
+      return res.status(400).json({ success: false, message: 'Title and description are required' });
+    }
+    const nlp = await classifyComplaint(title, description);
+    return res.status(200).json({ success: true, data: nlp });
   } catch (error) {
     next(error);
   }

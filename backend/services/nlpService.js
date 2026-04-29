@@ -1,34 +1,14 @@
 /**
- * NLP Service: Classifies civic complaints using Hugging Face Inference API
- * - Zero-shot classification to detect issue category
- * - Keyword extraction (rule-based, no extra dependencies)
- * - Department routing based on detected category
+ * NLP Service: Classifies civic complaints using Claude API (primary)
+ * with a keyword-based fallback for when the API is unavailable.
  */
 
-const HF_API_URL = 'https://router.huggingface.co/hf-inference/models/facebook/bart-large-mnli';
-const HF_API_KEY = process.env.HUGGINGFACE_API_KEY;
+const Anthropic = require('@anthropic-ai/sdk');
 
-// Labels used for zero-shot classification (HF model input)
-const CATEGORY_LABELS = [
-  'road damage or infrastructure problem',
-  'waste management or garbage problem',
-  'electricity or power outage issue',
-  'water supply or drainage problem',
-  'public safety or crime or security issue',
-  'environmental pollution or hazard',
-  'other civic administrative problem',
-];
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
-// Map HF label → app category enum
-const LABEL_TO_CATEGORY = {
-  'road damage or infrastructure problem': 'Road',
-  'waste management or garbage problem': 'Waste',
-  'electricity or power outage issue': 'Electricity',
-  'water supply or drainage problem': 'Water',
-  'public safety or crime or security issue': 'Safety',
-  'environmental pollution or hazard': 'Environment',
-  'other civic administrative problem': 'Other',
-};
+// Valid category values used by the app
+const VALID_CATEGORIES = ['Road', 'Waste', 'Electricity', 'Water', 'Safety', 'Environment', 'Other'];
 
 // Category → responsible department
 const CATEGORY_TO_DEPARTMENT = {
@@ -41,7 +21,7 @@ const CATEGORY_TO_DEPARTMENT = {
   Other:       { name: 'General Administration', key: 'other' },
 };
 
-// Common English + Bengali-transliterated stopwords to exclude from keywords
+// Common stopwords to exclude from keyword extraction
 const STOPWORDS = new Set([
   'the','a','an','is','it','in','on','at','to','of','and','or','but','for',
   'with','this','that','there','are','was','were','has','have','had','been',
@@ -56,7 +36,6 @@ const STOPWORDS = new Set([
 
 /**
  * Extract meaningful keywords from text.
- * Returns top keywords sorted by frequency.
  */
 function extractKeywords(text, maxKeywords = 8) {
   const words = text
@@ -78,25 +57,68 @@ function extractKeywords(text, maxKeywords = 8) {
 
 /**
  * Rule-based fallback classifier using keyword matching.
- * Used when HF API is unavailable or key is not set.
+ * Supports English + Bengali transliterated + Bengali Unicode keywords.
  */
 function ruleBasedClassify(text) {
   const lower = text.toLowerCase();
+  const original = text;
 
   const rules = [
-    { category: 'Road',        keywords: ['road','pothole','pavement','sidewalk','bridge','crack','construction','traffic','signal','street light','streetlight','drain','culvert'] },
-    { category: 'Waste',       keywords: ['garbage','waste','trash','litter','dump','rubbish','bin','collection','sewage','smell','odor','smell'] },
-    { category: 'Electricity', keywords: ['electricity','power','outage','blackout','wire','pole','transformer','voltage','wiring','light','lamp'] },
-    { category: 'Water',       keywords: ['water','pipe','leak','flood','drainage','pump','supply','tap','overflow','sewage','waterlogged'] },
-    { category: 'Safety',      keywords: ['crime','theft','robbery','harassment','fight','danger','unsafe','accident','violence','drug','illegal','noise'] },
-    { category: 'Environment', keywords: ['pollution','smoke','dust','air','tree','park','green','chemical','toxic','environment','contamination','burn'] },
+    {
+      category: 'Road',
+      keywords: [
+        'road','pothole','pavement','sidewalk','bridge','crack','construction','traffic',
+        'signal','street light','streetlight','drain','culvert','asphalt','highway',
+        'rasta','sarak','sadak','nirmaan','meremet','repair','jaam',
+      ],
+    },
+    {
+      category: 'Waste',
+      keywords: [
+        'garbage','waste','trash','litter','dump','rubbish','bin','collection','sewage',
+        'smell','odor','filth','dirty','unclean','sanitation','sweeping',
+        'aborzona','aborjona','mayola','porikar','ময়লা','ভাগাড়','দুর্গন্ধ','নোংরা',
+      ],
+    },
+    {
+      category: 'Electricity',
+      keywords: [
+        'electricity','power','outage','blackout','wire','pole','transformer','voltage',
+        'wiring','light','lamp','electric','current','load shedding','loadshedding',
+        'bidyut','biddut','বিদ্যুৎ','বিদ্যুত','কারেন্ট',
+      ],
+    },
+    {
+      category: 'Water',
+      keywords: [
+        'water','pipe','leak','flood','drainage','pump','supply','tap','overflow',
+        'sewage','waterlogged','drinking water',
+        'pani','jol','bonna','jalabaddata','পানি','জল','পানির লাইন','ড্রেনেজ',
+      ],
+    },
+    {
+      category: 'Safety',
+      keywords: [
+        'crime','theft','robbery','harassment','fight','danger','unsafe','accident',
+        'violence','drug','illegal','noise','eve teasing','mugging','assault',
+        'churi','dakati','durghatona','নিরাপত্তা','ডাকাতি','চুরি','হয়রানি',
+      ],
+    },
+    {
+      category: 'Environment',
+      keywords: [
+        'pollution','smoke','dust','air','tree','park','green','chemical','toxic',
+        'environment','contamination','burn','noise pollution','air pollution',
+        'dushon','poribesh','দূষণ','বায়ু দূষণ','পরিবেশ',
+      ],
+    },
   ];
 
   let best = null;
   let bestScore = 0;
 
   for (const rule of rules) {
-    const score = rule.keywords.filter(kw => lower.includes(kw)).length;
+    const score = rule.keywords.filter(kw => lower.includes(kw) || original.includes(kw)).length;
     if (score > bestScore) {
       bestScore = score;
       best = rule.category;
@@ -110,47 +132,48 @@ function ruleBasedClassify(text) {
 }
 
 /**
- * Call Hugging Face zero-shot classification API.
+ * Classify complaint using Claude API.
+ * Supports Bengali, English, and mixed text.
  */
-async function callHuggingFaceAPI(text) {
-  const response = await fetch(HF_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${HF_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      inputs: text.slice(0, 1000), // Limit input length
-      parameters: {
-        candidate_labels: CATEGORY_LABELS,
-        multi_label: false,
-      },
-    }),
+async function classifyWithClaude(text) {
+  const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+
+  const response = await client.messages.create({
+    model: 'claude-haiku-4-5',
+    max_tokens: 100,
+    system: `You are a civic complaint classifier. Classify the complaint into exactly one of these categories:
+Road, Waste, Electricity, Water, Safety, Environment, Other
+
+Rules:
+- Road: road damage, potholes, traffic signals, street lights, bridges, construction
+- Waste: garbage, trash, sewage smell, waste collection, dumping
+- Electricity: power outage, electric wire issues, transformer, load shedding
+- Water: water supply, pipe leak, flooding, drainage, waterlogging
+- Safety: crime, theft, harassment, accident, violence, dangerous situation
+- Environment: air/water pollution, illegal burning, toxic waste, tree cutting
+- Other: anything that doesn't fit above
+
+Respond with ONLY a JSON object: {"category": "<Category>", "confidence": <0.0-1.0>}
+The text may be in Bengali, English, or mixed.`,
+    messages: [
+      { role: 'user', content: text.slice(0, 1500) },
+    ],
   });
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`HF API error ${response.status}: ${err}`);
-  }
+  const raw = response.content[0].text.trim();
+  const parsed = JSON.parse(raw);
 
-  const result = await response.json();
+  const category = VALID_CATEGORIES.includes(parsed.category) ? parsed.category : 'Other';
+  const confidence = typeof parsed.confidence === 'number'
+    ? Math.min(Math.max(parsed.confidence, 0), 1)
+    : 0.7;
 
-  // Response is an array sorted by score descending: [{label, score}, ...]
-  const sorted = Array.isArray(result) ? result : result.labels.map((l, i) => ({ label: l, score: result.scores[i] }));
-  const topLabel = sorted[0].label;
-  const topScore = sorted[0].score;
-  const category = LABEL_TO_CATEGORY[topLabel] || 'Other';
-
-  return { category, confidence: topScore, source: 'huggingface' };
+  return { category, confidence, source: 'claude' };
 }
 
 /**
  * Main classification function.
- * Tries Hugging Face API first, falls back to rule-based.
- *
- * @param {string} title - Complaint title
- * @param {string} description - Complaint description
- * @returns {Promise<{category, department, keywords, confidence, source}>}
+ * Uses Claude API if key is set, falls back to rule-based.
  */
 async function classifyComplaint(title, description) {
   const text = `${title}. ${description}`;
@@ -158,14 +181,15 @@ async function classifyComplaint(title, description) {
 
   let classificationResult;
 
-  if (HF_API_KEY && HF_API_KEY !== 'your_huggingface_api_key_here') {
+  if (ANTHROPIC_API_KEY) {
     try {
-      classificationResult = await callHuggingFaceAPI(text);
+      classificationResult = await classifyWithClaude(text);
     } catch (err) {
-      console.warn('[NLP] Hugging Face API failed, using rule-based fallback:', err.message);
+      console.warn('[NLP] Claude API failed, using rule-based fallback:', err.message);
       classificationResult = ruleBasedClassify(text);
     }
   } else {
+    console.warn('[NLP] ANTHROPIC_API_KEY not set, using rule-based fallback');
     classificationResult = ruleBasedClassify(text);
   }
 
@@ -181,4 +205,4 @@ async function classifyComplaint(title, description) {
   };
 }
 
-module.exports = { classifyComplaint, extractKeywords };
+module.exports = { classifyComplaint };

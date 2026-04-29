@@ -1,36 +1,36 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth.middleware');
+const { protect, authorize } = require('../middleware/auth.middleware');
 const upload = require('../middleware/upload.middleware');
 const {
   createComplaint,
   analyzeComplaint,
-  voteComplaint,
-  getNearbyComplaints,
-  getHeatmapData,
   getComplaints,
   getComplaint,
   updateComplaint,
   deleteComplaint,
+  voteComplaint,
+  getNearbyComplaints,
+  getHeatmapData,
 } = require('../controllers/complaint.controller');
 
-// NLP analysis preview (before submission)
+// Analyze complaint text with NLP (no save)
 router.post('/analyze', protect, analyzeComplaint);
 
-// Heatmap data (must be before /:id to avoid route conflict)
-router.get('/heatmap', protect, getHeatmapData);
-
-// Nearby complaints for pre-submission duplicate detection
-router.get('/nearby', protect, getNearbyComplaints);
-
-// Submit complaint
+// Submit complaint - allowed for authenticated users (can choose to be anonymous)
 router.post('/', protect, upload.array('evidence', 5), createComplaint);
 
-// Get complaints (own or all for admin)
-router.get('/', protect, getComplaints);
+// Pre-submit nearby check (query params: lat, lng, radius, category)
+router.get('/nearby', protect, getNearbyComplaints);
 
-// Vote / un-vote a complaint
+// Heatmap data for frontend
+router.get('/heatmap', protect, getHeatmapData);
+
+// Vote toggle
 router.post('/:id/vote', protect, voteComplaint);
+
+// Get complaints (their own or all for admin)
+router.get('/', protect, getComplaints);
 
 // Get single complaint
 router.get('/:id', protect, getComplaint);
