@@ -104,7 +104,34 @@ const userSchema = new mongoose.Schema(
 
     // ─── Reputation & Badges ─────────────────────────────────────
     reputation: { type: Number, default: 0 },
-    badges: [{ type: String }],
+    badges: [
+      {
+        id: { type: String },
+        name: { type: String },
+        description: { type: String },
+        icon: { type: String },
+        earnedAt: { type: Date },
+        category: { type: String }, // 'reporting', 'engagement', 'verification', 'milestone'
+      },
+    ],
+    // Detailed reputation breakdown
+    reputationBreakdown: {
+      complaintsSubmitted: { type: Number, default: 0 },
+      complaintsResolved: { type: Number, default: 0 },
+      votesReceived: { type: Number, default: 0 },
+      feedbackPositive: { type: Number, default: 0 },
+      feedbackNegative: { type: Number, default: 0 },
+      verifiedIdentity: { type: Boolean, default: false },
+      earlyAdopter: { type: Boolean, default: false },
+    },
+    // Credibility score (0-100)
+    credibilityScore: { type: Number, default: 50, min: 0, max: 100 },
+    // Streak tracking for active users
+    reportingStreak: {
+      current: { type: Number, default: 0 },
+      longest: { type: Number, default: 0 },
+      lastReportedAt: { type: Date },
+    },
 
     // ─── Account State ───────────────────────────────────────────
     isActive: { type: Boolean, default: true },

@@ -179,6 +179,20 @@ const complaintSchema = new mongoose.Schema(
       lastEditedAt: { type: Date },
       editCount: { type: Number, default: 0 },
     },
+
+    // ── Citizen Feedback & Rating ─────────────────────────────────────────
+    feedback: {
+      isRated: { type: Boolean, default: false },
+      ratings: {
+        resolutionQuality: { type: Number, min: 1, max: 5 },    // 1-5 stars
+        responseTime: { type: Number, min: 1, max: 5 },         // 1-5 stars
+        officerProfessionalism: { type: Number, min: 1, max: 5 }, // 1-5 stars
+      },
+      overallRating: { type: Number, min: 1, max: 5 },           // Calculated average
+      comment: { type: String, maxlength: 500 },
+      feedbackBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      feedbackAt: { type: Date },
+    },
   },
   { timestamps: true }
 );

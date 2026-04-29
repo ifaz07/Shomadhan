@@ -16,6 +16,8 @@ const announcementRoutes = require('./routes/announcement.routes');
 const caseRoutes = require('./routes/case.routes');
 const escalationRoutes = require('./routes/escalation.routes');
 const reportRoutes = require('./routes/report.routes');
+const feedbackRoutes = require('./routes/feedback.routes');
+const reputationRoutes = require('./routes/reputation.routes');
 const { errorHandler } = require('./middleware/error.middleware');
 const { processOverdueComplaints } = require('./services/escalationService');
 
@@ -56,6 +58,8 @@ app.use('/api/v1/announcements', announcementRoutes);
 app.use('/api/v1/cases', caseRoutes);
 app.use('/api/v1/escalations', escalationRoutes);
 app.use('/api/v1/reports', reportRoutes);
+app.use('/api/v1/feedback', feedbackRoutes);
+app.use('/api/v1/reputation', reputationRoutes);
 
 // Health check
 app.get('/api/v1/health', (req, res) => {

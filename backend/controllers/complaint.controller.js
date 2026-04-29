@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { classifyComplaint } = require('../services/nlpService');
 const { checkForDuplicates, detectPrankComplaint } = require('../services/spamDetectionService');
 const { calculatePriority } = require('../services/priorityService');
+const { onComplaintSubmitted, onVotesReceived } = require('../services/reputationService');
 
 // Helper: Generate unique ticket ID (e.g., SOM-2024-ABC12)
 const generateTicketId = () => {
@@ -160,6 +161,14 @@ const createComplaint = async (req, res, next) => {
 
     await complaint.save();
 
+    // Update user reputation when they submit a complaint
+    if (!isAnonymous && userId) {
+      const user = await User.findById(userId);
+      if (user) {
+        await onComplaintSubmitted(user);
+      }
+    }
+
     // Return appropriate message based on prank detection
     if (prankResult.isPrank) {
       return res.status(201).json({
@@ -188,13 +197,16 @@ const voteComplaint = async (req, res, next) => {
 
     const userId = req.user._id.toString();
     const alreadyVoted = complaint.votes.some((v) => v.toString() === userId);
+    let voteChange = 0;
 
     if (alreadyVoted) {
       // Remove vote
       complaint.votes = complaint.votes.filter((v) => v.toString() !== userId);
+      voteChange = -1;
     } else {
       // Add vote
       complaint.votes.push(req.user._id);
+      voteChange = 1;
     }
 
     complaint.voteCount = complaint.votes.length;
@@ -208,6 +220,14 @@ const voteComplaint = async (req, res, next) => {
     });
 
     await complaint.save();
+
+    // Update reputation of complaint owner when they receive votes
+    if (voteChange > 0 && complaint.user) {
+      const owner = await User.findById(complaint.user);
+      if (owner) {
+        await onVotesReceived(owner, voteChange);
+      }
+    }
 
     res.status(200).json({
       success: true,
