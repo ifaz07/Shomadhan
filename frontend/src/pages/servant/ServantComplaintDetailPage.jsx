@@ -48,6 +48,15 @@ const CATEGORY_LABEL = {
   Environment:       "Environment",
   "Law Enforcement": "Law Enforcement",
   Other:             "Other",
+  public_works:      "Public Works",
+  water_authority:   "Water Authority",
+  sanitation:        "Sanitation Dept",
+  public_safety:     "Public Safety Dept",
+  animal_control:    "Animal Control",
+  health:            "Health Dept",
+  transport:         "Transport Dept",
+  environment:       "Environment Dept",
+  police:            "Police Department",
 };
 
 // Derive department name from category (complaints don't store department)
@@ -60,6 +69,16 @@ const CATEGORY_TO_DEPT = {
   Environment:       "Environment / Animal Control",
   "Law Enforcement": "Police Department",
   Other:             "General Administration",
+  public_works:      "Public Works",
+  water_authority:   "Water Authority",
+  electricity:       "Electricity Dept",
+  sanitation:        "Sanitation Dept",
+  public_safety:     "Public Safety Dept",
+  animal_control:    "Animal Control",
+  health:            "Health Dept",
+  transport:         "Transport Dept",
+  environment:       "Environment Dept",
+  police:            "Police Department",
 };
 
 const SLA_PRESETS = [
@@ -104,9 +123,19 @@ const getSlaInfo = (slaDeadline, slaDurationHours) => {
   return { progress, daysLeft, hoursLeft, isOverdue, timeLabel, deadlineStr };
 };
 
-const isVideo = (url) => /\.(mp4|mov|avi|webm|mkv)$/i.test(url || "");
+const getEvidenceUrl = (item) => {
+  if (!item) return "";
+  return typeof item === "string" ? item : item.url || "";
+};
 
-const resolveUrl = (url) => {
+const isVideo = (item) => {
+  const url = getEvidenceUrl(item);
+  const type = typeof item === "object" ? item?.type : "";
+  return type === "video" || /\.(mp4|mov|avi|webm|mkv)$/i.test(url || "");
+};
+
+const resolveUrl = (item) => {
+  const url = getEvidenceUrl(item);
   if (!url) return "";
   if (url.startsWith("http")) return url;
   const base = (import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1").replace("/api/v1", "");
@@ -628,7 +657,7 @@ const ServantComplaintDetailPage = () => {
           >
             <h3 className="text-sm font-bold text-gray-900 mb-3"><T en="Submitted By" /></h3>
             <div className="flex items-center gap-2.5 mb-3">
-              {reporterAvatar && !complaint.isAnonymous ? (
+              {reporterAvatar ? (
                 <img
                   src={reporterAvatar}
                   alt={reporter?.name || "Citizen"}
@@ -640,45 +669,42 @@ const ServantComplaintDetailPage = () => {
                 </div>
               )}
               <div>
-                {complaint.isAnonymous ? (
-                  <p className="text-sm font-medium text-gray-700"><T en="Anonymous Citizen" /></p>
-                ) : (
-                  <>
-                    <p className="text-sm font-medium text-gray-700">
-                      {reporter?.name || "Citizen"}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {reporter?.email || ""}
-                    </p>
-                  </>
+                <p className="text-sm font-medium text-gray-700">
+                  {reporter?.name || "Citizen"}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {reporter?.email || ""}
+                </p>
+                {complaint.isAnonymous && (
+                  <p className="text-[11px] text-amber-600 mt-1 font-medium">
+                    <T en="Submitted anonymously to the public, but visible to the assigned department" />
+                  </p>
                 )}
               </div>
             </div>
-            {!complaint.isAnonymous && (
-              <div className="space-y-2 mb-3">
-                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                  <p className="text-xs text-gray-400 mb-1"><T en="Reporter Contact" /></p>
-                  <div className="space-y-1.5 text-sm text-gray-700">
-                    <p className="flex items-center gap-2">
-                      <Mail size={13} className="text-gray-400 flex-shrink-0" />
-                      <span>{reporter?.email || "Not provided"}</span>
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <Phone size={13} className="text-gray-400 flex-shrink-0" />
-                      <span>{reporter?.phone || "Not provided"}</span>
-                    </p>
-                    <p className="flex items-start gap-2">
-                      <MapPin size={13} className="text-gray-400 flex-shrink-0 mt-0.5" />
-                      <span>{reporterAddress || "Address not provided"}</span>
-                    </p>
-                  </div>
-                </div>
-                <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700 flex items-start gap-2">
-                  <UserCircle size={14} className="flex-shrink-0 mt-0.5" />
-                  <span>This reporter information is visible only to the responsible department handling this complaint.</span>
+            <div className="space-y-2 mb-3">
+              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                <p className="text-xs text-gray-400 mb-1"><T en="Reporter Contact" /></p>
+                <div className="space-y-1.5 text-sm text-gray-700">
+                  <p className="flex items-center gap-2">
+                    <Mail size={13} className="text-gray-400 flex-shrink-0" />
+                    <span>{reporter?.email || "Not provided"}</span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <Phone size={13} className="text-gray-400 flex-shrink-0" />
+                    <span>{reporter?.phone || "Not provided"}</span>
+                  </p>
+                  <p className="flex items-start gap-2">
+                    <MapPin size={13} className="text-gray-400 flex-shrink-0 mt-0.5" />
+                    <span>{reporterAddress || "Address not provided"}</span>
+                  </p>
                 </div>
               </div>
-            )}
+              <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700 flex items-start gap-2">
+                <UserCircle size={14} className="flex-shrink-0 mt-0.5" />
+                <span>This reporter information is visible only to the responsible department handling this complaint.</span>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                 <p className="text-xs text-gray-400 mb-0.5"><T en="Public Support" /></p>

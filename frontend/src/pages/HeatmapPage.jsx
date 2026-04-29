@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import { complaintAPI } from '../services/api';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import T from '../components/T';
+import { DEPARTMENT_OPTIONS, getDepartmentLabel } from '../constants/departments';
 
 // Fix Leaflet default icon
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -122,7 +123,7 @@ const HeatmapPage = () => {
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [categoryFilter, setCategoryFilter] = useState(() => {
     const cat = searchParams.get('category');
-    const valid = ['Road', 'Waste', 'Electricity', 'Water', 'Safety', 'Environment', 'Other'];
+    const valid = DEPARTMENT_OPTIONS.map((item) => item.value);
     return cat && valid.includes(cat) ? cat : 'All';
   });
 
@@ -153,32 +154,48 @@ const HeatmapPage = () => {
   const counts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
   points.forEach((p) => { if (counts[p.priority] !== undefined) counts[p.priority]++; });
 
-  const categories = ['All', 'Road', 'Waste', 'Electricity', 'Water', 'Safety', 'Environment', 'Other'];
+  const categories = ['All', ...DEPARTMENT_OPTIONS.map((item) => item.value)];
 
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-5 p-6">
 
         {/* ── Header ── */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Map size={24} className="text-teal-600" />
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-[2rem] border border-slate-200/70 bg-gradient-to-br from-slate-950 via-slate-900 to-teal-900 px-6 py-7 text-white shadow-[0_24px_60px_-28px_rgba(15,23,42,0.55)] sm:px-8 sm:py-8"
+        >
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 xl:items-end">
+          <div className="xl:col-span-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-teal-100">
+              <Map size={12} className="text-teal-300" />
+              City Oversight View
+            </div>
+            <h1 className="mt-4 flex items-center gap-3 text-3xl font-black tracking-tight sm:text-4xl">
+              <Map size={30} className="text-teal-300" />
               <T en="Complaint Heatmap" />
             </h1>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
               <T en="Visualize complaint intensity and priority zones across the city" />
             </p>
           </div>
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl text-sm font-medium hover:bg-teal-700 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-            <T en="Refresh" />
-          </button>
-        </div>
+          <div className="flex flex-col gap-3 xl:col-span-4 xl:items-end">
+            <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm xl:max-w-xs">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Live Snapshot</p>
+              <p className="mt-1 text-sm font-semibold text-white">Monitor complaint density and priority clusters in one place</p>
+            </div>
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-white/12 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/18 disabled:opacity-50"
+            >
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+              <T en="Refresh" />
+            </button>
+          </div>
+          </div>
+        </motion.div>
 
         {/* ── Priority Stats ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -219,7 +236,11 @@ const HeatmapPage = () => {
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400"
           >
-            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c === 'All' ? c : getDepartmentLabel(c)}
+              </option>
+            ))}
           </select>
 
           <div className="w-px h-5 bg-gray-200" />
@@ -271,7 +292,7 @@ const HeatmapPage = () => {
                         style={{ background: PRIORITY_CONFIG[p.priority]?.color + '20', color: PRIORITY_CONFIG[p.priority]?.color }}>
                         ● {p.priority}
                       </span>
-                      <span className="text-gray-500 text-xs">{p.category}</span>
+                      <span className="text-gray-500 text-xs">{getDepartmentLabel(p.category)}</span>
                     </div>
                     <p className="font-semibold text-gray-800 mb-1">{p.title}</p>
                     {p.location && <p className="text-gray-500 text-xs mb-2">📍 {p.location}</p>}

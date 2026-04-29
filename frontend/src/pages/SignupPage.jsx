@@ -37,6 +37,7 @@ import SocialButtons from "../components/auth/SocialButtons";
 import PasswordStrength from "../components/auth/PasswordStrength";
 import { useAuth } from "../context/AuthContext";
 import T from "../components/T";
+import { DEPARTMENT_OPTIONS } from "../constants/departments";
 
 // Fix for default marker icons
 import markerIcon from "leaflet/dist/images/marker-icon.png";
@@ -77,20 +78,6 @@ const reverseGeocode = async (lat, lng, setAddress) => {
     console.error("Geocoding error:", error);
   }
 };
-
-const DEPARTMENTS = [
-  { value: "public_works", label: <T en="Public Works" /> },
-  { value: "water_authority", label: <T en="Water Authority" /> },
-  { value: "electricity", label: <T en="Electricity Dept" /> },
-  { value: "sanitation", label: <T en="Sanitation Dept" /> },
-  { value: "public_safety", label: <T en="Public Safety Dept" /> },
-  { value: "animal_control", label: <T en="Animal Control" /> },
-  { value: "health", label: <T en="Health Dept" /> },
-  { value: "transport", label: <T en="Transport Dept" /> },
-  { value: "environment", label: <T en="Environment Dept" /> },
-  { value: "police", label: <T en="Police Department" /> },
-  { value: "other", label: <T en="Other" /> },
-];
 
 const SignupPage = () => {
   const { register } = useAuth();
@@ -274,6 +261,12 @@ const SignupPage = () => {
       
       if (formData.role === 'mayor') {
         toast.success("Mayor account created! Please wait for admin verification.");
+        // Wait 2 seconds so the user can see the toast before reload
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else if (formData.role === 'department_officer') {
+        toast.success("Public servant account created! Please wait for admin verification.");
         // Wait 2 seconds so the user can see the toast before reload
         setTimeout(() => {
           window.location.reload();
@@ -462,7 +455,7 @@ const SignupPage = () => {
                         className={`input-field ${errors.department ? "border-rose-400" : ""}`}
                       >
                         <option value="">Select Department</option>
-                        {DEPARTMENTS.map((d) => (
+                        {DEPARTMENT_OPTIONS.map((d) => (
                           <option key={d.value} value={d.value}>
                             {d.label}
                           </option>

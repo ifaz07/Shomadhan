@@ -1,29 +1,9 @@
 const Complaint = require("../models/Complaint.model");
 const User = require("../models/User.model");
 const { sendNotification } = require("../services/notificationService");
-
-const DEPT_CATEGORY_MAP = {
-  public_works: ["Road"],
-  water_authority: ["Water"],
-  electricity: ["Electricity"],
-  sanitation: ["Waste"],
-  public_safety: ["Safety"],
-  animal_control: ["Environment"],
-  environment: ["Environment"],
-  health: ["Other"],
-  transport: ["Road"],
-  police: ["Law Enforcement"],
-  other: [
-    "Road",
-    "Waste",
-    "Electricity",
-    "Water",
-    "Safety",
-    "Environment",
-    "Law Enforcement",
-    "Other",
-  ],
-};
+const {
+  getDepartmentComplaintValues,
+} = require("../utils/departmentTaxonomy");
 
 // Maps priority and status to a numeric value for "always on top" sorting
 const PRIORITY_SORT_STAGE = {
@@ -31,6 +11,9 @@ const PRIORITY_SORT_STAGE = {
     _sortWeight: {
       $switch: {
         branches: [
+          // Closed complaints always go to the bottom of mixed lists
+          { case: { $eq: ["$status", "rejected"] }, then: -2 },
+          { case: { $eq: ["$status", "resolved"] }, then: -1 },
           // Critical + Pending gets the absolute highest weight (always on top)
           { 
             case: { 
@@ -59,7 +42,7 @@ const PRIORITY_SORT_STAGE = {
 // @access  Private (department_officer only)
 const getDepartmentComplaints = async (req, res, next) => {
   try {
-    const categories = DEPT_CATEGORY_MAP[req.user.department] || [];
+    const categories = getDepartmentComplaintValues(req.user.department);
 
     const { status, priority, location, filter, page = 1, limit = 20 } = req.query;
 
@@ -138,7 +121,7 @@ const getDepartmentComplaintById = async (req, res, next) => {
         .json({ success: false, message: "Complaint not found" });
     }
 
-    const categories = DEPT_CATEGORY_MAP[req.user.department] || [];
+    const categories = getDepartmentComplaintValues(req.user.department);
     if (!categories.includes(complaint.category)) {
       return res.status(403).json({
         success: false,
@@ -174,7 +157,7 @@ const setComplaintSLA = async (req, res, next) => {
         .json({ success: false, message: "Complaint not found" });
     }
 
-    const categories = DEPT_CATEGORY_MAP[req.user.department] || [];
+    const categories = getDepartmentComplaintValues(req.user.department);
     if (!categories.includes(complaint.category)) {
       return res.status(403).json({
         success: false,
@@ -220,7 +203,7 @@ const setComplaintSLA = async (req, res, next) => {
 // @access  Private (department_officer only)
 const getDepartmentStats = async (req, res, next) => {
   try {
-    const categories = DEPT_CATEGORY_MAP[req.user.department] || [];
+    const categories = getDepartmentComplaintValues(req.user.department);
     const { filter } = req.query;
     let dateFilter = { category: { $in: categories } };
 
@@ -313,7 +296,7 @@ const updateComplaintStatus = async (req, res, next) => {
     }
 
     // Ensure this officer's department covers this complaint's category
-    const categories = DEPT_CATEGORY_MAP[req.user.department] || [];
+    const categories = getDepartmentComplaintValues(req.user.department);
     if (!categories.includes(complaint.category)) {
       return res.status(403).json({
         success: false,

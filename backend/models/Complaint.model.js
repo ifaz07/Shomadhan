@@ -1,4 +1,19 @@
 const mongoose = require("mongoose");
+const {
+  DEPARTMENT_KEYS,
+} = require("../utils/departmentTaxonomy");
+
+const COMPLAINT_CATEGORY_ENUM = [
+  ...DEPARTMENT_KEYS,
+  "Road",
+  "Waste",
+  "Electricity",
+  "Water",
+  "Safety",
+  "Environment",
+  "Law Enforcement",
+  "Other",
+];
 
 const evidenceSchema = new mongoose.Schema({
   url: {
@@ -35,16 +50,7 @@ const complaintSchema = new mongoose.Schema(
     category: {
       type: String,
       required: [true, "Category is required"],
-      enum: [
-        "Road",
-        "Waste",
-        "Electricity",
-        "Water",
-        "Safety",
-        "Environment",
-        "Law Enforcement",
-        "Other",
-      ],
+      enum: COMPLAINT_CATEGORY_ENUM,
     },
     evidence: [evidenceSchema],
     isAnonymous: {

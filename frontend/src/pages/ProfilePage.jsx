@@ -355,6 +355,10 @@ const ProfilePage = () => {
     { id: 'verification', label: <T en="Verification" />, icon: Shield },
   ];
 
+  const visibleTabs = user?.role === 'admin'
+    ? tabs.filter((tab) => tab.id !== 'verification')
+    : tabs;
+
   const displayAvatar = resolveAvatar(user?.avatar);
 
   return (
@@ -376,7 +380,7 @@ const ProfilePage = () => {
 
       {/* ─── Tabs ──────────────────────────────────────────────── */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6">
-        {tabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <button

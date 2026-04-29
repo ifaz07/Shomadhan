@@ -1,4 +1,5 @@
 const { body } = require('express-validator');
+const { DEPARTMENT_KEYS } = require('../utils/departmentTaxonomy');
 
 const registerValidator = [
   body('name')
@@ -36,10 +37,7 @@ const registerValidator = [
   body('department')
     .if(body('role').equals('department_officer'))
     .notEmpty().withMessage('Department is required for public servants')
-    .isIn([
-      'public_works', 'water_authority', 'electricity', 'sanitation',
-      'public_safety', 'animal_control', 'health', 'transport', 'environment', 'police', 'other',
-    ]).withMessage('Invalid department'),
+    .isIn(DEPARTMENT_KEYS).withMessage('Invalid department'),
 
   body('nidNumber')
     .if(body('role').isIn(['department_officer', 'mayor']))

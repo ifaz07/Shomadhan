@@ -45,6 +45,28 @@ exports.getPendingMayors = async (req, res, next) => {
 };
 
 /**
+ * @desc    Get all pending Public Servant approval requests
+ * @route   GET /api/v1/admin/pending-servants
+ * @access  Private/Admin
+ */
+exports.getPendingServants = async (req, res, next) => {
+  try {
+    const pendingServants = await User.find({
+      role: 'department_officer',
+      'verificationDoc.status': 'pending'
+    }).select('-password');
+
+    res.status(200).json({
+      success: true,
+      count: pendingServants.length,
+      data: pendingServants
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @desc    Get all pending Citizen verification requests
  * @route   GET /api/v1/admin/pending-verifications
  * @access  Private/Admin
@@ -102,6 +124,47 @@ exports.approveMayor = async (req, res, next) => {
 };
 
 /**
+ * @desc    Approve or Reject a Public Servant request
+ * @route   PUT /api/v1/admin/approve-servant/:id
+ * @access  Private/Admin
+ */
+exports.approveServant = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (status === 'approved') {
+      user.isActive = true;
+      user.isVerified = true;
+      user.verificationDoc.status = 'approved';
+      user.verificationDoc.verifiedAt = new Date();
+      user.verificationDoc.rejectionReason = undefined;
+    } else {
+      user.isActive = false;
+      user.isVerified = false;
+      user.verificationDoc.status = 'rejected';
+      user.verificationDoc.verifiedAt = undefined;
+      user.verificationDoc.rejectionReason = 'Public servant credentials could not be verified.';
+    }
+
+    user.markModified('verificationDoc');
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Public servant ${status} successfully`,
+      data: user
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @desc    Approve or Reject a Citizen verification
  * @route   PUT /api/v1/admin/approve-verification/:id
  * @access  Private/Admin
@@ -115,16 +178,26 @@ exports.approveVerification = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status must be either approved or rejected',
+      });
+    }
+
     if (status === 'approved') {
       user.isVerified = true;
       user.verificationDoc.status = 'approved';
       user.verificationDoc.verifiedAt = new Date();
+      user.verificationDoc.rejectionReason = undefined;
     } else {
       user.isVerified = false;
       user.verificationDoc.status = 'rejected';
+      user.verificationDoc.verifiedAt = undefined;
       user.verificationDoc.rejectionReason = rejectionReason || 'Document could not be verified.';
     }
 
+    user.markModified('verificationDoc');
     await user.save();
 
     res.status(200).json({

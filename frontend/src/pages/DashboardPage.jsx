@@ -18,6 +18,8 @@ import toast from "react-hot-toast";
 import { complaintAPI } from "../services/api";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import T from "../components/T";
+import { getDepartmentLabel } from "../constants/departments";
+import { useAuth } from "../context/AuthContext";
 
 // ─── Config ───────────────────────────────────────────────────────────
 const PRIORITY_CONFIG = {
@@ -34,16 +36,6 @@ const STATUS_CONFIG = {
   rejected: { badge: "bg-red-100 text-red-700", label: "Rejected" },
 };
 
-const CATEGORY_LABEL = {
-  Road: "Road & Infrastructure",
-  Waste: "Sanitation & Waste",
-  Electricity: "Electricity",
-  Water: "Water Supply",
-  Safety: "Public Safety",
-  Environment: "Environment",
-  "Law Enforcement": "Law Enforcement",
-  Other: "Other",
-};
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 const timeAgo = (date) => {
@@ -152,7 +144,7 @@ const ComplaintCard = ({ complaint, index, onClick }) => {
             )}
             <span className="flex items-center gap-1">
               <Tag size={11} />
-              {CATEGORY_LABEL[complaint.category] || complaint.category}
+              {getDepartmentLabel(complaint.category)}
             </span>
             <span className="flex items-center gap-1">
               <Clock size={11} />
@@ -211,6 +203,7 @@ const ComplaintCard = ({ complaint, index, onClick }) => {
 const DashboardPage = () => {
   const navigate = useNavigate();
   const debounceRef = useRef(null);
+  const { user } = useAuth();
 
   const [stats, setStats] = useState({
     total: 0,
@@ -310,6 +303,34 @@ const DashboardPage = () => {
 
   return (
     <DashboardLayout>
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6 rounded-[2rem] border border-slate-200/70 bg-gradient-to-br from-slate-950 via-slate-900 to-teal-900 px-6 py-7 text-white shadow-[0_24px_60px_-28px_rgba(15,23,42,0.55)] sm:px-8 sm:py-8"
+      >
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 xl:items-end">
+          <div className="xl:col-span-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-teal-100">
+              <FileText size={12} className="text-teal-300" />
+              Citizen Overview
+            </div>
+            <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
+              Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
+              <T en="Track active complaints, review local issues around you, and stay updated on which reports are moving forward." />
+            </p>
+          </div>
+          <div className="xl:col-span-4">
+            <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm xl:ml-auto xl:max-w-xs">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Quick View</p>
+              <p className="mt-1 text-sm font-semibold text-white">
+                See complaint progress, filter by priority, or discover what is happening near your location.
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
       {/* ─── Stat Cards ─────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard

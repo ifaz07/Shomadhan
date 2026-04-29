@@ -19,6 +19,7 @@ import toast from "react-hot-toast";
 import { complaintAPI } from "../services/api";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import T from "../components/T";
+import { getDepartmentLabel } from "../constants/departments";
 
 // ─── Config ───────────────────────────────────────────────────────────
 const PRIORITY_CONFIG = {
@@ -53,25 +54,6 @@ const STATUS_CONFIG = {
     icon: XCircle,
     ring: "ring-red-200",
   },
-};
-
-const CATEGORY_LABEL = {
-  Road: "Road & Infrastructure",
-  Waste: "Sanitation & Waste",
-  Electricity: "Electricity",
-  Water: "Water Supply",
-  Safety: "Public Safety",
-  Environment: "Environment",
-  Other: "Other",
-};
-
-const DEPT_LABEL = {
-  public_works: "Public Works",
-  water_authority: "Water Authority",
-  electricity: "Electricity Dept",
-  sanitation: "Sanitation Dept",
-  public_safety: "Public Safety",
-  animal_control: "Animal Control",
 };
 
 // Status steps in order
@@ -225,8 +207,10 @@ const ComplaintCard = ({ complaint, index, onView }) => {
   const sla = getSlaInfo(complaint.createdAt, complaint.slaDeadline);
   const history = complaint.history || [];
   const isResolved = complaint.status === "resolved";
-  const catLabel = CATEGORY_LABEL[complaint.category] || complaint.category;
-  const deptLabel = DEPT_LABEL[complaint.department] || complaint.department;
+  const catLabel = getDepartmentLabel(complaint.category);
+  const deptLabel = getDepartmentLabel(
+    complaint.department || complaint.category,
+  );
 
   return (
     <motion.div
@@ -518,34 +502,46 @@ const MyComplaintsPage = () => {
     <DashboardLayout>
       {/* ── Header ──────────────────────────────────────────────── */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
+        initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between mb-6"
+        className="mb-6 rounded-[2rem] border border-slate-200/70 bg-gradient-to-br from-slate-950 via-slate-900 to-teal-900 px-6 py-7 text-white shadow-[0_24px_60px_-28px_rgba(15,23,42,0.55)] sm:px-8 sm:py-8"
       >
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            <T en="My Complaints" />
-          </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            <T en="Track the status and progress of all your submitted complaints" />
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={fetchComplaints}
-            disabled={loading}
-            className="p-2 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-50"
-            title="Refresh"
-          >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-          </button>
-          <button
-            onClick={() => navigate("/submit-complaint")}
-            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-700 transition-colors shadow-sm"
-          >
-            <FileText size={15} />
-            <T en="New Complaint" />
-          </button>
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 xl:items-end">
+          <div className="xl:col-span-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-teal-100">
+              <FileText size={12} className="text-teal-300" />
+              Personal Tracking Hub
+            </div>
+            <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
+              <T en="My Complaints" />
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
+              <T en="Track the status and progress of all your submitted complaints" />
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 xl:col-span-4 xl:items-end">
+            <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm xl:max-w-xs">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Action Center</p>
+              <p className="mt-1 text-sm font-semibold text-white">Review active complaints or file a new one quickly</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={fetchComplaints}
+                disabled={loading}
+                className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-white transition-colors hover:bg-white/15 disabled:opacity-50"
+                title="Refresh"
+              >
+                <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+              </button>
+              <button
+                onClick={() => navigate("/submit-complaint")}
+                className="flex items-center gap-2 rounded-xl bg-white/12 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/18"
+              >
+                <FileText size={15} />
+                <T en="New Complaint" />
+              </button>
+            </div>
+          </div>
         </div>
       </motion.div>
 

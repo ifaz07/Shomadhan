@@ -117,12 +117,12 @@ const OAuthCompletionPage = () => {
         throw new Error(errorData.message || "Verification failed");
       }
 
-      toast.success("Account verified successfully!");
+      toast.success("Verification submitted. It is now pending admin review.");
       setStep("completing");
 
       // Log in the user
-      const user = await loginWithToken(token);
-      navigate(getDefaultDashboardRoute(user?.role), { replace: true });
+      await loginWithToken(token);
+      navigate("/verify", { replace: true });
     } catch (err) {
       toast.error(err.message || "Verification failed. Please try again.");
     } finally {
@@ -328,10 +328,10 @@ const OAuthCompletionPage = () => {
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <T en="Verifying..." />
+                <T en="Submitting..." />
               </span>
             ) : (
-              <T en="Verify & Continue" />
+              <T en="Submit for Review" />
             )}
           </button>
 

@@ -94,14 +94,13 @@ const register = async (req, res, next) => {
       userData.employeeId = employeeId;
       userData.governmentEmail = governmentEmail;
       userData.designation = designation;
-      // Auto-verify public servants via their NID at registration
-      userData.isVerified = true;
+      userData.isVerified = false;
+      userData.isActive = false; // Public servants need admin approval
       userData.verificationDoc = {
         docType: "nid",
         documentNumber: String(nidNumber),
-        status: "approved",
+        status: "pending",
         submittedAt: new Date(),
-        verifiedAt: new Date(),
       };
     } else if (role === "mayor") {
       userData.role = "mayor";
@@ -264,7 +263,10 @@ const verifyAccount = async (req, res, next) => {
         .json({ success: false, message: "NID must be exactly 10 digits." });
     }
     if (docType === "birth_certificate" && documentNumber.length !== 17) {
-      return toast.error("Birth Certificate number must be exactly 17 digits.");
+      return res.status(400).json({
+        success: false,
+        message: "Birth Certificate number must be exactly 17 digits.",
+      });
     }
     if (docType === "passport" && documentNumber.length !== 9) {
       return res.status(400).json({
@@ -274,14 +276,15 @@ const verifyAccount = async (req, res, next) => {
     }
 
     const user = await User.findById(req.user.id);
-    user.isVerified = true;
+    user.isVerified = false;
     user.verificationDoc = {
       docType,
       documentNumber,
       fileUrl: `/uploads/verification/${req.file.filename}`,
-      status: "approved",
+      status: "pending",
       submittedAt: new Date(),
-      verifiedAt: new Date(),
+      verifiedAt: undefined,
+      rejectionReason: undefined,
     };
 
     // Ensure Mongoose detects the object change
@@ -290,7 +293,7 @@ const verifyAccount = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: "Account verified successfully!",
+      message: "Verification submitted successfully. It is now pending admin review.",
       data: { user },
     });
   } catch (error) {
@@ -591,15 +594,16 @@ const verifyOAuthAccount = async (req, res, next) => {
       user.phone = phone;
     }
 
-    // Mark as verified
-    user.isVerified = true;
+    // Submit verification for admin review
+    user.isVerified = false;
     user.verificationDoc = {
       docType,
       documentNumber,
       fileUrl: `/uploads/verification/${req.file.filename}`,
-      status: "approved",
+      status: "pending",
       submittedAt: new Date(),
-      verifiedAt: new Date(),
+      verifiedAt: undefined,
+      rejectionReason: undefined,
     };
 
     user.markModified("verificationDoc");
@@ -607,7 +611,7 @@ const verifyOAuthAccount = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: "Account verified successfully! Welcome to Somadhan.",
+      message: "Verification submitted successfully. Your account is pending admin review.",
       data: { user },
     });
   } catch (error) {

@@ -183,20 +183,67 @@ const Sidebar = () => {
       <div className="p-5 border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center flex-shrink-0">
+            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
               <span className="text-lg font-bold text-white font-bengali">স</span>
             </div>
-            {!isCollapsed && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <div className="flex items-center gap-1.5">
+            <motion.div
+              initial={false}
+              animate={{ opacity: isCollapsed ? 0 : 1, x: isCollapsed ? -8 : 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="overflow-hidden whitespace-nowrap"
+            >
+                <div className="hidden items-center gap-1.5">
                    <h1 className="text-lg font-bold text-gray-900 font-bengali">সমাধান</h1>
                    {user?.isGoodCitizen && <GoodCitizenStar size={14} />}
                 </div>
-                <p className="text-[10px] text-gray-400 -mt-0.5">Somadhan</p>
+                <div className="flex items-center gap-1.5">
+                   <h1 className="text-lg font-bold text-gray-900">Somadhan</h1>
+                   {user?.isGoodCitizen && <GoodCitizenStar size={14} />}
+                </div>
+                <p className="text-[10px] text-blue-500 font-semibold -mt-0.5">Somadhan</p>
               </motion.div>
+          </div>
+          <motion.div
+            initial={false}
+            animate={{ opacity: isCollapsed ? 0 : 1, scale: isCollapsed ? 0.96 : 1 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className={isCollapsed ? "pointer-events-none" : ""}
+          >
+            <LanguageToggle variant="light" />
+          </motion.div>
+        </div>
+      </div>
+
+      <div className="p-4 border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-100 to-blue-100 flex items-center justify-center">
+              <span className="text-sm font-bold text-teal-700">
+                {user?.name?.charAt(0)?.toUpperCase() || "C"}
+              </span>
+            </div>
+            {user?.isVerified && (
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border border-white">
+                <ShieldCheck size={9} className="text-white" />
+              </div>
             )}
           </div>
-          {!isCollapsed && <LanguageToggle variant="light" />}
+          <motion.div
+            initial={false}
+            animate={{ opacity: isCollapsed ? 0 : 1, x: isCollapsed ? -8 : 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className={`flex-1 min-w-0 overflow-hidden ${isCollapsed ? "w-0" : "w-auto"}`}
+          >
+            <p className="text-sm font-semibold text-gray-900 truncate">
+              {user?.name}
+            </p>
+            <p className="text-[10px] text-gray-500 truncate">
+              Citizen
+            </p>
+            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold mt-0.5 ${verBadge.color}`}>
+              {verBadge.label}
+            </span>
+          </motion.div>
         </div>
       </div>
 
@@ -215,7 +262,14 @@ const Sidebar = () => {
             >
               {active && <motion.div layoutId="activeTab" className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-teal-500 rounded-r-full" />}
               <Icon size={18} className={active ? "text-teal-600" : ""} />
-              {!isCollapsed && <span>{item.label}</span>}
+              <motion.span
+                initial={false}
+                animate={{ opacity: isCollapsed ? 0 : 1, x: isCollapsed ? -6 : 0 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className={`overflow-hidden whitespace-nowrap ${isCollapsed ? "w-0" : "w-auto"}`}
+              >
+                {item.label}
+              </motion.span>
               {!isCollapsed && item.badge && (
                 <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                   {item.badge}
@@ -248,7 +302,14 @@ const Sidebar = () => {
       <div className="p-3 border-t border-gray-100 flex-shrink-0">
         <button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all w-full">
           <LogOut size={18} />
-          {!isCollapsed && <span><T en="Sign out" /></span>}
+          <motion.span
+            initial={false}
+            animate={{ opacity: isCollapsed ? 0 : 1, x: isCollapsed ? -6 : 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className={`overflow-hidden whitespace-nowrap ${isCollapsed ? "w-0" : "w-auto"}`}
+          >
+            <T en="Sign out" />
+          </motion.span>
         </button>
       </div>
     </div>
@@ -276,7 +337,12 @@ const Sidebar = () => {
         )}
       </AnimatePresence>
 
-      <motion.aside className={`hidden lg:flex flex-col bg-white border-r border-gray-100 h-screen sticky top-0 transition-all duration-300 ${isCollapsed ? "w-20" : "w-72"}`}>
+      <motion.aside
+        initial={false}
+        animate={{ width: isCollapsed ? 80 : 288 }}
+        transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
+        className="hidden lg:flex flex-col bg-white border-r border-gray-100 h-screen sticky top-0 overflow-hidden will-change-[width]"
+      >
         {SidebarContent()}
         <button onClick={() => setIsCollapsed(!isCollapsed)} className="absolute -right-3 top-20 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors">
           <ChevronLeft size={14} className={`text-gray-500 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""}`} />

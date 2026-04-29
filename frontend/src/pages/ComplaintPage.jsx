@@ -31,7 +31,10 @@ import { complaintAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import T from '../components/T';
-import NearbyComplaints from '../components/NearbyComplaints';
+import {
+  DEPARTMENT_OPTIONS,
+  getDepartmentLabel,
+} from '../constants/departments';
 
 // Fix for default marker icons in Leaflet with React
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -44,17 +47,6 @@ let DefaultIcon = L.icon({
   iconAnchor: [12, 41]
 });
 L.Marker.prototype.options.icon = DefaultIcon;
-
-const categories = [
-  'Road',
-  'Waste',
-  'Electricity',
-  'Water',
-  'Safety',
-  'Environment',
-  'Law Enforcement',
-  'Other'
-];
 
 // Helper to handle map clicks and marker placement
 const LocationMarker = ({ position, setPosition, setAddress }) => {
@@ -116,6 +108,7 @@ const ComplaintPage = () => {
   const [nearbyComplaints, setNearbyComplaints] = useState([]);
   const [isLoadingNearby, setIsLoadingNearby] = useState(false);
   const [votingId, setVotingId] = useState(null);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const fileInputRef = useRef(null);
 
   // ── Hooks that must be declared before any early return ─────────────
@@ -141,7 +134,24 @@ const ComplaintPage = () => {
     }
   }, [mapPosition, formData.category, fetchNearbyComplaints]);
 
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    if (showSubmitConfirm) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [showSubmitConfirm]);
+
   if (!user?.isVerified) {
+    const isPendingVerification = user?.verificationDoc?.status === 'pending';
+
     return (
       <DashboardLayout>
         <div className="max-w-2xl mx-auto py-20 px-4 text-center">
@@ -155,13 +165,15 @@ const ComplaintPage = () => {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-4"><T en="Account Verification Required" /></h2>
             <p className="text-gray-600 mb-8 leading-relaxed">
-              <T en="To submit complaints and help improve our community, you need to verify your account with a valid document (NID, Birth Certificate, or Passport)." />
+              <T en={isPendingVerification
+                ? 'Your verification request is still under admin review. You can submit complaints after it is approved.'
+                : 'To submit complaints and help improve our community, you need to verify your account with a valid document (NID, Birth Certificate, or Passport).'} />
             </p>
             <Link
               to="/verify"
               className="inline-flex items-center gap-2 bg-teal-500 text-white px-8 py-3 rounded-xl font-bold hover:bg-teal-600 transition-all shadow-lg shadow-teal-500/20"
             >
-              <T en="Verify My Account" />
+              <T en={isPendingVerification ? 'Check Verification Status' : 'Verify My Account'} />
             </Link>
           </motion.div>
         </div>
@@ -263,7 +275,8 @@ const ComplaintPage = () => {
   const applySuggestion = () => {
     if (nlpSuggestion?.category) {
       setFormData(prev => ({ ...prev, category: nlpSuggestion.category }));
-      toast.success(`Category set to "${nlpSuggestion.category}"`);
+      setNlpSuggestion(null);
+        toast.success(`Department set to "${getDepartmentLabel(nlpSuggestion.category)}"`);
     }
   };
 
@@ -316,9 +329,8 @@ const ComplaintPage = () => {
     setPreviews(updatedPreviews);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.category) return toast.error('Please select a category');
+  const performSubmit = async () => {
+    if (!formData.category) return toast.error('Please select a department');
 
     setIsSubmitting(true);
     const data = new FormData();
@@ -342,6 +354,7 @@ const ComplaintPage = () => {
       const response = await complaintAPI.create(data);
       if (response.data.success) {
         setSpamWarning(null);
+        setShowSubmitConfirm(false);
         toast.success('Complaint submitted successfully!');
         setFormData({ title: '', category: '', description: '', location: '', isAnonymous: false, emergencyFlag: false });
         setFiles([]);
@@ -360,6 +373,15 @@ const ComplaintPage = () => {
     }
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.title.trim()) return toast.error('Please enter a complaint title');
+    if (!formData.description.trim()) return toast.error('Please enter complaint details');
+    if (!formData.category) return toast.error('Please select a department');
+    if (!formData.location.trim()) return toast.error('Please provide a complaint location');
+    setShowSubmitConfirm(true);
+  };
+
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -374,36 +396,81 @@ const ComplaintPage = () => {
     visible: { opacity: 1, x: 0 }
   };
 
+  const nearbyCount = nearbyComplaints.length;
+  const hasPinnedLocation = Boolean(mapPosition);
+  const topSuggestions =
+    nlpSuggestion?.topCategories ||
+    (nlpSuggestion
+      ? [{ category: nlpSuggestion.category, confidence: nlpSuggestion.confidence, department: nlpSuggestion.department }]
+      : []);
+
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto py-8 px-4">
-        <header className="mb-8">
-          <motion.h1
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="text-3xl font-bold text-gray-900"
-          >
-            <T en="Submit Complaint" />
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-gray-500 mt-2"
-          >
-            <T en="Provide details about the issue and upload supporting evidence to help us resolve it." />
-          </motion.p>
-        </header>
+      <div className="w-full max-w-[1440px] mx-auto py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
+        <motion.header
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 rounded-[2rem] border border-slate-200/70 bg-gradient-to-br from-slate-950 via-slate-900 to-teal-900 px-6 py-7 sm:px-8 sm:py-8 text-white shadow-[0_24px_60px_-28px_rgba(15,23,42,0.55)]"
+        >
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-end">
+            <div className="xl:col-span-8">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-teal-100">
+                <Sparkles size={12} className="text-teal-300" />
+                Civic Reporting Desk
+              </div>
+              <motion.h1
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="mt-4 text-3xl sm:text-4xl font-black tracking-tight"
+              >
+                <T en="Submit Complaint" />
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.08 }}
+                className="mt-3 max-w-2xl text-sm sm:text-base text-slate-200/85 leading-relaxed"
+              >
+                <T en="Provide clear issue details, set the incident location, and attach useful evidence so the right department can act faster." />
+              </motion.p>
+            </div>
+
+            <div className="xl:col-span-4 grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-1 gap-3">
+              <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Step 1</p>
+                <p className="mt-1 text-sm font-semibold text-white">Describe the issue clearly</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Step 2</p>
+                <p className="mt-1 text-sm font-semibold text-white">Pin the exact location</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Step 3</p>
+                <p className="mt-1 text-sm font-semibold text-white">Upload supporting evidence</p>
+              </div>
+            </div>
+          </div>
+        </motion.header>
 
         <motion.form
           variants={containerVariants}
           initial="hidden"
           animate="visible"
           onSubmit={handleSubmit}
-          className="space-y-6"
+          className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start"
         >
           {/* ─── Basic Info ─────────────────────────────────────────── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 space-y-6">
+          <div className="xl:col-span-12 bg-white rounded-[2rem] shadow-[0_22px_50px_-30px_rgba(15,23,42,0.28)] border border-white/80 ring-1 ring-slate-100 p-6 md:p-8 space-y-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Incident Brief</p>
+                <h3 className="mt-2 text-lg font-bold text-slate-900">Tell us what happened</h3>
+              </div>
+              <div className="hidden sm:flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-500">
+                <Building2 size={14} className="text-teal-500" />
+                Routed to the right department
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <motion.div variants={itemVariants} className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
@@ -426,7 +493,7 @@ const ComplaintPage = () => {
 
               <motion.div variants={itemVariants} className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700">
-                  <T en="Category" />
+                  <T en="Department" />
                 </label>
                 <select
                   required
@@ -439,9 +506,9 @@ const ComplaintPage = () => {
                   }}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none appearance-none bg-white"
                 >
-                  <option value="">Select a category</option>
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
+                  <option value="">Select a department</option>
+                  {DEPARTMENT_OPTIONS.map((dept) => (
+                    <option key={dept.value} value={dept.value}>{dept.label}</option>
                   ))}
                 </select>
               </motion.div>
@@ -472,7 +539,7 @@ const ComplaintPage = () => {
                 ) : (
                   <Sparkles size={15} />
                 )}
-                {isAnalyzing ? <T en="Analyzing..." /> : <T en="AI Auto-Classify" />}
+                {isAnalyzing ? <T en="Analyzing..." /> : <T en="Find Department" />}
               </button>
             </motion.div>
           </div>
@@ -484,7 +551,7 @@ const ComplaintPage = () => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-violet-50 border border-violet-200 rounded-2xl p-5 space-y-4"
+                className="xl:col-span-12 bg-violet-50 border border-violet-200 rounded-[2rem] p-5 space-y-4"
               >
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-bold text-violet-900 flex items-center gap-2">
@@ -503,14 +570,14 @@ const ComplaintPage = () => {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-xs font-semibold text-gray-500">
                     <Tag size={13} />
-                    <T en="TOP SUGGESTED CATEGORIES" />
+                    <T en="TOP SUGGESTED DEPARTMENTS" />
                   </div>
-                  {(nlpSuggestion.topCategories || [{ category: nlpSuggestion.category, confidence: nlpSuggestion.confidence, department: nlpSuggestion.department }]).map((item, idx) => (
-                    <div key={item.category} className="bg-white rounded-xl p-4 border border-violet-100 flex items-center justify-between gap-4">
+                  {topSuggestions.map((item, idx) => (
+                    <div key={`${item.category}-${idx}`} className="bg-white rounded-xl p-4 border border-violet-100 flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3">
                         <span className="text-xs font-bold text-violet-400">#{idx + 1}</span>
                         <div>
-                          <span className="text-base font-bold text-gray-900">{item.category}</span>
+                          <span className="text-base font-bold text-gray-900">{getDepartmentLabel(item.category)}</span>
                           <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
                             <Building2 size={11} />
                             {item.department.name}
@@ -552,7 +619,7 @@ const ComplaintPage = () => {
                   className="w-full py-2 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700 transition-all flex items-center justify-center gap-2"
                 >
                   <CheckCircle2 size={16} />
-                  <T en="Apply Suggested Category" />
+                  <T en="Apply Suggested Department" />
                 </button>
               </motion.div>
             )}
@@ -561,7 +628,7 @@ const ComplaintPage = () => {
           {/* ─── Location Section ───────────────────────────────────── */}
           <motion.div
             variants={itemVariants}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8"
+            className="xl:col-span-12 bg-white rounded-[2rem] shadow-[0_22px_50px_-30px_rgba(15,23,42,0.28)] border border-white/80 ring-1 ring-slate-100 p-6 md:p-8"
           >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <div>
@@ -616,7 +683,7 @@ const ComplaintPage = () => {
                 </button>
               </div>
 
-              <div className="h-[300px] w-full rounded-2xl overflow-hidden border border-gray-100 relative z-0">
+              <div className="h-[360px] w-full rounded-2xl overflow-hidden border border-gray-100 relative z-0">
                 <MapContainer
                   center={mapPosition || [23.8103, 90.4125]} // Default to Dhaka
                   zoom={13}
@@ -638,20 +705,21 @@ const ComplaintPage = () => {
           </motion.div>
 
           {/* ─── Nearby Complaints (pre-submission awareness) ───────── */}
-          {mapPosition && (
-            <motion.div variants={itemVariants}>
-              <NearbyComplaints mapPosition={mapPosition} />
-            </motion.div>
-          )}
-
           {/* ─── Evidence Upload ────────────────────────────────────── */}
           <motion.div
             variants={itemVariants}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8"
+            className="xl:col-span-12 bg-white rounded-[2rem] shadow-[0_22px_50px_-30px_rgba(15,23,42,0.24)] border border-white/80 ring-1 ring-slate-100 p-6 md:p-8"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-gray-700"><T en="Supporting Evidence" /></h3>
               <span className="text-xs text-gray-400"><T en="Max 5 files (Images, Video, Audio)" /></span>
+            </div>
+
+            <div className="mb-5 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Review Tip</p>
+              <p className="mt-1 text-sm text-slate-600 leading-relaxed">
+                Add a photo, short video, or audio clip if it helps prove the issue faster.
+              </p>
             </div>
 
             <div
@@ -721,37 +789,96 @@ const ComplaintPage = () => {
           </motion.div>
 
           {/* ─── Anonymous Submission ───────────────────────────────── */}
-          <motion.div
-            variants={itemVariants}
-            className="bg-teal-50/50 rounded-2xl p-6 border border-teal-100"
-          >
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-teal-100 rounded-lg">
-                <Info size={20} className="text-teal-600" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-teal-900"><T en="Submit Anonymously" /></h4>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="isAnonymous"
-                      checked={formData.isAnonymous}
-                      onChange={handleInputChange}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500"></div>
-                  </label>
+          <AnimatePresence>
+            {(hasPinnedLocation || isLoadingNearby || nearbyCount === 0) && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="xl:col-span-12 bg-white border border-amber-100 rounded-[2rem] p-5 shadow-[0_18px_44px_-34px_rgba(217,119,6,0.35)]"
+              >
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-4">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-500">Nearby Match Check</p>
+                    <h4 className="mt-2 text-lg font-bold text-slate-900">
+                      Similar complaints
+                    </h4>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {hasPinnedLocation
+                        ? 'We are checking this area for existing open complaints so you can avoid filing duplicates.'
+                        : 'Set the incident location first. Similar complaints will appear here automatically if we find a nearby match.'}
+                    </p>
+                  </div>
+                  <div className="inline-flex items-center gap-2 self-start rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-amber-700">
+                    {isLoadingNearby ? <Loader2 size={15} className="animate-spin" /> : <Users size={15} />}
+                    <span className="text-xs font-bold uppercase tracking-[0.18em]">Matches</span>
+                    <span className="text-lg font-black">{nearbyCount}</span>
+                  </div>
                 </div>
-                <p className="text-sm text-teal-700 mt-1">
-                  <T en="Your identity will be hidden from the authorities and other users. However, we'll still be able to track the complaint status." />
-                </p>
-              </div>
-            </div>
-          </motion.div>
+                <div className="space-y-3">
+                  {!hasPinnedLocation ? (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                      No location pinned yet. Once you place the location on the map, similar complaints will be checked here.
+                    </div>
+                  ) : isLoadingNearby ? (
+                    <div className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-5 text-sm text-amber-700">
+                      Checking nearby complaints around the selected location...
+                    </div>
+                  ) : nearbyCount === 0 ? (
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-5">
+                      <p className="text-sm font-semibold text-emerald-800">0 similar complaints found nearby</p>
+                      <p className="mt-1 text-sm text-emerald-700">
+                        This looks like a fresh report for the selected area and department.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                      {nearbyComplaints.slice(0, 4).map((c) => (
+                        <div key={c._id} className="rounded-2xl border border-amber-100 bg-amber-50/35 p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                            style={{
+                              background: c.priority === 'Critical' ? '#fee2e2' : c.priority === 'High' ? '#ffedd5' : c.priority === 'Medium' ? '#fef9c3' : '#dcfce7',
+                              color: c.priority === 'Critical' ? '#dc2626' : c.priority === 'High' ? '#ea580c' : c.priority === 'Medium' ? '#ca8a04' : '#16a34a',
+                            }}
+                          >
+                            • {c.priority}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium">{getDepartmentLabel(c.category)}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${c.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{c.status}</span>
+                              </div>
+                              <p className="text-sm font-semibold text-slate-900 mt-2 truncate">{c.title}</p>
+                              <p className="text-[11px] text-slate-400 font-mono mt-1">{c.ticketId}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleVote(c._id)}
+                        disabled={votingId === c._id}
+                        className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all disabled:opacity-50 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                      >
+                        {votingId === c._id ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <ThumbsUp size={14} className={c._userVoted ? 'fill-amber-500' : ''} />
+                        )}
+                        <span className="text-[10px] font-bold">{c.voteCount}</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
 
           {/* ─── Emergency Flag ─────────────────────────────────────── */}
-          <motion.div
+          {false && <motion.div
             variants={itemVariants}
             className="bg-red-50/60 rounded-2xl p-6 border border-red-100"
           >
@@ -778,11 +905,11 @@ const ComplaintPage = () => {
                 </p>
               </div>
             </div>
-          </motion.div>
+          </motion.div>}
 
           {/* ─── Nearby Similar Complaints ──────────────────────────── */}
           <AnimatePresence>
-            {mapPosition && (nearbyComplaints.length > 0 || isLoadingNearby) && (
+            {false && mapPosition && (nearbyComplaints.length > 0 || isLoadingNearby) && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -846,7 +973,7 @@ const ComplaintPage = () => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-red-50 border border-red-200 rounded-2xl p-5"
+                className="xl:col-span-12 bg-red-50 border border-red-200 rounded-[2rem] p-5 shadow-[0_16px_32px_-28px_rgba(220,38,38,0.45)]"
               >
                 <div className="flex items-start gap-3">
                   <AlertCircle size={20} className="text-red-500 mt-0.5 shrink-0" />
@@ -888,14 +1015,14 @@ const ComplaintPage = () => {
           </AnimatePresence>
 
           {/* ─── Submit Button ──────────────────────────────────────── */}
-          <motion.div variants={itemVariants} className="pt-4">
+          <motion.div variants={itemVariants} className="xl:col-span-12 pt-2">
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 text-white font-bold text-lg shadow-lg shadow-teal-500/20 transition-all ${
+              className={`w-full py-4 rounded-[1.6rem] flex items-center justify-center gap-2 text-white font-bold text-lg shadow-[0_22px_45px_-20px_rgba(13,148,136,0.45)] transition-all ${
                 isSubmitting
                   ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-teal-500 to-blue-600 hover:scale-[1.02] active:scale-[0.98]'
+                  : 'bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-600 hover:scale-[1.01] active:scale-[0.99]'
               }`}
             >
               {isSubmitting ? (
@@ -912,6 +1039,176 @@ const ComplaintPage = () => {
             </button>
           </motion.div>
         </motion.form>
+
+        <AnimatePresence>
+          {showSubmitConfirm && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[120] bg-slate-900/45 backdrop-blur-sm flex items-center justify-center p-4"
+              onClick={(e) => {
+                if (e.target === e.currentTarget && !isSubmitting) {
+                  setShowSubmitConfirm(false);
+                }
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 16, scale: 0.97 }}
+                className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-[2rem] shadow-2xl border border-gray-100"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="px-6 py-5 border-b border-gray-100">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">
+                        <T en="Confirm Complaint Submission" />
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        <T en="Please review how this complaint will be submitted before sending it." />
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => !isSubmitting && setShowSubmitConfirm(false)}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="px-6 py-5 space-y-4">
+                  <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 mb-2">
+                      Summary
+                    </p>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-sm text-gray-400"><T en="Title" /></p>
+                        <p className="text-sm font-semibold text-gray-900">{formData.title}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400"><T en="Department" /></p>
+                        <p className="text-sm font-semibold text-gray-900">{getDepartmentLabel(formData.category)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400"><T en="Location" /></p>
+                        <p className="text-sm font-semibold text-gray-900 line-clamp-2">{formData.location}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          isAnonymous: !prev.isAnonymous,
+                        }))
+                      }
+                      className={`rounded-2xl border p-4 text-left transition-all min-w-0 ${
+                        formData.isAnonymous
+                          ? 'border-teal-200 bg-teal-50 shadow-sm'
+                          : 'border-gray-200 bg-gray-50 hover:border-teal-200 hover:bg-teal-50/60'
+                      }`}
+                    >
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Info size={16} className={formData.isAnonymous ? 'text-teal-600 flex-shrink-0' : 'text-gray-400 flex-shrink-0'} />
+                              <p className="text-sm font-bold text-gray-900 leading-tight"><T en="Anonymous Submission" /></p>
+                            </div>
+                          </div>
+                          <div className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${formData.isAnonymous ? 'bg-teal-500' : 'bg-gray-200'}`}>
+                            <span
+                              className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                                formData.isAnonymous ? 'translate-x-5' : 'translate-x-0.5'
+                              }`}
+                            />
+                          </div>
+                        </div>
+                        <p className={`text-xs leading-relaxed break-words ${formData.isAnonymous ? 'text-teal-700' : 'text-gray-500'}`}>
+                          <T en={formData.isAnonymous ? 'Other citizens will not see your name. The responsible department can still see your real details.' : 'Your name can be shown to other users on the complaint detail page.'} />
+                        </p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          emergencyFlag: !prev.emergencyFlag,
+                        }))
+                      }
+                      className={`rounded-2xl border p-4 text-left transition-all min-w-0 ${
+                        formData.emergencyFlag
+                          ? 'border-red-200 bg-red-50 shadow-sm'
+                          : 'border-gray-200 bg-gray-50 hover:border-red-200 hover:bg-red-50/60'
+                      }`}
+                    >
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <AlertTriangle size={16} className={formData.emergencyFlag ? 'text-red-600 flex-shrink-0' : 'text-gray-400 flex-shrink-0'} />
+                              <p className="text-sm font-bold text-gray-900 leading-tight"><T en="Emergency Priority" /></p>
+                            </div>
+                          </div>
+                          <div className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${formData.emergencyFlag ? 'bg-red-500' : 'bg-gray-200'}`}>
+                            <span
+                              className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                                formData.emergencyFlag ? 'translate-x-5' : 'translate-x-0.5'
+                              }`}
+                            />
+                          </div>
+                        </div>
+                        <p className={`text-xs leading-relaxed break-words ${formData.emergencyFlag ? 'text-red-700' : 'text-gray-500'}`}>
+                          <T en={formData.emergencyFlag ? 'This complaint will be submitted as an emergency and marked Critical immediately.' : 'This complaint will be submitted as a normal report.'} />
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="px-6 py-5 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowSubmitConfirm(false)}
+                    disabled={isSubmitting}
+                    className="sm:flex-1 py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold hover:bg-white transition-all disabled:opacity-50"
+                  >
+                    <T en="Cancel" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={performSubmit}
+                    disabled={isSubmitting}
+                    className={`sm:flex-1 py-3 rounded-2xl text-white font-semibold transition-all shadow-lg ${
+                      formData.emergencyFlag
+                        ? 'bg-gradient-to-r from-red-500 to-orange-500 shadow-red-500/20 hover:scale-[1.01]'
+                        : 'bg-gradient-to-r from-teal-500 to-blue-600 shadow-teal-500/20 hover:scale-[1.01]'
+                    } disabled:opacity-60 disabled:cursor-not-allowed`}
+                  >
+                    {isSubmitting ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 size={18} className="animate-spin" />
+                        <T en="Submitting..." />
+                      </span>
+                    ) : (
+                      <T en={formData.emergencyFlag ? 'Submit as Emergency' : 'Confirm & Submit'} />
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </DashboardLayout>
   );

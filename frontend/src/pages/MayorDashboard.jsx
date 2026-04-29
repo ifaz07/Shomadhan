@@ -40,6 +40,27 @@ const STATUS_CONFIG = {
   rejected:      { badge: 'bg-red-100 text-red-700',     label: 'Rejected' },
 };
 
+const PRIORITY_CONFIG = {
+  Critical: { badge: 'bg-red-500 text-white', border: 'border-red-400' },
+  High: { badge: 'bg-orange-500 text-white', border: 'border-orange-400' },
+  Medium: { badge: 'bg-yellow-500 text-white', border: 'border-yellow-400' },
+  Low: { badge: 'bg-green-500 text-white', border: 'border-green-400' },
+};
+
+const getSlaInfo = (slaDeadline, slaDurationHours) => {
+  if (!slaDeadline || !slaDurationHours) return null;
+  const now = Date.now();
+  const deadline = new Date(slaDeadline).getTime();
+  const totalMs = slaDurationHours * 60 * 60 * 1000;
+  const slaSetAt = deadline - totalMs;
+  const elapsed = Math.max(0, now - slaSetAt);
+  const progress = Math.min(100, Math.max(0, Math.round((elapsed / totalMs) * 100)));
+  const msLeft = deadline - now;
+  const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+  const isOverdue = msLeft <= 0;
+  return { progress, daysLeft, isOverdue };
+};
+
 const buildDepartmentStats = (items = []) => {
   const grouped = items.reduce((acc, complaint) => {
     const key = complaint.category || 'Uncategorized';
@@ -82,39 +103,71 @@ const StatCard = ({ icon: Icon, label, value, color, bg, delay, onClick, isActiv
 );
 
 const ComplaintCard = ({ complaint, index, onClick }) => {
+  const pCfg = PRIORITY_CONFIG[complaint.priority] || PRIORITY_CONFIG.Low;
   const sCfg = STATUS_CONFIG[complaint.status] || STATUS_CONFIG.pending;
+  const sla = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
+  const isResolved = complaint.status === 'resolved';
+  const cardBorder = isResolved ? 'border-gray-200' : pCfg.border;
   return (
     <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
       onClick={() => onClick(complaint._id)}
-      className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md cursor-pointer transition-all flex gap-4"
+      className={`bg-white rounded-2xl p-5 shadow-sm border-2 ${cardBorder} hover:shadow-md cursor-pointer transition-all duration-200 active:scale-[0.995]`}
     >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-2">
-          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${sCfg.badge}`}>
-            {sCfg.label}
-          </span>
-          <span className="text-[10px] text-gray-400 font-mono">{complaint.ticketId}</span>
+      <div className="flex items-start gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            {!isResolved && (
+              <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>
+                {complaint.priority}
+              </span>
+            )}
+            <span className={`px-2.5 py-0.5 rounded-md text-xs font-semibold ${sCfg.badge}`}>
+              {sCfg.label}
+            </span>
+            <span className="text-xs text-gray-400 font-mono">{complaint.ticketId}</span>
+          </div>
+          <h3 className="font-bold text-gray-900 text-base truncate mb-1.5">{complaint.title}</h3>
+          <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+            <span className="flex items-center gap-1 truncate max-w-[420px]">
+              <MapPin size={11} /> {complaint.location}
+            </span>
+            <span className="flex items-center gap-1">
+              <Tag size={11} /> {complaint.category}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock size={11} /> {timeAgo(complaint.createdAt)}
+            </span>
+          </div>
+          {sla && !isResolved ? (
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span>
+                  SLA Deadline: {sla.isOverdue ? 'Overdue' : `${sla.daysLeft} day${sla.daysLeft === 1 ? '' : 's'} left`}
+                </span>
+                <span>{sla.progress}%</span>
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    sla.isOverdue ? 'bg-red-500' : sla.daysLeft <= 1 ? 'bg-red-500' : sla.daysLeft <= 3 ? 'bg-orange-500' : 'bg-gray-800'
+                  }`}
+                  style={{ width: `${sla.progress}%` }}
+                />
+              </div>
+            </div>
+          ) : !isResolved ? (
+            <p className="mt-3 text-xs text-gray-400 italic">No deadline assigned yet</p>
+          ) : null}
         </div>
-        <h3 className="font-bold text-gray-900 text-sm truncate mb-1">{complaint.title}</h3>
-        <div className="flex items-center gap-3 text-[10px] text-gray-500">
-          <span className="flex items-center gap-1 truncate max-w-[150px]">
-            <MapPin size={12} className="text-gray-400" /> {complaint.location}
-          </span>
-          <span className="flex items-center gap-1">
-            <Tag size={12} className="text-gray-400" /> {complaint.category}
-          </span>
-          <span className="flex items-center gap-1">
-            <Clock size={12} className="text-gray-400" /> {timeAgo(complaint.createdAt)}
-          </span>
+
+        <div className="flex flex-col items-center gap-0.5 flex-shrink-0 pt-1">
+          <ThumbsUp size={18} className="text-gray-400" />
+          <span className="text-base font-bold text-gray-800 leading-tight">{complaint.voteCount ?? 0}</span>
+          <span className="text-xs text-gray-400">Upvotes</span>
         </div>
-      </div>
-      <div className="flex flex-col items-center justify-center border-l border-gray-50 pl-4 min-w-[60px]">
-        <ThumbsUp size={16} className="text-teal-500 mb-0.5" />
-        <span className="text-sm font-black text-gray-900">{complaint.voteCount || 0}</span>
-        <span className="text-[8px] text-gray-400 uppercase font-bold">Votes</span>
       </div>
     </motion.div>
   );
@@ -267,19 +320,37 @@ const MayorDashboard = () => {
     <DashboardLayout>
       <div className="space-y-6 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Welcome! {user?.name}
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-[2rem] border border-slate-200/70 bg-gradient-to-br from-slate-950 via-slate-900 to-teal-900 px-6 py-7 text-white shadow-[0_24px_60px_-28px_rgba(15,23,42,0.55)] sm:px-8 sm:py-8"
+        >
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 xl:items-end">
+          <div className="xl:col-span-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-teal-100">
+              <Target size={12} className="text-teal-300" />
+              Executive Oversight
+            </div>
+            <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
+              Welcome back{user?.name ? `, ${user.name.split(' ')[0]}` : ''}
             </h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
+              Monitor city-wide complaint flow, identify critical service delays, and coordinate public action from one dashboard.
+            </p>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
               <span className="font-bold text-teal-600 uppercase tracking-tighter text-xs">Executive Oversight</span> · Manage city operations
             </p>
-          </motion.div>
-          <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-            <Clock size={12} /> Live Data Feed
+          </div>
+          <div className="xl:col-span-4">
+            <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm xl:ml-auto xl:max-w-xs">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Live Feed</p>
+              <p className="mt-1 text-sm font-semibold text-white">
+                Review urgent complaints, city efficiency, and citizen activity in real time.
+              </p>
+            </div>
           </div>
         </div>
+        </motion.div>
 
         {/* Stat Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">

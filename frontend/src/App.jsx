@@ -19,6 +19,7 @@ import FeedbackPage from "./pages/FeedbackPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import MayorDashboard from "./pages/MayorDashboard";
 import MayorPendingPage from "./pages/MayorPendingPage";
+import ServantPendingPage from "./pages/ServantPendingPage";
 import ServantDashboardPage from "./pages/servant/ServantDashboardPage";
 import ServantComplaintsPage from "./pages/servant/ServantComplaintsPage";
 import ServantProfilePage from "./pages/servant/ServantProfilePage";
@@ -56,6 +57,9 @@ const ServantRoute = ({ children }) => {
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== "department_officer") {
     return <Navigate to={getDefaultDashboardRoute(user.role)} replace />;
+  }
+  if (!user.isActive) {
+    return <Navigate to="/servant/pending" replace />;
   }
   return children;
 };
@@ -245,6 +249,7 @@ function App() {
           }
         />
         <Route path="/mayor/pending" element={<MayorPendingPage />} />
+        <Route path="/servant/pending" element={<ServantPendingPage />} />
         <Route
           path="/admin/dashboard"
           element={
@@ -283,6 +288,22 @@ function App() {
           element={
             <ServantRoute>
               <ServantHeatmapPage />
+            </ServantRoute>
+          }
+        />
+        <Route
+          path="/servant/analytics"
+          element={
+            <ServantRoute>
+              <PublicAnalyticsPage />
+            </ServantRoute>
+          }
+        />
+        <Route
+          path="/servant/feedback"
+          element={
+            <ServantRoute>
+              <FeedbackPage />
             </ServantRoute>
           }
         />

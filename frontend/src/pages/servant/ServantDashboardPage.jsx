@@ -21,42 +21,51 @@ import T from "../../components/T";
 const DEPT_DISPLAY = {
   public_works: "Public Works",
   water_authority: "Water Authority",
-  electricity: "Electricity",
-  sanitation: "Sanitation",
-  public_safety: "Public Safety",
+  electricity: "Electricity Dept",
+  sanitation: "Sanitation Dept",
+  public_safety: "Public Safety Dept",
   animal_control: "Animal Control",
-  environment: "Environment",
-  health: "Health",
-  transport: "Transport",
-  other: "General Administration",
+  environment: "Environment Dept",
+  health: "Health Dept",
+  transport: "Transport Dept",
+  police: "Police Department",
 };
 
 const PRIORITY_CONFIG = {
-  Critical: { badge: "bg-red-500 text-white",    border: "border-red-400"    },
-  High:     { badge: "bg-orange-500 text-white",  border: "border-orange-400" },
-  Medium:   { badge: "bg-yellow-500 text-white",  border: "border-yellow-400" },
-  Low:      { badge: "bg-green-500 text-white",   border: "border-green-400"  },
+  Critical: { badge: "bg-red-500 text-white", border: "border-red-400" },
+  High: { badge: "bg-orange-500 text-white", border: "border-orange-400" },
+  Medium: { badge: "bg-yellow-500 text-white", border: "border-yellow-400" },
+  Low: { badge: "bg-green-500 text-white", border: "border-green-400" },
 };
 
 const CATEGORY_LABEL = {
-  Road:              "Road & Infrastructure",
-  Waste:             "Sanitation & Waste",
-  Electricity:       "Electricity",
-  Water:             "Water Supply",
-  Safety:            "Public Safety",
-  Environment:       "Environment",
+  Road: "Road & Infrastructure",
+  Waste: "Sanitation & Waste",
+  Electricity: "Electricity",
+  Water: "Water Supply",
+  Safety: "Public Safety",
+  Environment: "Environment",
   "Law Enforcement": "Law Enforcement",
-  Other:             "Other",
+  Other: "Other",
+  public_works: "Public Works",
+  water_authority: "Water Authority",
+  sanitation: "Sanitation Dept",
+  public_safety: "Public Safety Dept",
+  animal_control: "Animal Control",
+  health: "Health Dept",
+  transport: "Transport Dept",
+  environment: "Environment Dept",
+  police: "Police Department",
 };
 
 const timeAgo = (date) => {
   if (!date) return "";
   const diff = Date.now() - new Date(date).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1)  return "just now";
+  if (mins < 1) return "just now";
   if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24)  return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
+  if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
   const days = Math.floor(hrs / 24);
   return `${days} day${days === 1 ? "" : "s"} ago`;
 };
@@ -79,12 +88,19 @@ const getSlaInfo = (slaDeadline, slaDurationHours) => {
   const totalMs = slaDurationHours * 60 * 60 * 1000;
   const slaSetAt = deadline - totalMs;
   const elapsed = Math.max(0, now - slaSetAt);
-  const progress = Math.min(100, Math.max(0, Math.round((elapsed / totalMs) * 100)));
+  const progress = Math.min(
+    100,
+    Math.max(0, Math.round((elapsed / totalMs) * 100)),
+  );
   const msLeft = deadline - now;
   const hoursLeft = Math.ceil(msLeft / (1000 * 60 * 60));
   const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
   const isOverdue = msLeft <= 0;
-  const timeLabel = isOverdue ? "Overdue" : hoursLeft <= 24 ? `${hoursLeft}h left` : `${daysLeft}d left`;
+  const timeLabel = isOverdue
+    ? "Overdue"
+    : hoursLeft <= 24
+      ? `${hoursLeft}h left`
+      : `${daysLeft}d left`;
   return { progress, daysLeft, hoursLeft, isOverdue, timeLabel };
 };
 
@@ -110,7 +126,7 @@ const StatCard = ({ label, value, icon: Icon, color, sub }) => (
 const DepartmentComplaintCard = ({ complaint, index }) => {
   const pCfg = PRIORITY_CONFIG[complaint.priority] || PRIORITY_CONFIG.Low;
   const sCfg = STATUS_STYLE[complaint.status] || STATUS_STYLE.pending;
-  const sla  = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
+  const sla = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
   const isResolved = complaint.status === "resolved";
   const cardBorder = isResolved ? "border-gray-200" : pCfg.border;
 
@@ -127,15 +143,21 @@ const DepartmentComplaintCard = ({ complaint, index }) => {
           {/* Badges row */}
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             {!isResolved && (
-              <span className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}>
+              <span
+                className={`px-2.5 py-0.5 rounded-md text-xs font-bold ${pCfg.badge}`}
+              >
                 {complaint.priority}
               </span>
             )}
-            <span className={`px-2.5 py-0.5 rounded-md text-xs font-semibold ${sCfg.bg} ${sCfg.text}`}>
+            <span
+              className={`px-2.5 py-0.5 rounded-md text-xs font-semibold ${sCfg.bg} ${sCfg.text}`}
+            >
               {sCfg.label}
             </span>
             {complaint.ticketId && (
-              <span className="text-xs text-gray-400 font-mono">{complaint.ticketId}</span>
+              <span className="text-xs text-gray-400 font-mono">
+                {complaint.ticketId}
+              </span>
             )}
           </div>
 
@@ -169,7 +191,15 @@ const DepartmentComplaintCard = ({ complaint, index }) => {
           {sla && !isResolved ? (
             <div className="mt-3">
               <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                <span className={sla.isOverdue ? "text-red-600 font-medium" : sla.hoursLeft <= 24 ? "text-orange-600 font-medium" : ""}>
+                <span
+                  className={
+                    sla.isOverdue
+                      ? "text-red-600 font-medium"
+                      : sla.hoursLeft <= 24
+                        ? "text-orange-600 font-medium"
+                        : ""
+                  }
+                >
                   SLA: {sla.timeLabel}
                 </span>
                 <span>{sla.progress}%</span>
@@ -198,8 +228,14 @@ const DepartmentComplaintCard = ({ complaint, index }) => {
 
         {/* Public support count (read-only) */}
         <div className="flex flex-col items-center gap-0.5 flex-shrink-0 pt-1 text-center">
-          <span className="text-base font-bold text-gray-700">{complaint.voteCount ?? 0}</span>
-          <span className="text-[10px] text-gray-400 leading-tight">Public<br/>Support</span>
+          <span className="text-base font-bold text-gray-700">
+            {complaint.voteCount ?? 0}
+          </span>
+          <span className="text-[10px] text-gray-400 leading-tight">
+            Public
+            <br />
+            Support
+          </span>
         </div>
       </div>
     </motion.div>
@@ -260,19 +296,43 @@ const ServantDashboardPage = () => {
 
   return (
     <ServantLayout>
-      <div className="space-y-6 max-w-5xl">
+      <div className="space-y-6">
         {/* ── Header ── */}
         <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-[2rem] border border-slate-200/70 bg-gradient-to-br from-slate-950 via-slate-900 to-teal-900 px-6 py-7 text-white shadow-[0_24px_60px_-28px_rgba(15,23,42,0.55)] sm:px-8 sm:py-8"
         >
-          <h1 className="text-2xl font-bold text-gray-900">
-            <T en="Welcome" />, {user?.name}
-          </h1>
-          <p className="text-gray-500 mt-1">
-            <span className="font-medium text-blue-600">{deptLabel}</span>{" "}
-            <T en="Officer · Managing your department's complaints" />
-          </p>
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 xl:items-end">
+            <div className="xl:col-span-8">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-teal-100">
+                <ClipboardList size={12} className="text-teal-300" />
+                Department Control Desk
+              </div>
+              <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
+                Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
+                Manage assigned complaints, monitor SLA pressure, and keep your
+                department response moving efficiently.
+              </p>
+              <p className="hidden mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
+                <span className="font-medium text-blue-600">{deptLabel}</span>{" "}
+                <T en="Officer · Managing your department's complaints" />
+              </p>
+            </div>
+            <div className="xl:col-span-4">
+              <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm xl:ml-auto xl:max-w-xs">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
+                  {deptLabel}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-white">
+                  Review live department workload, active investigations, and
+                  resolution progress at a glance.
+                </p>
+              </div>
+            </div>
+          </div>
         </motion.div>
 
         {/* ── Stats ── */}

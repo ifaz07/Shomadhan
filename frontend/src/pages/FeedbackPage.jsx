@@ -14,9 +14,11 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import DashboardLayout from "../components/layout/DashboardLayout";
+import ServantLayout from "../components/layout/ServantLayout";
 import RatingModal from "../components/RatingModal";
 import { complaintAPI } from "../services/api";
 import T from "../components/T";
+import { useAuth } from "../context/AuthContext";
 
 const TABS = {
   my: "My Feedback",
@@ -223,6 +225,11 @@ const CommunityFeedbackCard = ({ item, index, onView }) => (
 
 const FeedbackPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isServant = user?.role === "department_officer";
+  const isExecutive = user?.role === "admin" || user?.role === "mayor";
+  const isReviewerView = isServant || isExecutive;
+  const Layout = isServant ? ServantLayout : DashboardLayout;
   const [activeTab, setActiveTab] = useState("my");
   const [communityFeedback, setCommunityFeedback] = useState([]);
   const [communityStats, setCommunityStats] = useState(null);
@@ -235,18 +242,24 @@ const FeedbackPage = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [feedbackRes, complaintsRes] = await Promise.all([
-        complaintAPI.getAllFeedback(),
-        complaintAPI.getAll({ mine: true, status: "resolved" }),
-      ]);
+      const requests = [complaintAPI.getAllFeedback()];
+      if (!isReviewerView) {
+        requests.push(complaintAPI.getAll({ mine: true, status: "resolved" }));
+      }
+
+      const [feedbackRes, complaintsRes] = await Promise.all(requests);
 
       setCommunityFeedback(feedbackRes.data.data || []);
       setCommunityStats(feedbackRes.data.stats || null);
 
-      const complaints = complaintsRes.data.data;
-      setMyResolvedComplaints(
-        Array.isArray(complaints) ? complaints : complaints?.complaints || [],
-      );
+      if (!isReviewerView) {
+        const complaints = complaintsRes.data.data;
+        setMyResolvedComplaints(
+          Array.isArray(complaints) ? complaints : complaints?.complaints || [],
+        );
+      } else {
+        setMyResolvedComplaints([]);
+      }
     } catch {
       toast.error("Failed to load citizen feedback");
     } finally {
@@ -256,7 +269,13 @@ const FeedbackPage = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [isReviewerView]);
+
+  useEffect(() => {
+    if (isReviewerView && activeTab !== "community") {
+      setActiveTab("community");
+    }
+  }, [isReviewerView, activeTab]);
 
   const filteredCommunity = useMemo(() => {
     return communityFeedback.filter((item) => {
@@ -338,7 +357,7 @@ const FeedbackPage = () => {
   }, [myResolvedComplaints]);
 
   const statCards =
-    activeTab === "my"
+    activeTab === "my" && !isReviewerView
       ? [
           {
             icon: FileCheck2,
@@ -404,24 +423,44 @@ const FeedbackPage = () => {
     activeTab === "my" ? filteredMine.length : filteredCommunity.length;
 
   return (
-    <DashboardLayout>
+    <Layout>
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
+        initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-6"
+        className="mb-6 rounded-[2rem] border border-slate-200/70 bg-gradient-to-br from-slate-950 via-slate-900 to-teal-900 px-6 py-7 text-white shadow-[0_24px_60px_-28px_rgba(15,23,42,0.55)] sm:px-8 sm:py-8"
       >
-        <h1 className="text-2xl font-bold text-gray-900">
-          <T en="Citizen Feedback" />
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          <T
-            en={
-              activeTab === "my"
-                ? "Rate your own resolved complaints here. You can publish feedback anonymously or with your profile name."
-                : "Browse citizen-submitted feedback shared after complaint closure."
-            }
-          />
-        </p>
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 xl:items-end">
+          <div className="xl:col-span-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-teal-100">
+              <MessageSquare size={12} className="text-teal-300" />
+              Community Voice
+            </div>
+            <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
+              <T en={isReviewerView ? "Feedback Dashboard" : "Citizen Feedback"} />
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
+              <T
+                en={
+                  isReviewerView
+                    ? "Review community-submitted feedback on resolved complaints without leaving your dashboard."
+                    : activeTab === "my"
+                    ? "Rate your own resolved complaints here. You can publish feedback anonymously or with your profile name."
+                    : "Browse citizen-submitted feedback shared after complaint closure."
+                }
+              />
+            </p>
+          </div>
+          <div className="xl:col-span-4">
+            <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm xl:ml-auto xl:max-w-xs">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Insight Focus</p>
+              <p className="mt-1 text-sm font-semibold text-white">
+                {isReviewerView
+                  ? "See how citizens describe service quality after resolution."
+                  : "Share your experience after your complaint has been resolved."}
+              </p>
+            </div>
+          </div>
+        </div>
       </motion.div>
 
       <motion.div
@@ -430,7 +469,9 @@ const FeedbackPage = () => {
         className="mb-6 rounded-2xl border border-gray-100 bg-white p-2 shadow-sm"
       >
         <div className="flex flex-wrap gap-2">
-          {Object.entries(TABS).map(([key, label]) => (
+          {Object.entries(TABS)
+            .filter(([key]) => !isReviewerView || key === "community")
+            .map(([key, label]) => (
             <button
               key={key}
               onClick={() => {
@@ -483,7 +524,7 @@ const FeedbackPage = () => {
             onChange={(e) => setRatingFilter(e.target.value)}
             className="bg-transparent text-sm text-gray-700 outline-none"
           >
-            {activeTab === "my" ? (
+            {activeTab === "my" && !isReviewerView ? (
               <>
                 <option value="all">All resolved complaints</option>
                 <option value="pending">Pending my rating</option>
@@ -544,8 +585,8 @@ const FeedbackPage = () => {
               item={item}
               index={index}
               onView={(id) =>
-                navigate(`/complaints/${id}`, {
-                  state: { from: "/feedback", label: "Citizen Feedback" },
+                navigate(isServant ? `/servant/complaints/${id}` : `/complaints/${id}`, {
+                  state: { from: isServant ? "/servant/feedback" : "/feedback", label: isReviewerView ? "Feedback Dashboard" : "Citizen Feedback" },
                 })
               }
             />
@@ -553,7 +594,8 @@ const FeedbackPage = () => {
         </div>
       )}
 
-      <div className="mt-6 rounded-2xl border border-teal-100 bg-teal-50/70 p-4 text-sm text-teal-900">
+      {!isReviewerView && (
+        <div className="mt-6 rounded-2xl border border-teal-100 bg-teal-50/70 p-4 text-sm text-teal-900">
         <span className="font-semibold">
           <T en="Visibility" />:
         </span>{" "}
@@ -562,18 +604,21 @@ const FeedbackPage = () => {
           <ArrowRight size={14} />
           <T en="Only closed complaints can be rated." />
         </span>
-      </div>
+        </div>
+      )}
 
-      <RatingModal
-        complaint={selectedComplaint}
-        isOpen={Boolean(selectedComplaint)}
-        onClose={() => setSelectedComplaint(null)}
-        onSuccess={() => {
-          setSelectedComplaint(null);
-          loadData();
-        }}
-      />
-    </DashboardLayout>
+      {!isReviewerView && (
+        <RatingModal
+          complaint={selectedComplaint}
+          isOpen={Boolean(selectedComplaint)}
+          onClose={() => setSelectedComplaint(null)}
+          onSuccess={() => {
+            setSelectedComplaint(null);
+            loadData();
+          }}
+        />
+      )}
+    </Layout>
   );
 };
 

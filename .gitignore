@@ -5,7 +5,7 @@ node_modules/
 .env
 .env.local
 .env.production
-
+ 
 # Build outputs
 dist/
 build/
@@ -17,7 +17,4 @@ npm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
-
-# IDE
-.vscode/
-.idea/
+ 

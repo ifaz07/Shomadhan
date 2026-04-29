@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const passport = require("passport");
+const rateLimit = require("express-rate-limit");
 const {
   register,
   login,
@@ -27,6 +28,14 @@ const avatarUpload = require("../middleware/avatarUpload.middleware");
 
 const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
 
+const authAttemptLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Too many requests. Try again later." },
+});
+
 const ensureOAuthConfigured = (provider) => (req, res, next) => {
   const configByProvider = {
     google:
@@ -47,8 +56,8 @@ const ensureOAuthConfigured = (provider) => (req, res, next) => {
 };
 
 // ─── Local auth ───────────────────────────────────────────────────────
-router.post("/register", registerValidator, register);
-router.post("/login", loginValidator, login);
+router.post("/register", authAttemptLimiter, registerValidator, register);
+router.post("/login", authAttemptLimiter, loginValidator, login);
 router.post("/logout", logout);
 router.get("/me", protect, getMe);
 router.put("/change-password", protect, changePassword);
@@ -70,8 +79,8 @@ router.post(
 );
 
 // ─── Password reset ───────────────────────────────────────────────────
-router.post("/forgot-password", forgotPassword);
-router.put("/reset-password/:token", resetPassword);
+router.post("/forgot-password", authAttemptLimiter, forgotPassword);
+router.put("/reset-password/:token", authAttemptLimiter, resetPassword);
 
 // ─── Google OAuth ─────────────────────────────────────────────────────
 router.get(

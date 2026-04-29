@@ -12,9 +12,13 @@ import {
   Briefcase,
   Bell,
   ShieldCheck,
+  Map,
+  BarChart3,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { notificationAPI } from "../../services/api";
+import LanguageToggle from "../LanguageToggle";
 
 const DEPT_DISPLAY = {
   public_works: "Public Works",
@@ -68,6 +72,21 @@ const ServantSidebar = () => {
       icon: Bell,
       badge: unreadCount > 0 ? unreadCount : null,
     },
+    {
+      path: "/servant/analytics",
+      label: "Analytics",
+      icon: BarChart3,
+    },
+    {
+      path: "/servant/heatmap",
+      label: "Complaint Heatmap",
+      icon: Map,
+    },
+    {
+      path: "/servant/feedback",
+      label: "Feedback",
+      icon: MessageSquare,
+    },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -76,18 +95,31 @@ const ServantSidebar = () => {
     <div className="flex flex-col h-full">
       {/* ─── Logo ─────────────────────────────────────────────── */}
       <div className="p-5 border-b border-gray-100">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-            <Briefcase size={18} className="text-white" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+              <Briefcase size={18} className="text-white" />
+            </div>
+            <motion.div
+              initial={false}
+              animate={{ opacity: isCollapsed ? 0 : 1, x: isCollapsed ? -8 : 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="overflow-hidden whitespace-nowrap"
+            >
+                <h1 className="text-base font-bold text-gray-900">Somadhan</h1>
+                <p className="text-[10px] text-blue-500 font-semibold -mt-0.5">
+                  Servant Portal
+                </p>
+              </motion.div>
           </div>
-          {!isCollapsed && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <h1 className="text-base font-bold text-gray-900">Somadhan</h1>
-              <p className="text-[10px] text-blue-500 font-semibold -mt-0.5">
-                Servant Portal
-              </p>
-            </motion.div>
-          )}
+          <motion.div
+            initial={false}
+            animate={{ opacity: isCollapsed ? 0 : 1, scale: isCollapsed ? 0.96 : 1 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className={isCollapsed ? "pointer-events-none" : ""}
+          >
+            <LanguageToggle variant="light" />
+          </motion.div>
         </div>
       </div>
 
@@ -105,8 +137,12 @@ const ServantSidebar = () => {
               <ShieldCheck size={9} className="text-white" />
             </div>
           </div>
-          {!isCollapsed && (
-            <div className="flex-1 min-w-0">
+          <motion.div
+            initial={false}
+            animate={{ opacity: isCollapsed ? 0 : 1, x: isCollapsed ? -8 : 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className={`flex-1 min-w-0 overflow-hidden ${isCollapsed ? "w-0" : "w-auto"}`}
+          >
               <p className="text-sm font-semibold text-gray-900 truncate">
                 {user?.name}
               </p>
@@ -118,8 +154,7 @@ const ServantSidebar = () => {
               <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 mt-0.5">
                 {deptLabel}
               </span>
-            </div>
-          )}
+            </motion.div>
         </div>
       </div>
 
@@ -146,7 +181,14 @@ const ServantSidebar = () => {
                 />
               )}
               <Icon size={18} className={active ? "text-blue-600" : ""} />
-              {!isCollapsed && <span>{item.label}</span>}
+              <motion.span
+                initial={false}
+                animate={{ opacity: isCollapsed ? 0 : 1, x: isCollapsed ? -6 : 0 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className={`overflow-hidden whitespace-nowrap ${isCollapsed ? "w-0" : "w-auto"}`}
+              >
+                {item.label}
+              </motion.span>
               {!isCollapsed && item.badge && (
                 <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                   {item.badge}
@@ -164,7 +206,14 @@ const ServantSidebar = () => {
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all w-full"
         >
           <LogOut size={18} />
-          {!isCollapsed && <span>Sign out</span>}
+          <motion.span
+            initial={false}
+            animate={{ opacity: isCollapsed ? 0 : 1, x: isCollapsed ? -6 : 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className={`overflow-hidden whitespace-nowrap ${isCollapsed ? "w-0" : "w-auto"}`}
+          >
+            Sign out
+          </motion.span>
         </button>
       </div>
     </div>
@@ -212,9 +261,10 @@ const ServantSidebar = () => {
 
       {/* Desktop sidebar */}
       <motion.aside
-        className={`hidden lg:flex flex-col bg-white border-r border-gray-100 h-screen sticky top-0 transition-all duration-300 ${
-          isCollapsed ? "w-20" : "w-72"
-        }`}
+        initial={false}
+        animate={{ width: isCollapsed ? 80 : 288 }}
+        transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
+        className="hidden lg:flex flex-col bg-white border-r border-gray-100 h-screen sticky top-0 overflow-hidden will-change-[width]"
       >
         {SidebarContent()}
         <button

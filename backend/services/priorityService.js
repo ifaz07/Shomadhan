@@ -4,15 +4,22 @@
  * based on: category, emergency flag, vote count, and location sensitivity.
  */
 
-// Categories ranked by inherent severity
+const {
+  normalizeDepartmentKey,
+} = require("../utils/departmentTaxonomy");
+
+// Departments ranked by inherent severity
 const CATEGORY_BASE_PRIORITY = {
-  Safety:      3,  // Critical baseline
-  Electricity: 2,  // High baseline
-  Water:       2,  // High baseline
-  Road:        1,  // Medium baseline
-  Waste:       1,  // Medium baseline
-  Environment: 1,  // Medium baseline
-  Other:       0,  // Low baseline
+  public_safety: 3,
+  police: 3,
+  electricity: 2,
+  water_authority: 2,
+  health: 2,
+  public_works: 1,
+  sanitation: 1,
+  environment: 1,
+  transport: 1,
+  animal_control: 1,
 };
 
 // Keywords in location string that indicate sensitive sites → +1 level
@@ -43,7 +50,8 @@ const scoreToPriority = (score) => {
  * @returns {string} 'Low' | 'Medium' | 'High' | 'Critical'
  */
 const calculatePriority = ({ category, emergencyFlag, voteCount, location = '' }) => {
-  let score = CATEGORY_BASE_PRIORITY[category] ?? 0;
+  const normalizedCategory = normalizeDepartmentKey(category);
+  let score = CATEGORY_BASE_PRIORITY[normalizedCategory] ?? 0;
 
   // Emergency flag → immediate Critical
   if (emergencyFlag) return 'Critical';

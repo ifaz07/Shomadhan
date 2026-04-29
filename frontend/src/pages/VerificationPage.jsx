@@ -8,11 +8,8 @@ import {
   Clock,
   Info,
   Loader2,
-  CheckCircle2,
   ArrowLeft,
   Upload,
-  Image as ImageIcon,
-  X
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -87,9 +84,9 @@ const VerificationPage = () => {
       const { data } = await authAPI.verify(formData);
       
       if (data.success) {
-        toast.success("Account verified successfully!");
+        toast.success('Verification submitted. It is now pending admin review.');
         await getMe(); // Refresh global user state
-        setTimeout(() => navigate('/profile'), 2000);
+        setTimeout(() => navigate('/profile'), 1500);
       }
     } catch (error) {
       console.error('Verification error:', error);
@@ -237,9 +234,9 @@ const VerificationPage = () => {
                 {verLoading ? (
                   <Loader2 size={22} className="animate-spin" />
                 ) : (
-                  <ShieldCheck size={22} />
+                  <Clock size={22} />
                 )}
-                <span>{verLoading ? 'Verifying...' : 'Complete Verification'}</span>
+                <span>{verLoading ? 'Submitting...' : 'Submit for Review'}</span>
               </motion.button>
             </form>
           </motion.div>

@@ -57,6 +57,16 @@ const CATEGORY_LABEL = {
   Environment: "Environment",
   "Law Enforcement": "Law Enforcement",
   Other: "Other",
+  public_works: "Public Works",
+  water_authority: "Water Authority",
+  electricity: "Electricity Dept",
+  sanitation: "Sanitation Dept",
+  public_safety: "Public Safety Dept",
+  animal_control: "Animal Control",
+  health: "Health Dept",
+  transport: "Transport Dept",
+  environment: "Environment Dept",
+  police: "Police Department",
 };
 
 const DEPT_LABEL = {
@@ -64,8 +74,12 @@ const DEPT_LABEL = {
   water_authority: "Water Authority",
   electricity: "Electricity Dept",
   sanitation: "Sanitation Dept",
-  public_safety: "Public Safety",
+  public_safety: "Public Safety Dept",
   animal_control: "Animal Control",
+  health: "Health Dept",
+  transport: "Transport Dept",
+  environment: "Environment Dept",
+  police: "Police Department",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────
@@ -104,9 +118,19 @@ const getSlaInfo = (slaDeadline, slaDurationHours) => {
   return { progress, daysLeft, hoursLeft, isOverdue, timeLabel };
 };
 
-const isVideo = (url) => /\.(mp4|mov|avi|webm|mkv)$/i.test(url || "");
+const getEvidenceUrl = (item) => {
+  if (!item) return "";
+  return typeof item === "string" ? item : item.url || "";
+};
 
-const resolveUrl = (url) => {
+const isVideo = (item) => {
+  const url = getEvidenceUrl(item);
+  const type = typeof item === "object" ? item?.type : "";
+  return type === "video" || /\.(mp4|mov|avi|webm|mkv)$/i.test(url || "");
+};
+
+const resolveUrl = (item) => {
+  const url = getEvidenceUrl(item);
   if (!url) return "";
   if (url.startsWith("http")) return url;
   const base = (
@@ -169,6 +193,9 @@ const ComplaintDetailPage = () => {
   }, [id]);
 
   const handleVote = async () => {
+    if (complaint?.status === "resolved" || complaint?.status === "rejected")
+      return;
+
     try {
       await complaintAPI.vote(id);
       setHasVoted((v) => !v);
@@ -268,21 +295,25 @@ const ComplaintDetailPage = () => {
 
               <button
                 onClick={handleVote}
+                disabled={isResolved || complaint.status === "rejected"}
                 className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border transition-all ${
-                  hasVoted
+                  isResolved || complaint.status === "rejected"
+                    ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                    : hasVoted
                     ? "bg-teal-50 border-teal-300 text-teal-700"
                     : "border-gray-200 text-gray-500 hover:bg-gray-50"
                 }`}
+                title={isResolved || complaint.status === "rejected" ? "Closed complaints can no longer receive public support" : "Show public support"}
               >
                 <ThumbsUp
                   size={16}
-                  className={hasVoted ? "text-teal-600" : "text-gray-400"}
+                  className={isResolved || complaint.status === "rejected" ? "text-gray-300" : hasVoted ? "text-teal-600" : "text-gray-400"}
                 />
                 <span className="text-base font-bold leading-none">
                   {voteCount}
                 </span>
                 <span className="text-[11px] text-gray-400 leading-none">
-                  <T en="Upvotes" />
+                  <T en={isResolved || complaint.status === "rejected" ? "rejected" : "Upvotes"} />
                 </span>
               </button>
             </div>

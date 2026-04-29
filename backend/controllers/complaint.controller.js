@@ -13,6 +13,11 @@ const {
   sendEmergencyAlertToNearbyUsers,
 } = require("../services/notificationService");
 const Feedback = require("../models/Feedback.model");
+const {
+  DEPARTMENT_KEYS,
+  getDepartmentComplaintValues,
+  normalizeDepartmentKey,
+} = require("../utils/departmentTaxonomy");
 
 // Helper: Generate unique ticket ID (e.g., SOM-2024-ABC12)
 const generateTicketId = () => {
@@ -88,9 +93,17 @@ const createComplaint = async (req, res, next) => {
         ? "rejected"
         : "pending";
 
+    const normalizedCategory = normalizeDepartmentKey(category);
+    if (!normalizedCategory) {
+      return res.status(400).json({
+        success: false,
+        message: "Please select a valid department for this complaint.",
+      });
+    }
+
     // Auto-calculate initial priority (before votes, so voteCount = 0)
     const priority = calculatePriority({
-      category,
+      category: normalizedCategory,
       emergencyFlag: emergency,
       voteCount: 0,
       location: location || "",
@@ -100,7 +113,7 @@ const createComplaint = async (req, res, next) => {
       ticketId: generateTicketId(),
       title,
       description,
-      category,
+      category: normalizedCategory,
       evidence,
       isAnonymous: isAnon,
       location,
@@ -230,6 +243,13 @@ const voteComplaint = async (req, res, next) => {
         .json({ success: false, message: "Complaint not found" });
     }
 
+    if (complaint.status === "resolved" || complaint.status === "rejected") {
+      return res.status(400).json({
+        success: false,
+        message: "Closed complaints can no longer receive public support",
+      });
+    }
+
     const userId = req.user._id.toString();
     const alreadyVoted = complaint.votes.some((v) => v.toString() === userId);
 
@@ -323,9 +343,16 @@ const getNearbyComplaints = async (req, res, next) => {
     const query = {
       latitude: { $gte: lat - delta, $lte: lat + delta },
       longitude: { $gte: lng - delta, $lte: lng + delta },
-      status: { $ne: "rejected" },
+      status: { $nin: ["resolved", "rejected"] },
     };
-    if (category) query.category = category;
+    if (category) {
+      const normalizedCategory = normalizeDepartmentKey(category);
+      if (normalizedCategory) {
+        query.category = { $in: getDepartmentComplaintValues(normalizedCategory) };
+      } else {
+        query.category = category;
+      }
+    }
 
     const candidates = await Complaint.find(query)
       .select(
@@ -382,9 +409,10 @@ const updateComplaint = async (req, res, next) => {
       emergencyFlag,
     } = req.body;
     const emergency = emergencyFlag === "true" || emergencyFlag === true;
+    const normalizedCategory = normalizeDepartmentKey(category);
 
     const newPriority = calculatePriority({
-      category: category || complaint.category,
+      category: normalizedCategory || complaint.category,
       emergencyFlag: emergency,
       voteCount: complaint.voteCount,
       location: location || complaint.location || "",
@@ -395,7 +423,7 @@ const updateComplaint = async (req, res, next) => {
       {
         title,
         description,
-        category,
+        category: normalizedCategory || complaint.category,
         location,
         latitude,
         longitude,
@@ -464,57 +492,16 @@ const getPublicStats = async (req, res, next) => {
     const goodCitizen = await User.findOne({ isGoodCitizen: true })
       .select('name avatar points');
 
-    const CATEGORY_TO_DEPT = {
-      Road: 'public_works', Waste: 'sanitation', Electricity: 'electricity',
-      Water: 'water_authority', Safety: 'public_safety',
-      'Law Enforcement': 'public_safety', Environment: 'public_works',
-      Other: 'other'
-    };
-
-    const deptStats = {
-      public_works: {
+    const deptStats = DEPARTMENT_KEYS.reduce((acc, key) => {
+      acc[key] = {
         total: 0,
         critical: 0,
         pending: 0,
         resolved: 0,
         inProgress: 0,
-      },
-      water_authority: {
-        total: 0,
-        critical: 0,
-        pending: 0,
-        resolved: 0,
-        inProgress: 0,
-      },
-      electricity: {
-        total: 0,
-        critical: 0,
-        pending: 0,
-        resolved: 0,
-        inProgress: 0,
-      },
-      sanitation: {
-        total: 0,
-        critical: 0,
-        pending: 0,
-        resolved: 0,
-        inProgress: 0,
-      },
-      public_safety: {
-        total: 0,
-        critical: 0,
-        pending: 0,
-        resolved: 0,
-        inProgress: 0,
-      },
-      animal_control: {
-        total: 0,
-        critical: 0,
-        pending: 0,
-        resolved: 0,
-        inProgress: 0,
-      },
-    };
+      };
+      return acc;
+    }, {});
 
     let total = 0, critical = 0, inProgress = 0, resolved = 0;
 
@@ -524,7 +511,7 @@ const getPublicStats = async (req, res, next) => {
       if (c.status === 'in-progress') inProgress++;
       if (c.status === 'resolved') resolved++;
 
-      const deptKey = CATEGORY_TO_DEPT[c.category];
+      const deptKey = normalizeDepartmentKey(c.category);
       if (deptKey && deptStats[deptKey]) {
         deptStats[deptKey].total++;
         if (c.priority === "Critical") deptStats[deptKey].critical++;
@@ -552,6 +539,9 @@ const PRIORITY_SORT_STAGE = {
     _sortWeight: {
       $switch: {
         branches: [
+          // Closed complaints always go to the bottom of mixed lists
+          { case: { $eq: ["$status", "rejected"] }, then: -2 },
+          { case: { $eq: ["$status", "resolved"] }, then: -1 },
           // Critical + Pending gets the absolute highest weight (always on top)
           {
             case: {
@@ -655,15 +645,21 @@ const getComplaints = async (req, res, next) => {
 // @access  Private
 const getComplaint = async (req, res, next) => {
   try {
-    const complaint = await Complaint.findById(req.params.id).lean();
+    const complaint = await Complaint.findById(req.params.id)
+      .populate("user", "name isVerified")
+      .lean();
     if (!complaint) {
       return res
         .status(404)
         .json({ success: false, message: "Complaint not found" });
     }
 
+    const ownerId =
+      typeof complaint.user === "object" && complaint.user !== null
+        ? complaint.user._id
+        : complaint.user;
     const isOwner =
-      complaint.user && complaint.user.toString() === req.user._id.toString();
+      ownerId && ownerId.toString() === req.user._id.toString();
 
     if (isOwner) {
       const myFeedback = await Feedback.findOne({
@@ -681,6 +677,15 @@ const getComplaint = async (req, res, next) => {
       complaint.feedbackSubmittedAt = null;
       complaint.myFeedback = null;
     }
+
+    complaint.submittedBy = complaint.isAnonymous
+      ? null
+      : complaint.user
+        ? {
+            name: complaint.user.name,
+            isVerified: complaint.user.isVerified,
+          }
+        : null;
 
     // Any authenticated user can view any complaint (civic transparency)
     res.status(200).json({ success: true, data: complaint });

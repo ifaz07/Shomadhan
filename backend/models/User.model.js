@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { DEPARTMENT_KEYS } = require('../utils/departmentTaxonomy');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -69,19 +70,7 @@ const userSchema = new mongoose.Schema(
     // ─── Public Servant Fields (only for department_officer role) ───
     department: {
       type: String,
-      enum: [
-        'public_works',
-        'water_authority',
-        'electricity',
-        'sanitation',
-        'public_safety',
-        'animal_control',
-        'health',
-        'transport',
-        'environment',
-        'police',
-        'other',
-      ],
+      enum: DEPARTMENT_KEYS,
     },
     employeeId: {
       type: String,
