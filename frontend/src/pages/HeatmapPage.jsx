@@ -117,6 +117,7 @@ const StatCard = ({ label, value, color, icon: Icon }) => (
 const HeatmapPage = () => {
   const [searchParams] = useSearchParams();
   const [points, setPoints] = useState([]);
+  const [stats, setStats] = useState({ total: 0, critical: 0, inProgress: 0, resolved: 0 });
   const [loading, setLoading] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showMarkers, setShowMarkers] = useState(true);
@@ -132,8 +133,12 @@ const HeatmapPage = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await complaintAPI.getHeatmapData();
-      setPoints(res.data.data);
+      const [heatmapRes, statsRes] = await Promise.all([
+        complaintAPI.getHeatmapData(),
+        complaintAPI.getStats(),
+      ]);
+      setPoints(heatmapRes.data.data || []);
+      setStats(statsRes.data?.data || {});
     } catch {
       toast.error('Failed to load heatmap data');
     } finally {
@@ -170,7 +175,7 @@ const HeatmapPage = () => {
           <div className="xl:col-span-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-teal-100">
               <Map size={12} className="text-teal-300" />
-              City Oversight View
+              <T en="City Oversight View" />
             </div>
             <h1 className="mt-4 flex items-center gap-3 text-3xl font-black tracking-tight sm:text-4xl">
               <Map size={30} className="text-teal-300" />
@@ -181,9 +186,18 @@ const HeatmapPage = () => {
             </p>
           </div>
           <div className="flex flex-col gap-3 xl:col-span-4 xl:items-end">
-            <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm xl:max-w-xs">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Live Snapshot</p>
-              <p className="mt-1 text-sm font-semibold text-white">Monitor complaint density and priority clusters in one place</p>
+            <div className="grid w-full gap-3 sm:grid-cols-2 xl:grid-cols-2">
+              {[
+                { label: "Total Complaints", value: stats.total ?? 0, accent: "text-blue-200" },
+                { label: "Critical", value: stats.critical ?? 0, accent: "text-red-200" },
+                { label: "In Progress", value: stats.inProgress ?? 0, accent: "text-cyan-200" },
+                { label: "Resolved", value: stats.resolved ?? 0, accent: "text-emerald-200" },
+              ].map((item) => (
+                <div key={item.label} className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300"><T en={item.label} /></p>
+                  <p className={`mt-2 text-2xl font-black ${item.accent}`}>{item.value}</p>
+                </div>
+              ))}
             </div>
             <button
               onClick={fetchData}
@@ -196,14 +210,6 @@ const HeatmapPage = () => {
           </div>
           </div>
         </motion.div>
-
-        {/* ── Priority Stats ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard label={<T en="Critical" />} value={counts.Critical} color="border-red-300"    icon={AlertTriangle} />
-          <StatCard label={<T en="High" />}     value={counts.High}     color="border-orange-300" icon={Flame} />
-          <StatCard label={<T en="Medium" />}   value={counts.Medium}   color="border-yellow-300" icon={Info} />
-          <StatCard label={<T en="Low" />}      value={counts.Low}      color="border-green-300"  icon={ZoomIn} />
-        </div>
 
         {/* ── Controls ── */}
         <div className="flex flex-wrap items-center gap-3 bg-white border border-gray-100 rounded-xl p-4">
@@ -238,7 +244,7 @@ const HeatmapPage = () => {
           >
             {categories.map((c) => (
               <option key={c} value={c}>
-                {c === 'All' ? c : getDepartmentLabel(c)}
+                {c === 'All' ? 'All' : getDepartmentLabel(c)}
               </option>
             ))}
           </select>

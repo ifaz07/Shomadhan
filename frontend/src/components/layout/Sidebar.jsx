@@ -15,6 +15,8 @@ import {
   MessageSquare,
   PlusCircle,
   Map,
+  AlertTriangle,
+  History,
   Users,
   Check,
   Loader2,
@@ -104,6 +106,24 @@ const Sidebar = () => {
       path: "/feedback",
       label: <T en="Feedback" />,
       icon: MessageSquare,
+    },
+    {
+      path: "/mayor/emergency",
+      label: <T en="Emergency Broadcast" />,
+      icon: AlertTriangle,
+      roles: ["mayor"],
+    },
+    {
+      path: "/emergency-history",
+      label: <T en="Emergency Alert History" />,
+      icon: History,
+      roles: ["citizen"],
+    },
+    {
+      path: "/mayor/emergency-history",
+      label: <T en="Emergency Broadcast History" />,
+      icon: History,
+      roles: ["mayor"],
     },
   ];
 
@@ -238,7 +258,7 @@ const Sidebar = () => {
               {user?.name}
             </p>
             <p className="text-[10px] text-gray-500 truncate">
-              Citizen
+              {roleLabelMap[user?.role] || "User"}
             </p>
             <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold mt-0.5 ${verBadge.color}`}>
               {verBadge.label}
@@ -353,3 +373,8 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
+  const roleLabelMap = {
+    citizen: "Citizen",
+    mayor: "Mayor",
+    admin: "Admin",
+  };

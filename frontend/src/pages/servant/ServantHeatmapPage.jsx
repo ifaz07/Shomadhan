@@ -15,9 +15,10 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 window.L = L;
 import toast from "react-hot-toast";
-import { complaintAPI } from "../../services/api";
+import { complaintAPI, servantAPI } from "../../services/api";
 import ServantLayout from "../../components/layout/ServantLayout";
 import T from "../../components/T";
+import { getDepartmentLabel } from "../../constants/departments";
 
 // Fix Leaflet default icon
 import markerIcon from "leaflet/dist/images/marker-icon.png";
@@ -159,6 +160,7 @@ const StatCard = ({ label, value, color, icon: Icon }) => (
 // ─── Main Page ────────────────────────────────────────────────────────
 const ServantHeatmapPage = () => {
   const [points, setPoints] = useState([]);
+  const [stats, setStats] = useState({ total: 0, critical: 0, inProgress: 0, resolved: 0 });
   const [loading, setLoading] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showMarkers, setShowMarkers] = useState(true);
@@ -170,8 +172,12 @@ const ServantHeatmapPage = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await complaintAPI.getHeatmapData();
-      setPoints(res.data.data);
+      const [heatmapRes, statsRes] = await Promise.all([
+        complaintAPI.getHeatmapData(),
+        servantAPI.getStats(),
+      ]);
+      setPoints(heatmapRes.data.data || []);
+      setStats(statsRes.data?.data || {});
     } catch {
       toast.error("Failed to load heatmap data");
     } finally {
@@ -218,7 +224,7 @@ const ServantHeatmapPage = () => {
             <div className="xl:col-span-8">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-teal-100">
                 <Map size={12} className="text-teal-300" />
-                City Oversight View
+                <T en="City Oversight View" />
               </div>
               <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
                 <T en="Complaint Heatmap" />
@@ -228,54 +234,20 @@ const ServantHeatmapPage = () => {
               </p>
             </div>
             <div className="xl:col-span-4 space-y-3">
-              <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
-                  <T en="Priority Breakdown" />
-                </p>
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-300">
-                      <T en="Critical" />
-                    </span>
-                    <span className="font-bold text-base text-red-300">
-                      {counts.Critical}
-                    </span>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
+                {[
+                  { label: "Total Complaints", value: stats?.total ?? 0, accent: "text-blue-200" },
+                  { label: "Critical", value: stats?.critical ?? 0, accent: "text-red-200" },
+                  { label: "In Progress", value: stats?.inProgress ?? 0, accent: "text-cyan-200" },
+                  { label: "Resolved", value: stats?.resolved ?? 0, accent: "text-emerald-200" },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
+                      <T en={item.label} />
+                    </p>
+                    <p className={`mt-2 text-2xl font-black ${item.accent}`}>{item.value}</p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-300">
-                      <T en="High" />
-                    </span>
-                    <span className="font-bold text-base text-orange-300">
-                      {counts.High}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-300">
-                      <T en="Medium" />
-                    </span>
-                    <span className="font-bold text-base text-yellow-300">
-                      {counts.Medium}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-300">
-                      <T en="Low" />
-                    </span>
-                    <span className="font-bold text-base text-green-300">
-                      {counts.Low}
-                    </span>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-white/10">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-300 font-semibold">
-                        <T en="Total" />
-                      </span>
-                      <span className="font-bold text-base text-white">
-                        {points.length}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
               <button
                 onClick={fetchData}
@@ -291,34 +263,6 @@ const ServantHeatmapPage = () => {
             </div>
           </div>
         </motion.div>
-
-        {/* ── Priority Stats ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard
-            label={<T en="Critical" />}
-            value={counts.Critical}
-            color="border-red-300"
-            icon={AlertTriangle}
-          />
-          <StatCard
-            label={<T en="High" />}
-            value={counts.High}
-            color="border-orange-300"
-            icon={Flame}
-          />
-          <StatCard
-            label={<T en="Medium" />}
-            value={counts.Medium}
-            color="border-yellow-300"
-            icon={Info}
-          />
-          <StatCard
-            label={<T en="Low" />}
-            value={counts.Low}
-            color="border-green-300"
-            icon={ZoomIn}
-          />
-        </div>
 
         {/* ── Controls ── */}
         <div className="flex flex-wrap items-center gap-3 bg-white border border-gray-100 rounded-xl p-4">
@@ -353,7 +297,7 @@ const ServantHeatmapPage = () => {
           >
             {categories.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {c === "All" ? "All" : getDepartmentLabel(c)}
               </option>
             ))}
           </select>

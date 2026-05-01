@@ -15,6 +15,8 @@ import {
   Map,
   BarChart3,
   MessageSquare,
+  AlertTriangle,
+  History,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { notificationAPI } from "../../services/api";
@@ -86,6 +88,16 @@ const ServantSidebar = () => {
       path: "/servant/feedback",
       label: "Feedback",
       icon: MessageSquare,
+    },
+    {
+      path: "/servant/emergency",
+      label: "Emergency Broadcast",
+      icon: AlertTriangle,
+    },
+    {
+      path: "/servant/emergency-history",
+      label: "Broadcast History",
+      icon: History,
     },
   ];
 

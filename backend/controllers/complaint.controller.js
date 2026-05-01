@@ -151,7 +151,9 @@ const createComplaint = async (req, res, next) => {
         description,
         lat,
         lng,
+        location,
         req.user._id,
+        normalizedCategory,
       );
       if (spam.isSpam) {
         return res.status(409).json({
@@ -330,6 +332,8 @@ const getNearbyComplaints = async (req, res, next) => {
     const lng = parseFloat(req.query.lng);
     const radiusKm = parseFloat(req.query.radius) || 1; // default 1 km
     const category = req.query.category;
+    const priority = req.query.priority;
+    const status = req.query.status;
 
     if (isNaN(lat) || isNaN(lng)) {
       return res.status(400).json({
@@ -352,6 +356,12 @@ const getNearbyComplaints = async (req, res, next) => {
       } else {
         query.category = category;
       }
+    }
+    if (priority && priority !== "All") {
+      query.priority = priority;
+    }
+    if (status && status !== "All") {
+      query.status = status;
     }
 
     const candidates = await Complaint.find(query)
@@ -503,11 +513,14 @@ const getPublicStats = async (req, res, next) => {
       return acc;
     }, {});
 
-    let total = 0, critical = 0, inProgress = 0, resolved = 0;
+    let total = 0, critical = 0, high = 0, medium = 0, low = 0, inProgress = 0, resolved = 0;
 
     all.forEach((c) => {
       total++;
       if (c.priority === 'Critical') critical++;
+      if (c.priority === 'High') high++;
+      if (c.priority === 'Medium') medium++;
+      if (c.priority === 'Low') low++;
       if (c.status === 'in-progress') inProgress++;
       if (c.status === 'resolved') resolved++;
 
@@ -526,7 +539,7 @@ const getPublicStats = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: { total, critical, inProgress, resolved, departments: deptStats, goodCitizen },
+      data: { total, critical, high, medium, low, inProgress, resolved, departments: deptStats, goodCitizen },
     });
   } catch (error) {
     next(error);
@@ -595,6 +608,11 @@ const getComplaints = async (req, res, next) => {
     // Optional server-side text filter on location field
     if (req.query.location) {
       query.location = { $regex: req.query.location, $options: "i" };
+    }
+
+    // Keep the public dashboard stats and list aligned by default.
+    if (req.query.excludeRejected === "true") {
+      query.status = { $ne: "rejected" };
     }
 
     // Optional priority / status filters

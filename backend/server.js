@@ -17,6 +17,7 @@ const notificationRoutes = require('./routes/notification.routes');
 const adminRoutes = require('./routes/admin.routes');
 const mayorRoutes = require('./routes/mayor.routes');
 const volunteerRoutes = require('./routes/volunteer.routes');
+const emergencyBroadcastRoutes = require('./routes/emergencyBroadcast.routes');
 const { errorHandler } = require('./middleware/error.middleware');
 const { initEscalationEngine } = require('./services/escalationService');
 
@@ -63,6 +64,7 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/mayor', mayorRoutes);
 app.use('/api/v1/volunteer-ads', volunteerRoutes);
+app.use('/api/v1/emergency-broadcasts', emergencyBroadcastRoutes);
 
 app.get('/api/v1/health', (req, res) => {
   res.json({ success: true, message: 'Somadhan API is running' });

@@ -1,6 +1,5 @@
-
-
 const Complaint = require('../models/Complaint.model');
+const { normalizeDepartmentKey } = require('../utils/departmentTaxonomy');
 
 
 const HF_SIMILARITY_URL =
@@ -9,6 +8,7 @@ const HF_API_KEY = process.env.HUGGINGFACE_API_KEY;
 
 const RADIUS_KM = 0.5;             
 const SIMILARITY_THRESHOLD = 0.65; 
+const LOCATION_SIMILARITY_THRESHOLD = 0.45;
 const TIME_WINDOW_MS = 24 * 60 * 60 * 1000; 
 
 function haversineDistance(lat1, lon1, lat2, lon2) {
@@ -28,17 +28,29 @@ const OVERLAP_STOPWORDS = new Set([
   'be','by','from','as','not','no','so','if','we','i','my','our','your',
   'he','she','they','their','its','do','did','will','would','can','could',
   'should','may','might','am','also','very','just','more','some','any','all',
+  'and','the','for','from','road','area','city','district','bangladesh',
+  'এবং','এই','সেই','একটি','একটা','করে','হচ্ছে','হয়েছে','আমার','আমাদের',
+  'এখানে','ওখানে','রাস্তা','এলাকা','শহর','জেলা','বাংলাদেশ',
 ]);
 
+function normalizeText(text = '') {
+  return String(text)
+    .toLowerCase()
+    .normalize('NFKC')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function tokenizeText(text = '') {
+  return normalizeText(text)
+    .split(' ')
+    .filter((w) => w.length > 1 && !OVERLAP_STOPWORDS.has(w));
+}
 
 function wordOverlapSimilarity(text1, text2) {
-  const tokenize = (t) =>
-    t.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(
-      (w) => w.length > 2 && !OVERLAP_STOPWORDS.has(w)
-    );
-
-  const words1 = tokenize(text1);
-  const words2 = tokenize(text2);
+  const words1 = tokenizeText(text1);
+  const words2 = tokenizeText(text2);
 
   const bigrams = (arr) => arr.slice(0, -1).map((w, i) => `${w}_${arr[i + 1]}`);
 
@@ -86,6 +98,59 @@ async function computeSimilarity(text1, text2) {
     }
   }
   return { score: wordOverlapSimilarity(text1, text2), method: 'keyword' };
+}
+
+function isSameCategory(newCategory, existingCategory) {
+  const normalizedNew = normalizeDepartmentKey(newCategory);
+  const normalizedExisting = normalizeDepartmentKey(existingCategory);
+  if (!normalizedNew || !normalizedExisting) return true;
+  return normalizedNew === normalizedExisting;
+}
+
+function isSameArea({
+  newLatitude,
+  newLongitude,
+  existingLatitude,
+  existingLongitude,
+  newLocation,
+  existingLocation,
+}) {
+  const hasNewCoords = newLatitude != null && newLongitude != null;
+  const hasExistingCoords = existingLatitude != null && existingLongitude != null;
+
+  if (hasNewCoords && hasExistingCoords) {
+    return (
+      haversineDistance(newLatitude, newLongitude, existingLatitude, existingLongitude) <=
+      RADIUS_KM
+    );
+  }
+
+  const normalizedNewLocation = normalizeText(newLocation);
+  const normalizedExistingLocation = normalizeText(existingLocation);
+
+  if (!normalizedNewLocation || !normalizedExistingLocation) {
+    return false;
+  }
+
+  const newTokens = tokenizeText(normalizedNewLocation);
+  const existingTokens = tokenizeText(normalizedExistingLocation);
+  const hasSpecificEnoughLocation = (tokens, text) => tokens.length >= 3 || text.length >= 18;
+
+  if (
+    hasSpecificEnoughLocation(newTokens, normalizedNewLocation) &&
+    hasSpecificEnoughLocation(existingTokens, normalizedExistingLocation) &&
+    (
+      normalizedNewLocation.includes(normalizedExistingLocation) ||
+      normalizedExistingLocation.includes(normalizedNewLocation)
+    )
+  ) {
+    return true;
+  }
+
+  return (
+    wordOverlapSimilarity(normalizedNewLocation, normalizedExistingLocation) >=
+    LOCATION_SIMILARITY_THRESHOLD
+  );
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
@@ -206,28 +271,32 @@ async function analyzePrankPotential(title, description) {
   };
 }
 
-async function checkForDuplicates(title, description, latitude, longitude, userId) {
+async function checkForDuplicates(title, description, latitude, longitude, location, userId, category) {
   if (!userId) return { isSpam: false };
 
   const since = new Date(Date.now() - TIME_WINDOW_MS);
-  const hasLocation = latitude != null && longitude != null;
 
   const recentComplaints = await Complaint.find({
     user: userId,
     createdAt: { $gte: since },
     'spamCheck.isDuplicate': { $ne: true },
-  }).select('title description latitude longitude ticketId _id');
+    status: { $ne: 'rejected' },
+  }).select('title description latitude longitude location category ticketId _id');
 
-  // If both complaints have coordinates, filter by proximity.
-  // If either is missing coordinates, skip location filter and check text only.
-  const candidates = hasLocation
-    ? recentComplaints.filter(
-        (c) =>
-          c.latitude != null && c.longitude != null
-            ? haversineDistance(latitude, longitude, c.latitude, c.longitude) <= RADIUS_KM
-            : true  
-      )
-    : recentComplaints;
+  const candidates = recentComplaints.filter((candidate) => {
+    if (!isSameCategory(category, candidate.category)) {
+      return false;
+    }
+
+    return isSameArea({
+      newLatitude: latitude,
+      newLongitude: longitude,
+      existingLatitude: candidate.latitude,
+      existingLongitude: candidate.longitude,
+      newLocation: location,
+      existingLocation: candidate.location,
+    });
+  });
 
   if (candidates.length === 0) return { isSpam: false };
 

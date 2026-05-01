@@ -125,5 +125,6 @@ const sendEmergencyAlertToNearbyUsers = async (complaint) => {
 
 module.exports = {
   sendNotification,
-  sendEmergencyAlertToNearbyUsers
+  sendEmergencyAlertToNearbyUsers,
+  haversineKm,
 };

@@ -78,9 +78,9 @@ export const complaintAPI = {
   vote: (id) => api.post(`/complaints/${id}/vote`),
 
   // Nearby complaints for pre-submission duplicate check
-  getNearby: (lat, lng, radiusKm = 1, category = "") =>
+  getNearby: (lat, lng, radiusKm = 1, category = "", extraParams = {}) =>
     api.get("/complaints/nearby", {
-      params: { lat, lng, radius: radiusKm, category },
+      params: { lat, lng, radius: radiusKm, category, ...extraParams },
     }),
 
   // Heatmap data — all complaints with lat/lng and priority weight
@@ -120,6 +120,11 @@ export const notificationAPI = {
   getAll: () => api.get("/notifications"),
   markAsRead: (id) => api.put(`/notifications/${id}/read`),
   markAllAsRead: () => api.put("/notifications/read-all"),
+};
+
+export const emergencyBroadcastAPI = {
+  getAll: () => api.get("/emergency-broadcasts"),
+  create: (data) => api.post("/emergency-broadcasts", data),
 };
 
 export default api;

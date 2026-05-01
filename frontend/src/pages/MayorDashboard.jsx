@@ -14,6 +14,7 @@ import { useAuth } from '../context/AuthContext';
 import { complaintAPI } from '../services/api';
 import MayorChatbot from '../components/MayorChatbot';
 import GoodCitizenStar from '../components/GoodCitizenStar';
+import { getDepartmentLabel, normalizeDepartmentValue } from '../constants/departments';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
 
@@ -63,7 +64,8 @@ const getSlaInfo = (slaDeadline, slaDurationHours) => {
 
 const buildDepartmentStats = (items = []) => {
   const grouped = items.reduce((acc, complaint) => {
-    const key = complaint.category || 'Uncategorized';
+    const normalizedKey = normalizeDepartmentValue(complaint.category);
+    const key = normalizedKey || complaint.category || 'other';
     if (!acc[key]) {
       acc[key] = { _id: key, resolved: 0, total: 0 };
     }
@@ -74,6 +76,31 @@ const buildDepartmentStats = (items = []) => {
     return acc;
   }, {});
   return Object.values(grouped).sort((a, b) => b.total - a.total);
+};
+
+const normalizeDepartmentStats = (items = []) => {
+  const merged = items.reduce((acc, item) => {
+    const normalizedKey = normalizeDepartmentValue(item._id);
+    const key = normalizedKey || item._id || 'other';
+    if (!acc[key]) {
+      acc[key] = { _id: key, resolved: 0, total: 0, pendingInProgress: 0 };
+    }
+    acc[key].resolved += item.resolved || 0;
+    acc[key].total += item.total || 0;
+    acc[key].pendingInProgress += item.pendingInProgress || 0;
+    return acc;
+  }, {});
+
+  return Object.values(merged)
+    .map((item) => ({
+      ...item,
+      label: getDepartmentLabel(item._id) || 'Other',
+      rate: item.total > 0 ? Math.round((item.resolved / item.total) * 100) : 0,
+      open: typeof item.pendingInProgress === 'number'
+        ? item.pendingInProgress
+        : Math.max(0, item.total - item.resolved),
+    }))
+    .sort((a, b) => b.total - a.total);
 };
 
 // ─── Sub-Components ───────────────────────────────────────────────────
@@ -314,11 +341,28 @@ const MayorDashboard = () => {
     );
   }
 
-  const departmentStats = stats?.departments?.length > 0 ? stats.departments : buildDepartmentStats(allComplaints);
+  const departmentStats = normalizeDepartmentStats(
+    stats?.departments?.length > 0 ? stats.departments : buildDepartmentStats(allComplaints)
+  );
+  const headerStats = [
+    { label: "Total Complaints", value: stats?.global?.total || 0, accent: "text-blue-200" },
+    { label: "Critical", value: stats?.global?.critical || 0, accent: "text-red-200" },
+    { label: "In Progress", value: stats?.global?.inProgress || 0, accent: "text-cyan-200" },
+    { label: "Resolved", value: stats?.global?.resolved || 0, accent: "text-emerald-200" },
+  ];
+  const topDepartment = departmentStats[0];
+  const averageEfficiency = departmentStats.length
+    ? Math.round(departmentStats.reduce((sum, dept) => sum + dept.rate, 0) / departmentStats.length)
+    : 0;
+  const tabButtonClass = (key) => `rounded-full px-5 py-3 text-sm font-bold transition-all ${
+    activeTab === key
+      ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
+      : 'text-slate-500 hover:bg-white hover:text-slate-900'
+  }`;
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="mx-auto max-w-[1390px] space-y-6 px-0 sm:px-1">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 18 }}
@@ -329,133 +373,283 @@ const MayorDashboard = () => {
           <div className="xl:col-span-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-teal-100">
               <Target size={12} className="text-teal-300" />
-              Executive Oversight
+              <T en="Executive Oversight" />
             </div>
             <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
-              Welcome back{user?.name ? `, ${user.name.split(' ')[0]}` : ''}
+              <T en="Welcome back" />{user?.name ? `, ${user.name.split(' ')[0]}` : ''}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
-              Monitor city-wide complaint flow, identify critical service delays, and coordinate public action from one dashboard.
-            </p>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
-              <span className="font-bold text-teal-600 uppercase tracking-tighter text-xs">Executive Oversight</span> · Manage city operations
+              <T en="Monitor city-wide complaint flow, identify critical service delays, and coordinate public action from one dashboard." />
             </p>
           </div>
           <div className="xl:col-span-4">
-            <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm xl:ml-auto xl:max-w-xs">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Live Feed</p>
-              <p className="mt-1 text-sm font-semibold text-white">
-                Review urgent complaints, city efficiency, and citizen activity in real time.
-              </p>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
+              {headerStats.map((item) => (
+                <div key={item.label} className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
+                    <T en={item.label} />
+                  </p>
+                  <p className={`mt-2 text-2xl font-black ${item.accent}`}>{item.value}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
         </motion.div>
 
-        {/* Stat Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <StatCard icon={FileText} label="Total Cases" value={stats?.global?.total || 0} color="text-blue-600" bg="bg-blue-50" delay={0.05} onClick={() => { setActiveTab('complaints'); fetchComplaints('total'); }} isActive={activeTab === 'complaints' && activeFilter === 'total'} />
-          <StatCard icon={Clock} label="Pending" value={stats?.global?.pending || 0} color="text-amber-600" bg="bg-amber-50" delay={0.1} onClick={() => { setActiveTab('complaints'); fetchComplaints('pending'); }} isActive={activeTab === 'complaints' && activeFilter === 'pending'} />
-          <StatCard icon={Loader2} label="In Progress" value={stats?.global?.inProgress || 0} color="text-indigo-600" bg="bg-indigo-50" delay={0.15} onClick={() => { setActiveTab('complaints'); fetchComplaints('in-progress'); }} isActive={activeTab === 'complaints' && activeFilter === 'in-progress'} />
-          <StatCard icon={CheckCircle2} label="Resolved" value={stats?.global?.resolved || 0} color="text-emerald-600" bg="bg-emerald-50" delay={0.2} onClick={() => { setActiveTab('complaints'); fetchComplaints('resolved'); }} isActive={activeTab === 'complaints' && activeFilter === 'resolved'} />
-          <StatCard icon={AlertTriangle} label="Critical" value={stats?.global?.critical || 0} color="text-red-600" bg="bg-red-50" delay={0.25} onClick={() => { setActiveTab('complaints'); fetchComplaints('critical'); }} isActive={activeTab === 'complaints' && activeFilter === 'critical'} />
-        </div>
-
         {/* Tab Navigation */}
-        <div className="flex border-b border-gray-200">
-          <button onClick={() => setActiveTab('complaints')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'complaints' ? 'border-teal-500 text-teal-600' : 'border-transparent text-gray-400'}`}>
-            Complaints Management
-          </button>
-          <button onClick={() => setActiveTab('leaderboard')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-all ${activeTab === 'leaderboard' ? 'border-teal-500 text-teal-600' : 'border-transparent text-gray-400'}`}>
-            Citizen Leaderboard
-          </button>
+        <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-2 shadow-sm">
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => setActiveTab('complaints')} className={tabButtonClass('complaints')}>
+              <T en="Complaints Management" />
+            </button>
+            <button onClick={() => setActiveTab('leaderboard')} className={tabButtonClass('leaderboard')}>
+              <T en="Citizen Leaderboard" />
+            </button>
+            <button onClick={() => setActiveTab('efficiency')} className={tabButtonClass('efficiency')}>
+              <T en="City Efficiency" />
+            </button>
+            <button onClick={() => setActiveTab('ads')} className={tabButtonClass('ads')}>
+              <T en="New Ad" />
+            </button>
+          </div>
         </div>
 
         {activeTab === 'complaints' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <section className="lg:col-span-2 space-y-4">
-              <div className="flex items-center justify-between px-2">
+          <section className="space-y-4">
+              <div className="flex items-center justify-between px-1 lg:px-2">
                 <h2 className="text-lg font-bold text-gray-900 capitalize">{activeFilter} Complaints</h2>
                 <span className="text-[10px] font-black text-gray-400 uppercase">{complaints.length} Items</span>
               </div>
-              <div className="space-y-3 h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                {complaints.map((c, i) => <ComplaintCard key={c._id} complaint={c} index={i} onClick={(id) => navigate(`/complaints/${id}`)} />)}
-              </div>
-            </section>
-            <div className="space-y-6">
-              <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                <h2 className="text-sm font-bold mb-6 flex items-center gap-2 uppercase tracking-wider"><Target size={16} className="text-teal-500" /> City Efficiency</h2>
-                <div className="space-y-5">
-                  {departmentStats.slice(0, 5).map((dept, i) => {
-                    const rate = dept.total > 0 ? Math.round((dept.resolved / dept.total) * 100) : 0;
-                    return (
-                      <div key={i} className="space-y-2">
-                        <div className="flex justify-between text-[10px] font-black uppercase"><span>{dept._id}</span><span>{rate}%</span></div>
-                        <div className="h-1.5 bg-gray-50 rounded-full border border-gray-100 overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${rate}%` }} className="h-full bg-teal-500" /></div>
-                      </div>
-                    );
-                  })}
+              <div className="rounded-[1.75rem] border border-gray-100 bg-white p-3 shadow-sm sm:p-4">
+                <div className="space-y-3 max-h-[780px] overflow-y-auto pr-1 custom-scrollbar">
+                  {complaints.map((c, i) => <ComplaintCard key={c._id} complaint={c} index={i} onClick={(id) => navigate(`/complaints/${id}`)} />)}
                 </div>
-              </section>
-              <section className="bg-white p-6 rounded-2xl border border-gray-100 border-t-4 border-t-blue-500">
-                <h2 className="text-sm font-bold mb-4 flex items-center gap-2 uppercase tracking-wider"><Megaphone size={16} className="text-blue-500" /> New Ad</h2>
-                <form onSubmit={handleAdSubmit} className="space-y-3">
-                  <input type="text" placeholder="Title" className="w-full bg-gray-50 border rounded-lg px-3 py-2 text-xs outline-none" value={adForm.title} onChange={e => setAdForm({...adForm, title: e.target.value})} required />
-                  <textarea rows="2" placeholder="Description" className="w-full bg-gray-50 border rounded-lg px-3 py-2 text-xs outline-none" value={adForm.description} onChange={e => setAdForm({...adForm, description: e.target.value})} required />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input type="date" className="bg-gray-50 border rounded-lg px-2 py-2 text-[10px] outline-none" value={adForm.dateOfEvent} onChange={e => setAdForm({...adForm, dateOfEvent: e.target.value})} required />
-                    <input type="number" placeholder="Qty" className="bg-gray-50 border rounded-lg px-2 py-2 text-xs outline-none" value={adForm.requiredVolunteers} onChange={e => setAdForm({...adForm, requiredVolunteers: e.target.value})} required />
-                  </div>
-                  <input type="text" placeholder="Contact" className="w-full bg-gray-50 border rounded-lg px-3 py-2 text-xs outline-none" value={adForm.contactDetails} onChange={e => setAdForm({...adForm, contactDetails: e.target.value})} required />
-                  <input type="file" id="p-file" className="hidden" onChange={e => setAdForm({...adForm, poster: e.target.files[0]})} />
-                  <label htmlFor="p-file" className="block w-full bg-gray-50 border border-dashed rounded-lg px-3 py-2 text-[10px] cursor-pointer truncate">{adForm.poster ? adForm.poster.name : 'Upload Poster'}</label>
-                  <button type="submit" disabled={isSubmitting} className="w-full bg-gray-900 text-white font-bold py-2.5 rounded-lg text-xs flex justify-center gap-2">
-                    {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Publish
-                  </button>
-                </form>
-              </section>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="bg-teal-50 p-6 rounded-2xl border border-teal-100 flex justify-between items-center">
-              <div><h2 className="text-xl font-bold text-teal-900">Citizen Recognition</h2><p className="text-sm text-teal-700">Reward the top active citizen.</p></div>
-              <button onClick={handleAnnounceWinner} className="bg-teal-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:bg-teal-700 transition-all flex items-center gap-2"><Plus size={18} /> Announce Monthly Winner</button>
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-              <div className="grid grid-cols-4 p-4 bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                <span className="col-span-2">Citizen Name</span><span>Points</span><span>Status</span>
               </div>
-              <div className="divide-y divide-gray-50">
-                {rewardLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto text-teal-500" /></div> : (
-                  citizenPoints.map(citizen => (
-                    <div key={citizen._id} className="grid grid-cols-4 p-4 items-center hover:bg-gray-50 transition-colors">
-                      <div className="col-span-2 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">{citizen.avatar ? <img src={resolveAvatar(citizen.avatar)} className="w-full h-full object-cover" /> : <User size={18} className="text-gray-400" />}</div>
-                        <div><p className="font-bold flex items-center gap-1.5">{citizen.name} {citizen.isGoodCitizen && <GoodCitizenStar size={12} />}</p><p className="text-[10px] text-gray-400 font-mono">{citizen.email}</p></div>
+          </section>
+        ) : activeTab === 'leaderboard' ? (
+          <section className="space-y-5">
+              <div className="bg-teal-50 p-6 rounded-[1.75rem] border border-teal-100 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-teal-900"><T en="Citizen Recognition" /></h2>
+                  <p className="text-sm text-teal-700"><T en="Reward the top active citizen." /></p>
+                </div>
+                <button onClick={handleAnnounceWinner} className="bg-teal-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:bg-teal-700 transition-all flex items-center justify-center gap-2">
+                  <Plus size={18} /> <T en="Announce Monthly Winner" />
+                </button>
+              </div>
+              <div className="overflow-hidden rounded-[1.75rem] border border-gray-100 bg-white shadow-sm">
+                <div className="grid grid-cols-4 p-4 bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                  <span className="col-span-2"><T en="Citizen Name" /></span><span><T en="Points" /></span><span><T en="Status" /></span>
+                </div>
+                <div className="max-h-[760px] overflow-y-auto divide-y divide-gray-50 custom-scrollbar">
+                  {rewardLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto text-teal-500" /></div> : (
+                    citizenPoints.map(citizen => (
+                      <div key={citizen._id} className="grid grid-cols-4 p-4 items-center hover:bg-gray-50 transition-colors">
+                        <div className="col-span-2 flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">{citizen.avatar ? <img src={resolveAvatar(citizen.avatar)} className="w-full h-full object-cover" /> : <User size={18} className="text-gray-400" />}</div>
+                          <div className="min-w-0"><p className="font-bold flex items-center gap-1.5 truncate">{citizen.name} {citizen.isGoodCitizen && <GoodCitizenStar size={12} />}</p><p className="text-[10px] text-gray-400 font-mono truncate">{citizen.email}</p></div>
+                        </div>
+                        <div className="text-sm font-black text-teal-600">{citizen.points}</div>
+                        <div className="flex items-center justify-between gap-3 pr-2">
+                          {citizen.isGoodCitizen ? (
+                            <>
+                              <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap"><T en="Current Winner" /></span>
+                              <button 
+                                onClick={() => handleRemoveBadge(citizen._id)}
+                                className="text-[10px] font-bold text-red-500 hover:text-red-700 flex items-center gap-1 whitespace-nowrap"
+                              >
+                                <X size={12} /> <T en="Undo" />
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest"><T en="Citizen" /></span>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-sm font-black text-teal-600">{citizen.points}</div>
-                      <div className="flex items-center justify-between pr-4">
-                        {citizen.isGoodCitizen ? (
-                          <>
-                            <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-bold uppercase tracking-widest">Current Winner</span>
-                            <button 
-                              onClick={() => handleRemoveBadge(citizen._id)}
-                              className="text-[10px] font-bold text-red-500 hover:text-red-700 ml-4 flex items-center gap-1"
-                            >
-                              <X size={12} /> Undo
-                            </button>
-                          </>
-                        ) : (
-                          <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">Citizen</span>
-                        )}
+                    ))
+                  )}
+                </div>
+              </div>
+          </section>
+        ) : activeTab === 'efficiency' ? (
+          <section className="space-y-5">
+            <div className="grid gap-4 lg:grid-cols-3">
+              <div className="rounded-[1.75rem] border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-cyan-50 p-5 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-teal-600">
+                  <T en="Highest Coverage" />
+                </p>
+                <h3 className="mt-3 text-2xl font-black text-slate-900">{topDepartment?.label || 'N/A'}</h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  <T en="Leading complaint volume currently tracked in the city-wide operations view." />
+                </p>
+              </div>
+              <div className="rounded-[1.75rem] border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-sky-50 p-5 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-700">
+                  <T en="Average Resolution Rate" />
+                </p>
+                <h3 className="mt-3 text-3xl font-black text-slate-900">{averageEfficiency}%</h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  <T en="Average share of resolved complaints across the listed city service groups." />
+                </p>
+              </div>
+              <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+                  <T en="Departments Tracked" />
+                </p>
+                <h3 className="mt-3 text-3xl font-black text-slate-900">{departmentStats.length}</h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  <T en="Normalized from both legacy complaint categories and current department assignments." />
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-[1.9rem] border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
+              <div className="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-black text-slate-900">
+                    <T en="City Efficiency Board" />
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    <T en="Department performance is based on resolved complaints compared with the total complaints assigned to each service group." />
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  <span className="font-black text-slate-900">{stats?.slaCompliance?.exceeded || 0}</span>{' '}
+                  <T en="active complaints have already crossed SLA." />
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                {departmentStats.map((dept) => (
+                  <div key={dept._id} className="rounded-[1.5rem] border border-slate-100 bg-slate-50/70 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-black uppercase tracking-[0.18em] text-slate-500">{dept.label}</p>
+                        <p className="mt-2 text-3xl font-black text-slate-900">{dept.rate}%</p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {dept.resolved} <T en="resolved out of" /> {dept.total} <T en="complaints" />
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-white bg-white px-4 py-3 text-right shadow-sm">
+                        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+                          <T en="Open Cases" />
+                        </p>
+                        <p className="mt-2 text-xl font-black text-amber-600">{dept.open}</p>
                       </div>
                     </div>
-                  ))
-                )}
+                    <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-white ring-1 ring-slate-100">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${dept.rate}%` }}
+                        className="h-full rounded-full bg-gradient-to-r from-teal-500 to-cyan-500"
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
+          </section>
+        ) : (
+          <section className="rounded-[1.9rem] border border-blue-100 bg-white p-5 shadow-sm sm:p-6">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
+              <div className="rounded-[1.75rem] border border-slate-100 bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-5">
+                <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/90 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-blue-600">
+                  <Megaphone size={13} className="text-blue-500" />
+                  <T en="Campaign Publisher" />
+                </div>
+                <h2 className="mt-4 text-2xl font-black text-slate-900">
+                  <T en="Publish a new city volunteer advertisement" />
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                  <T en="Create a polished public call for volunteers with the event date, required headcount, contact details, and poster in one place." />
+                </p>
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white bg-white px-4 py-4 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+                      <T en="Suggested Use" />
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                      <T en="Flood response, public cleanup drives, health camps, and neighborhood outreach." />
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white bg-white px-4 py-4 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+                      <T en="Best Practice" />
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                      <T en="Use a clear event title, exact date, and a reachable phone or email before publishing." />
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handleAdSubmit} className="space-y-4 rounded-[1.75rem] border border-slate-100 bg-slate-50/80 p-5 sm:p-6">
+                <div>
+                  <h2 className="text-lg font-black text-slate-900">
+                    <T en="New Ad" />
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    <T en="Fill in the campaign details below to publish the announcement to citizens." />
+                  </p>
+                </div>
+
+                <input
+                  type="text"
+                  placeholder="Title"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  value={adForm.title}
+                  onChange={e => setAdForm({ ...adForm, title: e.target.value })}
+                  required
+                />
+                <textarea
+                  rows="5"
+                  placeholder="Description"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  value={adForm.description}
+                  onChange={e => setAdForm({ ...adForm, description: e.target.value })}
+                  required
+                />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <input
+                    type="date"
+                    className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                    value={adForm.dateOfEvent}
+                    onChange={e => setAdForm({ ...adForm, dateOfEvent: e.target.value })}
+                    required
+                  />
+                  <input
+                    type="number"
+                    placeholder="Qty"
+                    className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                    value={adForm.requiredVolunteers}
+                    onChange={e => setAdForm({ ...adForm, requiredVolunteers: e.target.value })}
+                    required
+                  />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Contact"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  value={adForm.contactDetails}
+                  onChange={e => setAdForm({ ...adForm, contactDetails: e.target.value })}
+                  required
+                />
+                <input type="file" id="p-file" className="hidden" onChange={e => setAdForm({ ...adForm, poster: e.target.files[0] })} />
+                <label htmlFor="p-file" className="block w-full cursor-pointer rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-4 text-sm text-slate-500 transition hover:border-blue-300 hover:bg-blue-50/40">
+                  {adForm.poster ? adForm.poster.name : 'Upload Poster'}
+                </label>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                  <T en="Publish" />
+                </button>
+              </form>
+            </div>
+          </section>
         )}
       </div>
       <MayorChatbot />

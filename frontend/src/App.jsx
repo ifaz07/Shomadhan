@@ -12,6 +12,8 @@ import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import OAuthCompletionPage from "./pages/OAuthCompletionPage";
 import HeatmapPage from "./pages/HeatmapPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import EmergencyBroadcastPage from "./pages/EmergencyBroadcastPage";
+import EmergencyBroadcastHistoryPage from "./pages/EmergencyBroadcastHistoryPage";
 import ComplaintDetailPage from "./pages/ComplaintDetailPage";
 import MyComplaintsPage from "./pages/MyComplaintsPage";
 import PublicAnalyticsPage from "./pages/PublicAnalyticsPage";
@@ -217,6 +219,14 @@ function App() {
           }
         />
         <Route
+          path="/emergency-history"
+          element={
+            <CitizenRoute>
+              <EmergencyBroadcastHistoryPage />
+            </CitizenRoute>
+          }
+        />
+        <Route
           path="/feedback"
           element={
             <NonServantRoute>
@@ -245,6 +255,22 @@ function App() {
           element={
             <MayorRoute>
               <MayorDashboard />
+            </MayorRoute>
+          }
+        />
+        <Route
+          path="/mayor/emergency"
+          element={
+            <MayorRoute>
+              <EmergencyBroadcastPage />
+            </MayorRoute>
+          }
+        />
+        <Route
+          path="/mayor/emergency-history"
+          element={
+            <MayorRoute>
+              <EmergencyBroadcastHistoryPage />
             </MayorRoute>
           }
         />
@@ -312,6 +338,22 @@ function App() {
           element={
             <ServantRoute>
               <ServantComplaintDetailPage />
+            </ServantRoute>
+          }
+        />
+        <Route
+          path="/servant/emergency"
+          element={
+            <ServantRoute>
+              <EmergencyBroadcastPage />
+            </ServantRoute>
+          }
+        />
+        <Route
+          path="/servant/emergency-history"
+          element={
+            <ServantRoute>
+              <EmergencyBroadcastHistoryPage />
             </ServantRoute>
           }
         />

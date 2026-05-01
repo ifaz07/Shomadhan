@@ -235,7 +235,7 @@ const DashboardPage = () => {
     clearTimeout(debounceRef.current);
     const doFetch = () => {
       setListLoading(true);
-      const params = {};
+      const params = { excludeRejected: "true" };
       if (priorityFilter !== "All") params.priority = priorityFilter;
       if (statusFilter !== "All") params.status = statusFilter;
       if (locationSearch.trim()) params.location = locationSearch.trim();
@@ -275,7 +275,10 @@ const DashboardPage = () => {
       (pos) => {
         const { latitude, longitude } = pos.coords;
         complaintAPI
-          .getNearby(latitude, longitude, 5) // 5 km radius
+          .getNearby(latitude, longitude, 5, "", {
+            priority: priorityFilter !== "All" ? priorityFilter : undefined,
+            status: statusFilter !== "All" ? statusFilter : undefined,
+          }) // 5 km radius
           .then((r) => {
             const raw = r.data.data;
             setComplaints(Array.isArray(raw) ? raw : []);
@@ -300,6 +303,17 @@ const DashboardPage = () => {
   };
 
   const filtered = complaints; // filtering is now done server-side
+  const hasActiveFilters =
+    nearMode ||
+    priorityFilter !== "All" ||
+    statusFilter !== "All" ||
+    Boolean(locationSearch.trim());
+  const headerStats = [
+    { label: "Total Complaints", value: stats.total ?? 0, accent: "text-blue-200" },
+    { label: "Critical", value: stats.critical ?? 0, accent: "text-red-200" },
+    { label: "In Progress", value: stats.inProgress ?? 0, accent: "text-cyan-200" },
+    { label: "Resolved", value: stats.resolved ?? 0, accent: "text-emerald-200" },
+  ];
 
   return (
     <DashboardLayout>
@@ -312,60 +326,29 @@ const DashboardPage = () => {
           <div className="xl:col-span-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-teal-100">
               <FileText size={12} className="text-teal-300" />
-              Citizen Overview
+              <T en="Citizen Overview" />
             </div>
             <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
-              Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+              <T en="Welcome back" />{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
               <T en="Track active complaints, review local issues around you, and stay updated on which reports are moving forward." />
             </p>
           </div>
           <div className="xl:col-span-4">
-            <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm xl:ml-auto xl:max-w-xs">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Quick View</p>
-              <p className="mt-1 text-sm font-semibold text-white">
-                See complaint progress, filter by priority, or discover what is happening near your location.
-              </p>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
+              {headerStats.map((item) => (
+                <div key={item.label} className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
+                    <T en={item.label} />
+                  </p>
+                  <p className={`mt-2 text-2xl font-black ${item.accent}`}>{item.value}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </motion.div>
-      {/* ─── Stat Cards ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard
-          icon={FileText}
-          label={<T en="Total Complaints" />}
-          value={stats.total}
-          color="text-blue-600"
-          bg="bg-blue-50"
-          delay={0.05}
-        />
-        <StatCard
-          icon={AlertTriangle}
-          label={<T en="Critical" />}
-          value={stats.critical}
-          color="text-red-600"
-          bg="bg-red-50"
-          delay={0.1}
-        />
-        <StatCard
-          icon={Clock}
-          label={<T en="In Progress" />}
-          value={stats.inProgress}
-          color="text-blue-600"
-          bg="bg-blue-50"
-          delay={0.15}
-        />
-        <StatCard
-          icon={CheckCircle2}
-          label={<T en="Resolved" />}
-          value={stats.resolved}
-          color="text-green-600"
-          bg="bg-green-50"
-          delay={0.2}
-        />
-      </div>
 
       {/* ─── Filter Bar ─────────────────────────────────────────── */}
       <motion.div
@@ -387,11 +370,11 @@ const DashboardPage = () => {
           }}
           className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
         >
-          <option value="All">All Priorities</option>
-          <option value="Critical">Critical</option>
-          <option value="High">High</option>
-          <option value="Medium">Medium</option>
-          <option value="Low">Low</option>
+          <option value="All"><T en="All Priorities" /></option>
+          <option value="Critical"><T en="Critical" /></option>
+          <option value="High"><T en="High" /></option>
+          <option value="Medium"><T en="Medium" /></option>
+          <option value="Low"><T en="Low" /></option>
         </select>
 
         <select
@@ -402,11 +385,11 @@ const DashboardPage = () => {
           }}
           className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
         >
-          <option value="All">All Status</option>
-          <option value="pending">Pending</option>
-          <option value="in-progress">In Progress</option>
-          <option value="resolved">Resolved</option>
-          <option value="rejected">Rejected</option>
+          <option value="All"><T en="All Status" /></option>
+          <option value="pending"><T en="Pending" /></option>
+          <option value="in-progress"><T en="In Progress" /></option>
+          <option value="resolved"><T en="Resolved" /></option>
+          <option value="rejected"><T en="Rejected" /></option>
         </select>
 
         {/* Location text search */}
@@ -415,7 +398,7 @@ const DashboardPage = () => {
             <Search size={13} className="text-gray-400 flex-shrink-0" />
             <input
               type="text"
-              placeholder="Search location…"
+              placeholder="Search location..."
               value={locationSearch}
               onChange={(e) => setLocationSearch(e.target.value)}
               className="text-sm text-gray-700 outline-none bg-transparent w-36 placeholder-gray-400"
@@ -438,7 +421,7 @@ const DashboardPage = () => {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors"
           >
             <Navigation size={13} />
-            Near Me
+            <T en="Near Me" />
             <X size={13} className="ml-0.5" />
           </button>
         ) : (
@@ -447,7 +430,7 @@ const DashboardPage = () => {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-teal-300 text-teal-700 hover:bg-teal-50 transition-colors"
           >
             <Navigation size={13} />
-            Near Me
+            <T en="Near Me" />
           </button>
         )}
 
@@ -474,11 +457,11 @@ const DashboardPage = () => {
         >
           <FileText size={32} className="text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">
-            {complaints.length === 0
-              ? "No complaints submitted yet"
-              : "No complaints match your filters"}
+            {hasActiveFilters
+              ? "No complaints match your filters"
+              : "No complaints available right now"}
           </p>
-          {complaints.length > 0 && (
+          {hasActiveFilters && (
             <p className="text-sm text-gray-400 mt-1">
               Try adjusting the filters above
             </p>

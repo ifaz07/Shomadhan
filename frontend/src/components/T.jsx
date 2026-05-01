@@ -6,7 +6,7 @@ const T = ({ en, children }) => {
   const key = en || children || '';
   const [text, setText] = useState(() => {
     if (language === 'en') return key;
-    const cacheKey = `${key}-${language}`;
+    const cacheKey = `${key}|en|${language}`;
     return cache.current[cacheKey] || key;
   });
 
@@ -16,12 +16,13 @@ const T = ({ en, children }) => {
         setText(en || children || '');
         return;
       }
-      const cacheKey = `${en}-${language}`;
+      const sourceText = en || children || '';
+      const cacheKey = `${sourceText}|en|${language}`;
       if (cache.current[cacheKey]) {
         setText(cache.current[cacheKey]);
         return;
       }
-      const translated = await translateText(en || children || '', 'en', language);
+      const translated = await translateText(sourceText, 'en', language);
       cache.current[cacheKey] = translated;
       setText(translated);
     };

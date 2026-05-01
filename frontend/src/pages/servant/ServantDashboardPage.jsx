@@ -271,7 +271,7 @@ const ServantDashboardPage = () => {
   };
 
   useEffect(() => {
-    servantAPI
+    complaintAPI
       .getStats()
       .then((res) => setStats(res.data.data))
       .catch(() => {})
@@ -283,6 +283,12 @@ const ServantDashboardPage = () => {
   }, [statusFilter, priorityFilter, locationFilter]);
 
   const deptLabel = DEPT_DISPLAY[user?.department] || "Department";
+  const headerStats = [
+    { label: "Total Complaints", value: stats?.total ?? 0, accent: "text-blue-200" },
+    { label: "Critical", value: stats?.critical ?? 0, accent: "text-red-200" },
+    { label: "In Progress", value: stats?.inProgress ?? 0, accent: "text-cyan-200" },
+    { label: "Resolved", value: stats?.resolved ?? 0, accent: "text-emerald-200" },
+  ];
 
   if (loading) {
     return (
@@ -307,84 +313,37 @@ const ServantDashboardPage = () => {
             <div className="xl:col-span-8">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-teal-100">
                 <ClipboardList size={12} className="text-teal-300" />
-                Department Control Desk
+                <T en="Department Control Desk" />
               </div>
               <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
-                Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+                <T en="Welcome back" />{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
-                Manage assigned complaints, monitor SLA pressure, and keep your
-                department response moving efficiently.
-              </p>
-              <p className="hidden mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
-                <span className="font-medium text-blue-600">{deptLabel}</span>{" "}
-                <T en="Officer · Managing your department's complaints" />
+                <T en="Review city-wide complaints, monitor critical updates, and move into department operations when action is needed." />
               </p>
             </div>
             <div className="xl:col-span-4">
-              <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm xl:ml-auto xl:max-w-xs">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
-                  {deptLabel}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-white">
-                  Review live department workload, active investigations, and
-                  resolution progress at a glance.
-                </p>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
+                {headerStats.map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
+                      <T en={item.label} />
+                    </p>
+                    <p className={`mt-2 text-2xl font-black ${item.accent}`}>{item.value}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* ── Stats ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard
-            label={<T en="Total Assigned" />}
-            value={stats?.total ?? 0}
-            icon={ClipboardList}
-            color={{
-              border: "border-gray-200",
-              iconBg: "bg-gray-100",
-              iconText: "text-gray-600",
-            }}
-          />
-          <StatCard
-            label={<T en="Pending" />}
-            value={stats?.pending ?? 0}
-            icon={Clock}
-            color={{
-              border: "border-yellow-200",
-              iconBg: "bg-yellow-50",
-              iconText: "text-yellow-600",
-            }}
-          />
-          <StatCard
-            label={<T en="In Progress" />}
-            value={stats?.inProgress ?? 0}
-            icon={Flame}
-            color={{
-              border: "border-blue-200",
-              iconBg: "bg-blue-50",
-              iconText: "text-blue-600",
-            }}
-          />
-          <StatCard
-            label={<T en="Resolved" />}
-            value={stats?.resolved ?? 0}
-            icon={CheckCircle2}
-            color={{
-              border: "border-green-200",
-              iconBg: "bg-green-50",
-              iconText: "text-green-600",
-            }}
-          />
-        </div>
 
         {/* ── Department Complaint Feed (All) ── */}
         <div className="bg-white border border-gray-100 rounded-2xl p-5">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-semibold text-gray-900">
-                <T en="All Department Complaints" />
+                <T en="All City Complaints" />
               </h2>
               <span className="text-sm text-gray-400">
                 ({complaints.length})
@@ -394,11 +353,11 @@ const ServantDashboardPage = () => {
               to="/servant/complaints"
               className="text-sm text-blue-600 font-medium flex items-center gap-1 hover:underline"
             >
-              <T en="Manage complaints" /> <ArrowRight size={14} />
+              <T en="Open Department Board" /> <ArrowRight size={14} />
             </Link>
           </div>
           <p className="text-xs text-gray-400 mb-4">
-            <T en="Read-only overview. Go to Department Complaints to update status or set SLA." />
+            <T en="This dashboard shows all complaints across the city. Go to Department Complaints to work only on items assigned to your department." />
           </p>
 
           <div className="flex flex-wrap items-center gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100 mb-4">
@@ -475,7 +434,7 @@ const ServantDashboardPage = () => {
             </div>
           ) : complaints.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
-              <T en="No department complaints match these filters" />
+              <T en="No city complaints match these filters" />
             </div>
           ) : (
             <div className="flex flex-col gap-4">
