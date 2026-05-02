@@ -8,7 +8,6 @@ import {
   Menu,
   X,
   ChevronLeft,
-  ShieldCheck,
   Bell,
   FileText,
   BarChart3,
@@ -29,6 +28,7 @@ import { getDefaultDashboardRoute } from "../../utils/roleRoutes";
 import LanguageToggle from "../LanguageToggle";
 import T from "../T";
 import GoodCitizenStar from "../GoodCitizenStar";
+import VerifiedBadge, { VerifiedMark } from "../VerifiedBadge";
 
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1');
 const resolveAvatar = (url) => {
@@ -141,13 +141,14 @@ const Sidebar = ({ transparent = false }) => {
     const map = {
       none: { color: "bg-gray-100 text-gray-500", label: <T en="Not Verified" /> },
       pending: { color: "bg-yellow-100 text-yellow-700", label: <T en="Pending" /> },
-      approved: { color: "bg-green-100 text-green-700", label: <T en="Verified" /> },
+      approved: { color: "verified", label: <T en="Verified" /> },
       rejected: { color: "bg-red-100 text-red-700", label: <T en="Rejected" /> },
     };
     return map[status];
   };
 
   const verBadge = getVerificationBadge();
+  const userAvatar = resolveAvatar(user?.avatar);
 
   const VolunteerDetailModal = ({ ad, onClose }) => {
     if (!ad) return null;
@@ -233,15 +234,21 @@ const Sidebar = ({ transparent = false }) => {
       <div className="p-4 border-b border-gray-100">
         <div className="flex items-center gap-3">
           <div className="relative flex-shrink-0">
-            <div className="w-10 h-10 rounded-full bg-[#0d3b4b]/5 border-2 border-[#a1824a]/10 flex items-center justify-center">
-              <span className="text-sm font-black text-[#0d3b4b]">
-                {user?.name?.charAt(0)?.toUpperCase() || "C"}
-              </span>
+            <div className="w-10 h-10 rounded-full bg-[#0d3b4b]/5 border-2 border-[#a1824a]/10 flex items-center justify-center overflow-hidden">
+              {userAvatar ? (
+                <img
+                  src={userAvatar}
+                  alt={user?.name || "User"}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-sm font-black text-[#0d3b4b]">
+                  {user?.name?.charAt(0)?.toUpperCase() || "C"}
+                </span>
+              )}
             </div>
             {user?.isVerified && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#0d3b4b] rounded-full flex items-center justify-center border border-white">
-                <ShieldCheck size={9} className="text-[#a1824a]" />
-              </div>
+              <VerifiedMark className="absolute -bottom-0.5 -right-0.5" />
             )}
           </div>
           <motion.div
@@ -256,9 +263,13 @@ const Sidebar = ({ transparent = false }) => {
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider truncate">
               {roleLabelMap[user?.role] || "User"}
             </p>
-            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold mt-0.5 ${verBadge.color === 'bg-green-100 text-green-700' ? 'bg-[#0d3b4b]/10 text-[#0d3b4b]' : verBadge.color}`}>
-              {verBadge.label}
-            </span>
+            {verBadge.color === "verified" ? (
+              <VerifiedBadge label={verBadge.label} className="mt-0.5" />
+            ) : (
+              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold mt-0.5 ${verBadge.color}`}>
+                {verBadge.label}
+              </span>
+            )}
           </motion.div>
         </div>
       </div>
@@ -360,7 +371,15 @@ const Sidebar = ({ transparent = false }) => {
         className={`hidden lg:flex flex-col ${transparent ? 'bg-white/40 backdrop-blur-xl border-white/40 shadow-sm' : 'bg-white border-gray-100'} border-r h-screen sticky top-0 overflow-hidden will-change-[width]`}
       >
         {SidebarContent()}
-        <button onClick={() => setIsCollapsed(!isCollapsed)} className={`absolute -right-3 top-20 w-6 h-6 ${transparent ? 'bg-white/90' : 'bg-white'} border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors`}>
+        <button
+          type="button"
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          onMouseEnter={() => setIsCollapsed((prev) => !prev)}
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className={`absolute -right-4 top-24 h-10 w-10 ${transparent ? 'bg-white/95 backdrop-blur-md' : 'bg-white'} border border-slate-200/80 rounded-2xl flex items-center justify-center shadow-[0_12px_30px_-18px_rgba(15,23,42,0.35)] hover:bg-slate-50 hover:shadow-[0_18px_36px_-18px_rgba(15,23,42,0.45)] transition-all duration-200`}
+        >
+          <span className="pointer-events-none absolute inset-y-2 left-0 w-px rounded-full bg-gradient-to-b from-transparent via-slate-200 to-transparent" />
           <ChevronLeft size={14} className={`text-gray-500 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""}`} />
         </button>
       </motion.aside>

@@ -34,6 +34,40 @@ const resolveAvatar = (url) => {
   return url.startsWith('http') ? url : `${API_BASE.replace('/api/v1', '')}${url}`;
 };
 
+const getCurrentAwardMonthKey = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const getCurrentAwardPeriodLabel = () =>
+  new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+
+const formatAwardHistoryLabel = (award) => {
+  if (!award) return '';
+  if (award.label) return award.label;
+  if (award.awardMonth && award.awardYear) {
+    return new Date(award.awardYear, award.awardMonth - 1, 1).toLocaleString(
+      'default',
+      { month: 'long', year: 'numeric' },
+    );
+  }
+  if (award.awardedAt) {
+    return new Date(award.awardedAt).toLocaleString('default', {
+      month: 'long',
+      year: 'numeric',
+    });
+  }
+  return '';
+};
+
+const COMPLAINT_FILTERS = [
+  { key: 'total', label: 'All Complaints' },
+  { key: 'critical', label: 'Critical' },
+  { key: 'pending', label: 'Pending' },
+  { key: 'in-progress', label: 'In Progress' },
+  { key: 'resolved', label: 'Resolved' },
+];
+
 const STATUS_CONFIG = {
   pending:       { badge: 'bg-amber-100 text-amber-700', label: 'Pending' },
   'in-progress': { badge: 'bg-blue-100 text-blue-700',   label: 'In Progress' },
@@ -200,6 +234,83 @@ const ComplaintCard = ({ complaint, index, onClick }) => {
   );
 };
 
+const ActionConfirmModal = ({
+  open,
+  title,
+  message,
+  confirmLabel,
+  confirmTone = 'teal',
+  onConfirm,
+  onClose,
+  loading = false,
+}) => {
+  if (!open) return null;
+
+  const confirmClass =
+    confirmTone === 'danger'
+      ? 'bg-red-600 hover:bg-red-700 focus:ring-red-200'
+      : 'bg-teal-600 hover:bg-teal-700 focus:ring-teal-200';
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 18, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 12, scale: 0.98 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          className="w-full max-w-md rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-2xl"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+                Confirmation
+              </p>
+              <h3 className="mt-2 text-xl font-black text-slate-900">{title}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">{message}</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-50 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="mt-6 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={loading}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60 ${confirmClass}`}
+            >
+              {loading ? <Loader2 size={15} className="animate-spin" /> : null}
+              {confirmLabel}
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 // ─── Main Dashboard ───────────────────────────────────────────────────
 
 const MayorDashboard = () => {
@@ -215,6 +326,12 @@ const MayorDashboard = () => {
   const [activeTab, setActiveTab] = useState('complaints'); 
   const [citizenPoints, setCitizenPoints] = useState([]);
   const [rewardLoading, setRewardLoading] = useState(false);
+  const [confirmState, setConfirmState] = useState({
+    open: false,
+    type: null,
+    citizen: null,
+  });
+  const [actionLoading, setActionLoading] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [adForm, setAdForm] = useState({
@@ -245,6 +362,7 @@ const MayorDashboard = () => {
   };
 
   const handleAnnounceWinner = async () => {
+    setActionLoading(true);
     try {
       const { data } = await axios.post(`${API_BASE}/mayor/announce-winner`, {}, { withCredentials: true });
       if (data.success) {
@@ -252,22 +370,29 @@ const MayorDashboard = () => {
       } else {
         toast.error(data.message || "Failed to announce winner");
       }
-      fetchCitizenPoints();
+      await fetchCitizenPoints();
     } catch (error) {
       const errMsg = error.response?.data?.message || "Failed to announce winner";
       toast.error(errMsg);
+    } finally {
+      setActionLoading(false);
+      setConfirmState({ open: false, type: null, citizen: null });
     }
   };
 
   const handleRemoveBadge = async (id) => {
+    setActionLoading(true);
     try {
       const { data } = await axios.post(`${API_BASE}/mayor/remove-badge/${id}`, {}, { withCredentials: true });
       if (data.success) {
         toast.success(data.message);
-        fetchCitizenPoints();
+        await fetchCitizenPoints();
       }
     } catch (error) {
       toast.error('Failed to remove badge');
+    } finally {
+      setActionLoading(false);
+      setConfirmState({ open: false, type: null, citizen: null });
     }
   };
 
@@ -286,7 +411,7 @@ const MayorDashboard = () => {
     setListLoading(true);
     setActiveFilter(filterType);
     try {
-      const params = {};
+      const params = { excludeRejected: 'true' };
       if (filterType === 'pending') params.status = 'pending';
       if (filterType === 'in-progress') params.status = 'in-progress';
       if (filterType === 'resolved') params.status = 'resolved';
@@ -302,7 +427,7 @@ const MayorDashboard = () => {
 
   const fetchAllComplaints = async () => {
     try {
-      const { data } = await complaintAPI.getAll();
+      const { data } = await complaintAPI.getAll({ excludeRejected: 'true' });
       const complaintList = Array.isArray(data.data) ? data.data : (data.data?.complaints || []);
       setAllComplaints(complaintList);
     } catch (error) {
@@ -333,7 +458,7 @@ const MayorDashboard = () => {
 
   if (loading) {
     return (
-      <DashboardLayout bgClass="mayor-bg" showShapes={true}>
+      <DashboardLayout>
         <div className="flex items-center justify-center h-64">
           <Loader2 size={32} className="animate-spin text-teal-500" />
         </div>
@@ -359,9 +484,54 @@ const MayorDashboard = () => {
       ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
       : 'text-slate-500 hover:bg-white hover:text-slate-900'
   }`;
+  const currentAwardMonthKey = getCurrentAwardMonthKey();
+  const currentAwardPeriodLabel = getCurrentAwardPeriodLabel();
+  const activeFilterLabel =
+    COMPLAINT_FILTERS.find((filter) => filter.key === activeFilter)?.label || 'All Complaints';
+  const currentWinner = citizenPoints.find((citizen) =>
+    citizen.awardHistory?.some((award) => award.monthKey === currentAwardMonthKey),
+  );
+  const announceLocked = Boolean(currentWinner);
+  const openAnnounceConfirm = () =>
+    setConfirmState({ open: true, type: 'announce', citizen: currentWinner || null });
+  const openUndoConfirm = (citizen) =>
+    setConfirmState({ open: true, type: 'undo', citizen });
+  const closeConfirm = () => {
+    if (actionLoading) return;
+    setConfirmState({ open: false, type: null, citizen: null });
+  };
+  const handleConfirmAction = () => {
+    if (confirmState.type === 'announce') {
+      handleAnnounceWinner();
+      return;
+    }
+    if (confirmState.type === 'undo' && confirmState.citizen?._id) {
+      handleRemoveBadge(confirmState.citizen._id);
+    }
+  };
+  const confirmTitle =
+    confirmState.type === 'undo'
+      ? 'Undo Monthly Winner'
+      : 'Announce Monthly Winner';
+  const confirmMessage =
+    confirmState.type === 'undo'
+      ? `This will remove the ${currentAwardPeriodLabel} Good Citizen award from ${confirmState.citizen?.name || 'this citizen'}. Their older badge history will stay intact.`
+      : `This will officially declare the top-ranked citizen as the Good Citizen winner for ${currentAwardPeriodLabel}. This month can only be awarded once.`;
+  const confirmLabel =
+    confirmState.type === 'undo' ? 'Confirm Undo' : 'Confirm Announcement';
 
   return (
-    <DashboardLayout bgClass="mayor-bg" showShapes={true}>
+    <DashboardLayout>
+      <ActionConfirmModal
+        open={confirmState.open}
+        title={confirmTitle}
+        message={confirmMessage}
+        confirmLabel={confirmLabel}
+        confirmTone={confirmState.type === 'undo' ? 'danger' : 'teal'}
+        onConfirm={handleConfirmAction}
+        onClose={closeConfirm}
+        loading={actionLoading}
+      />
       <div className="mx-auto max-w-[1390px] space-y-6 px-0 sm:px-1">
         {/* Header */}
         <motion.div
@@ -418,12 +588,45 @@ const MayorDashboard = () => {
         {activeTab === 'complaints' ? (
           <section className="space-y-4">
               <div className="flex items-center justify-between px-1 lg:px-2">
-                <h2 className="text-lg font-bold text-gray-900 capitalize">{activeFilter} Complaints</h2>
+                <h2 className="text-lg font-bold text-gray-900">{activeFilterLabel}</h2>
                 <span className="text-[10px] font-black text-gray-400 uppercase">{complaints.length} Items</span>
+              </div>
+              <div className="flex flex-wrap gap-2 px-1 lg:px-2">
+                {COMPLAINT_FILTERS.map((filter) => (
+                  <button
+                    key={filter.key}
+                    onClick={() => fetchComplaints(filter.key)}
+                    disabled={listLoading && activeFilter === filter.key}
+                    className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.16em] transition-all ${
+                      activeFilter === filter.key
+                        ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/10'
+                        : 'border border-slate-200 bg-white text-slate-500 hover:border-teal-200 hover:text-teal-700'
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
+                  >
+                    <T en={filter.label} />
+                  </button>
+                ))}
               </div>
               <div className="rounded-[1.75rem] border border-gray-100 bg-white p-3 shadow-sm sm:p-4">
                 <div className="space-y-3 max-h-[780px] overflow-y-auto pr-1 custom-scrollbar">
-                  {complaints.map((c, i) => <ComplaintCard key={c._id} complaint={c} index={i} onClick={(id) => navigate(`/complaints/${id}`)} />)}
+                  {listLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 size={22} className="animate-spin text-teal-500" />
+                    </div>
+                  ) : complaints.length > 0 ? (
+                    complaints.map((c, i) => (
+                      <ComplaintCard
+                        key={c._id}
+                        complaint={c}
+                        index={i}
+                        onClick={(id) => navigate(`/complaints/${id}`)}
+                      />
+                    ))
+                  ) : (
+                    <div className="py-12 text-center text-sm font-medium text-slate-400">
+                      No complaints matched this filter.
+                    </div>
+                  )}
                 </div>
               </div>
           </section>
@@ -432,38 +635,78 @@ const MayorDashboard = () => {
               <div className="bg-teal-50 p-6 rounded-[1.75rem] border border-teal-100 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-xl font-bold text-teal-900"><T en="Citizen Recognition" /></h2>
-                  <p className="text-sm text-teal-700"><T en="Reward the top active citizen." /></p>
+                  <p className="text-sm text-teal-700">
+                    {currentWinner
+                      ? `${currentAwardPeriodLabel} winner already declared: ${currentWinner.name}.`
+                      : 'Reward the top active citizen for this month.'}
+                  </p>
                 </div>
-                <button onClick={handleAnnounceWinner} className="bg-teal-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:bg-teal-700 transition-all flex items-center justify-center gap-2">
+                <button
+                  onClick={openAnnounceConfirm}
+                  disabled={announceLocked}
+                  className="bg-teal-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:bg-teal-700 transition-all flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-teal-600"
+                >
                   <Plus size={18} /> <T en="Announce Monthly Winner" />
                 </button>
               </div>
               <div className="overflow-hidden rounded-[1.75rem] border border-gray-100 bg-white shadow-sm">
-                <div className="grid grid-cols-4 p-4 bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  <span className="col-span-2"><T en="Citizen Name" /></span><span><T en="Points" /></span><span><T en="Status" /></span>
+                <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                  <span className="col-span-4"><T en="Citizen Name" /></span>
+                  <span className="col-span-2"><T en="Points" /></span>
+                  <span className="col-span-2"><T en="Badges" /></span>
+                  <span className="col-span-4"><T en="Award History" /></span>
                 </div>
                 <div className="max-h-[760px] overflow-y-auto divide-y divide-gray-50 custom-scrollbar">
                   {rewardLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto text-teal-500" /></div> : (
                     citizenPoints.map(citizen => (
-                      <div key={citizen._id} className="grid grid-cols-4 p-4 items-center hover:bg-gray-50 transition-colors">
-                        <div className="col-span-2 flex items-center gap-3 min-w-0">
+                      <div key={citizen._id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50 transition-colors">
+                        <div className="col-span-4 flex items-center gap-3 min-w-0">
                           <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">{citizen.avatar ? <img src={resolveAvatar(citizen.avatar)} className="w-full h-full object-cover" /> : <User size={18} className="text-gray-400" />}</div>
                           <div className="min-w-0"><p className="font-bold flex items-center gap-1.5 truncate">{citizen.name} {citizen.isGoodCitizen && <GoodCitizenStar size={12} />}</p><p className="text-[10px] text-gray-400 font-mono truncate">{citizen.email}</p></div>
                         </div>
-                        <div className="text-sm font-black text-teal-600">{citizen.points}</div>
-                        <div className="flex items-center justify-between gap-3 pr-2">
+                        <div className="col-span-2 text-sm font-black text-teal-600">{citizen.points}</div>
+                        <div className="col-span-2">
+                          <div className="inline-flex flex-col rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2">
+                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-500">Total Awards</span>
+                            <span className="mt-1 text-sm font-black text-amber-800">{citizen.badgeCount || 0}</span>
+                          </div>
+                        </div>
+                        <div className="col-span-4 flex flex-col gap-3 pr-2">
                           {citizen.isGoodCitizen ? (
-                            <>
+                            <div className="flex flex-wrap items-center gap-2">
                               <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap"><T en="Current Winner" /></span>
+                              <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">
+                                {citizen.latestAward?.label || currentAwardPeriodLabel}
+                              </span>
                               <button 
-                                onClick={() => handleRemoveBadge(citizen._id)}
+                                onClick={() => openUndoConfirm(citizen)}
                                 className="text-[10px] font-bold text-red-500 hover:text-red-700 flex items-center gap-1 whitespace-nowrap"
                               >
-                                <X size={12} /> <T en="Undo" />
+                                <X size={12} /> <T en="Undo This Month" />
                               </button>
-                            </>
+                            </div>
                           ) : (
                             <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest"><T en="Citizen" /></span>
+                          )}
+                          {citizen.awardHistory?.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {citizen.awardHistory.slice(0, 4).map((award) => (
+                                <span
+                                  key={`${citizen._id}-${award.monthKey || award.awardedAt}`}
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-bold text-slate-600"
+                                >
+                                  <Calendar size={11} className="text-slate-400" />
+                                  {formatAwardHistoryLabel(award)}
+                                </span>
+                              ))}
+                              {citizen.awardHistory.length > 4 && (
+                                <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-bold text-slate-400">
+                                  +{citizen.awardHistory.length - 4} more
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">No awards yet</span>
                           )}
                         </div>
                       </div>

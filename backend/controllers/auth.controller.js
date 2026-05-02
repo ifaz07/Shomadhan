@@ -3,6 +3,20 @@ const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const User = require("../models/User.model");
 
+const hasCurrentMonthlyBadge = (user, date = new Date()) => {
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
+
+  return (user?.badges || []).some((badge) => {
+    const type = badge.type || "good_citizen_monthly";
+    return (
+      type === "good_citizen_monthly" &&
+      badge.awardMonth === month &&
+      badge.awardYear === year
+    );
+  });
+};
+
 // Helper: send token as HTTP-only cookie + JSON response
 const sendTokenResponse = (user, statusCode, res) => {
   const token = user.generateToken();
@@ -187,6 +201,14 @@ const logout = async (req, res) => {
 const getMe = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
+    const shouldBeCurrentWinner =
+      user?.role === "citizen" ? hasCurrentMonthlyBadge(user) : false;
+
+    if (user && user.isGoodCitizen !== shouldBeCurrentWinner) {
+      user.isGoodCitizen = shouldBeCurrentWinner;
+      await user.save({ validateBeforeSave: false });
+    }
+
     res.json({
       success: true,
       data: { user },

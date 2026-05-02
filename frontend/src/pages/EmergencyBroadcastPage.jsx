@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { AlertTriangle, Loader2, MapPin, Radio, Send } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { AlertTriangle, Loader2, MapPin, Radio, Send, X } from "lucide-react";
 import { Circle, MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -74,6 +74,7 @@ const EmergencyBroadcastPage = () => {
   const Layout = isServant ? ServantLayout : DashboardLayout;
 
   const [submitting, setSubmitting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [mapPosition, setMapPosition] = useState(
     user?.presentAddress?.lat && user?.presentAddress?.lng
       ? [user.presentAddress.lat, user.presentAddress.lng]
@@ -130,14 +131,19 @@ const EmergencyBroadcastPage = () => {
     reverseGeocode(nextPosition[0], nextPosition[1]);
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
+  const validateBeforeSend = () => {
     if (!mapPosition?.length) {
       toast.error("Pick the affected area on the map");
-      return;
+      return false;
     }
+    if (!form.title.trim() || !form.message.trim() || !form.areaLabel.trim()) {
+      toast.error("Complete the emergency broadcast form first");
+      return false;
+    }
+    return true;
+  };
 
+  const sendBroadcast = async () => {
     setSubmitting(true);
     try {
       const payload = {
@@ -148,6 +154,7 @@ const EmergencyBroadcastPage = () => {
 
       const res = await emergencyBroadcastAPI.create(payload);
       toast.success(res.data.message || "Emergency alert sent");
+      setConfirmOpen(false);
       setForm((prev) => ({
         ...prev,
         title: "",
@@ -159,6 +166,23 @@ const EmergencyBroadcastPage = () => {
       setSubmitting(false);
     }
   };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (!validateBeforeSend()) return;
+    setConfirmOpen(true);
+  };
+
+  useEffect(() => {
+    if (!confirmOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [confirmOpen]);
 
   return (
     <Layout>
@@ -343,6 +367,101 @@ const EmergencyBroadcastPage = () => {
           </section>
         </div>
       </div>
+
+      <AnimatePresence>
+        {confirmOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10000] flex items-start justify-center bg-slate-950/55 p-4 pt-8 backdrop-blur-sm"
+            onClick={(event) => {
+              if (event.target === event.currentTarget && !submitting) {
+                setConfirmOpen(false);
+              }
+            }}
+          >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            className="w-full max-w-md max-h-[calc(100vh-4rem)] overflow-hidden rounded-[2rem] border border-rose-100 bg-white shadow-2xl"
+          >
+            <div className="max-h-[calc(100vh-4rem)] overflow-y-auto px-5 pb-5 pt-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+                    <AlertTriangle size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">Confirm Emergency Broadcast</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-500">
+                      This will immediately notify citizens inside the selected radius. Please confirm before sending.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => !submitting && setConfirmOpen(false)}
+                  className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-2.5">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Alert Title</p>
+                  <p className="mt-1 text-sm font-bold text-slate-900 line-clamp-2">{form.title}</p>
+                </div>
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Disaster Type</p>
+                    <p className="mt-1 text-sm font-bold capitalize text-slate-900">
+                      {(DISASTER_OPTIONS.find((option) => option.value === form.disasterType)?.label || form.disasterType).replace(/_/g, " ")}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Radius</p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">{Number(form.radiusKm || 0).toFixed(1)} km</p>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Affected Area</p>
+                  <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-700 line-clamp-3">{form.areaLabel}</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Emergency Message</p>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-700 line-clamp-3">{form.message}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 bg-white px-5 py-4">
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmOpen(false)}
+                  disabled={submitting}
+                  className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={sendBroadcast}
+                  disabled={submitting}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {submitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                  Confirm & Send
+                </button>
+              </div>
+            </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Layout>
   );
 };

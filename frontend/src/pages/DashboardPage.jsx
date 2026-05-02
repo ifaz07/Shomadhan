@@ -9,7 +9,6 @@ import {
   ThumbsUp,
   MapPin,
   Tag,
-  Filter,
   Search,
   Navigation,
   X,
@@ -35,6 +34,14 @@ const STATUS_CONFIG = {
   resolved: { badge: "bg-green-100 text-green-700", label: "Resolved" },
   rejected: { badge: "bg-red-100 text-red-700", label: "Rejected" },
 };
+
+const STATUS_FILTERS = [
+  { key: "All", label: "All" },
+  { key: "pending", label: "Pending" },
+  { key: "in-progress", label: "In Progress" },
+  { key: "resolved", label: "Resolved" },
+  { key: "rejected", label: "Rejected" },
+];
 
 
 // ─── Helpers ──────────────────────────────────────────────────────────
@@ -215,7 +222,6 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [listLoading, setListLoading] = useState(false);
 
-  const [priorityFilter, setPriorityFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [locationSearch, setLocationSearch] = useState("");
   const [nearMode, setNearMode] = useState(false); // GPS near-me mode
@@ -236,7 +242,6 @@ const DashboardPage = () => {
     const doFetch = () => {
       setListLoading(true);
       const params = { excludeRejected: "true" };
-      if (priorityFilter !== "All") params.priority = priorityFilter;
       if (statusFilter !== "All") params.status = statusFilter;
       if (locationSearch.trim()) params.location = locationSearch.trim();
 
@@ -261,7 +266,7 @@ const DashboardPage = () => {
     }
 
     return () => clearTimeout(debounceRef.current);
-  }, [priorityFilter, statusFilter, locationSearch, nearMode]);
+  }, [statusFilter, locationSearch, nearMode]);
 
   // "Near Me" — get GPS then call /complaints/nearby
   const handleNearMe = () => {
@@ -276,7 +281,6 @@ const DashboardPage = () => {
         const { latitude, longitude } = pos.coords;
         complaintAPI
           .getNearby(latitude, longitude, 5, "", {
-            priority: priorityFilter !== "All" ? priorityFilter : undefined,
             status: statusFilter !== "All" ? statusFilter : undefined,
           }) // 5 km radius
           .then((r) => {
@@ -304,10 +308,7 @@ const DashboardPage = () => {
 
   const filtered = complaints; // filtering is now done server-side
   const hasActiveFilters =
-    nearMode ||
-    priorityFilter !== "All" ||
-    statusFilter !== "All" ||
-    Boolean(locationSearch.trim());
+    nearMode || statusFilter !== "All" || Boolean(locationSearch.trim());
   const headerStats = [
     { label: "Total Complaints", value: stats.total ?? 0, accent: "text-blue-200" },
     { label: "Critical", value: stats.critical ?? 0, accent: "text-red-200" },
@@ -357,42 +358,25 @@ const DashboardPage = () => {
         transition={{ delay: 0.22 }}
         className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-3.5 mb-4 flex flex-wrap items-center gap-3"
       >
-        <span className="flex items-center gap-1.5 text-sm font-medium text-gray-600">
-          <Filter size={14} />
-          <T en="Filters:" />
-        </span>
+        <div className="flex flex-wrap gap-2">
+          {STATUS_FILTERS.map((status) => (
+            <button
+              key={status.key}
+              onClick={() => {
+                setStatusFilter(status.key);
+                setNearMode(false);
+              }}
+              className={`rounded-xl px-3 py-2 text-xs font-bold transition-colors ${
+                statusFilter === status.key
+                  ? "bg-slate-900 text-white"
+                  : "border border-slate-200 bg-white text-slate-500 hover:border-teal-200 hover:text-teal-700"
+              }`}
+            >
+              <T en={status.label} />
+            </button>
+          ))}
+        </div>
 
-        <select
-          value={priorityFilter}
-          onChange={(e) => {
-            setPriorityFilter(e.target.value);
-            setNearMode(false);
-          }}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
-        >
-          <option value="All"><T en="All Priorities" /></option>
-          <option value="Critical"><T en="Critical" /></option>
-          <option value="High"><T en="High" /></option>
-          <option value="Medium"><T en="Medium" /></option>
-          <option value="Low"><T en="Low" /></option>
-        </select>
-
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setNearMode(false);
-          }}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
-        >
-          <option value="All"><T en="All Status" /></option>
-          <option value="pending"><T en="Pending" /></option>
-          <option value="in-progress"><T en="In Progress" /></option>
-          <option value="resolved"><T en="Resolved" /></option>
-          <option value="rejected"><T en="Rejected" /></option>
-        </select>
-
-        {/* Location text search */}
         {!nearMode && (
           <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus-within:ring-2 focus-within:ring-teal-400">
             <Search size={13} className="text-gray-400 flex-shrink-0" />

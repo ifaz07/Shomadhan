@@ -19,6 +19,11 @@ const {
   normalizeDepartmentKey,
 } = require("../utils/departmentTaxonomy");
 
+const getCurrentAwardPeriod = (date = new Date()) => ({
+  awardMonth: date.getMonth() + 1,
+  awardYear: date.getFullYear(),
+});
+
 // Helper: Generate unique ticket ID (e.g., SOM-2024-ABC12)
 const generateTicketId = () => {
   const prefix = "SOM";
@@ -294,7 +299,7 @@ const getHeatmapData = async (req, res, next) => {
     const complaints = await Complaint.find({
       latitude: { $ne: null },
       longitude: { $ne: null },
-      status: { $ne: "rejected" },
+      status: { $nin: ["resolved", "rejected"] },
     }).select(
       "latitude longitude priority voteCount category status ticketId title location createdAt emergencyFlag",
     );
@@ -352,7 +357,9 @@ const getNearbyComplaints = async (req, res, next) => {
     if (category) {
       const normalizedCategory = normalizeDepartmentKey(category);
       if (normalizedCategory) {
-        query.category = { $in: getDepartmentComplaintValues(normalizedCategory) };
+        query.category = {
+          $in: getDepartmentComplaintValues(normalizedCategory),
+        };
       } else {
         query.category = category;
       }
@@ -484,23 +491,36 @@ const deleteComplaint = async (req, res, next) => {
 const getPublicStats = async (req, res, next) => {
   try {
     const { filter } = req.query; // 'monthly' or 'yearly'
-    let dateFilter = { status: { $ne: 'rejected' } };
+    let dateFilter = { status: { $ne: "rejected" } };
 
-    if (filter === 'monthly') {
+    if (filter === "monthly") {
       const startOfMonth = new Date();
-      startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
       dateFilter.createdAt = { $gte: startOfMonth };
-    } else if (filter === 'yearly') {
+    } else if (filter === "yearly") {
       const startOfYear = new Date();
-      startOfYear.setMonth(0, 1); startOfYear.setHours(0,0,0,0);
+      startOfYear.setMonth(0, 1);
+      startOfYear.setHours(0, 0, 0, 0);
       dateFilter.createdAt = { $gte: startOfYear };
     }
 
-    const all = await Complaint.find(dateFilter).select('category priority status');
+    const all = await Complaint.find(dateFilter).select(
+      "category priority status",
+    );
 
     // Fetch the current Good Citizen of the month
-    const goodCitizen = await User.findOne({ isGoodCitizen: true })
-      .select('name avatar points');
+    const currentAwardPeriod = getCurrentAwardPeriod();
+    const goodCitizen = await User.findOne({
+      role: "citizen",
+      badges: {
+        $elemMatch: {
+          type: "good_citizen_monthly",
+          awardMonth: currentAwardPeriod.awardMonth,
+          awardYear: currentAwardPeriod.awardYear,
+        },
+      },
+    }).select("name avatar points badges");
 
     const deptStats = DEPARTMENT_KEYS.reduce((acc, key) => {
       acc[key] = {
@@ -513,16 +533,22 @@ const getPublicStats = async (req, res, next) => {
       return acc;
     }, {});
 
-    let total = 0, critical = 0, high = 0, medium = 0, low = 0, inProgress = 0, resolved = 0;
+    let total = 0,
+      critical = 0,
+      high = 0,
+      medium = 0,
+      low = 0,
+      inProgress = 0,
+      resolved = 0;
 
     all.forEach((c) => {
       total++;
-      if (c.priority === 'Critical') critical++;
-      if (c.priority === 'High') high++;
-      if (c.priority === 'Medium') medium++;
-      if (c.priority === 'Low') low++;
-      if (c.status === 'in-progress') inProgress++;
-      if (c.status === 'resolved') resolved++;
+      if (c.priority === "Critical") critical++;
+      if (c.priority === "High") high++;
+      if (c.priority === "Medium") medium++;
+      if (c.priority === "Low") low++;
+      if (c.status === "in-progress") inProgress++;
+      if (c.status === "resolved") resolved++;
 
       const deptKey = normalizeDepartmentKey(c.category);
       if (deptKey && deptStats[deptKey]) {
@@ -539,7 +565,17 @@ const getPublicStats = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: { total, critical, high, medium, low, inProgress, resolved, departments: deptStats, goodCitizen },
+      data: {
+        total,
+        critical,
+        high,
+        medium,
+        low,
+        inProgress,
+        resolved,
+        departments: deptStats,
+        goodCitizen,
+      },
     });
   } catch (error) {
     next(error);
@@ -664,7 +700,7 @@ const getComplaints = async (req, res, next) => {
 const getComplaint = async (req, res, next) => {
   try {
     const complaint = await Complaint.findById(req.params.id)
-      .populate("user", "name isVerified")
+      .populate("user", "name isVerified avatar role")
       .lean();
     if (!complaint) {
       return res
@@ -676,8 +712,7 @@ const getComplaint = async (req, res, next) => {
       typeof complaint.user === "object" && complaint.user !== null
         ? complaint.user._id
         : complaint.user;
-    const isOwner =
-      ownerId && ownerId.toString() === req.user._id.toString();
+    const isOwner = ownerId && ownerId.toString() === req.user._id.toString();
 
     if (isOwner) {
       const myFeedback = await Feedback.findOne({
@@ -702,6 +737,8 @@ const getComplaint = async (req, res, next) => {
         ? {
             name: complaint.user.name,
             isVerified: complaint.user.isVerified,
+            avatar: complaint.user.avatar || "",
+            role: complaint.user.role || "",
           }
         : null;
 

@@ -18,7 +18,7 @@ import toast from "react-hot-toast";
 import { complaintAPI, servantAPI } from "../../services/api";
 import ServantLayout from "../../components/layout/ServantLayout";
 import T from "../../components/T";
-import { getDepartmentLabel } from "../../constants/departments";
+import { getDepartmentLabel, normalizeDepartmentValue } from "../../constants/departments";
 
 // Fix Leaflet default icon
 import markerIcon from "leaflet/dist/images/marker-icon.png";
@@ -191,7 +191,10 @@ const ServantHeatmapPage = () => {
 
   const filtered = points.filter((p) => {
     if (priorityFilter !== "All" && p.priority !== priorityFilter) return false;
-    if (categoryFilter !== "All" && p.category !== categoryFilter) return false;
+    if (categoryFilter !== "All") {
+      const normalizedCategory = normalizeDepartmentValue(p.category);
+      if ((normalizedCategory || p.category) !== categoryFilter) return false;
+    }
     return true;
   });
 
@@ -202,13 +205,16 @@ const ServantHeatmapPage = () => {
 
   const categories = [
     "All",
-    "Road",
-    "Waste",
-    "Electricity",
-    "Water",
-    "Safety",
-    "Environment",
-    "Other",
+    "public_works",
+    "water_authority",
+    "electricity",
+    "sanitation",
+    "public_safety",
+    "animal_control",
+    "health",
+    "transport",
+    "environment",
+    "police",
   ];
 
   return (
@@ -265,8 +271,10 @@ const ServantHeatmapPage = () => {
         </motion.div>
 
         {/* ── Controls ── */}
-        <div className="flex flex-wrap items-center gap-3 bg-white border border-gray-100 rounded-xl p-4">
-          <Filter size={16} className="text-gray-400" />
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-100 bg-white px-5 py-4 shadow-sm">
+          <span className="flex items-center gap-1.5 text-sm font-medium text-gray-500">
+            <Filter size={15} className="text-gray-400" />
+          </span>
 
           {/* Priority filter */}
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -274,12 +282,12 @@ const ServantHeatmapPage = () => {
               <button
                 key={p}
                 onClick={() => setPriorityFilter(p)}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all border ${
+                className={`rounded-xl px-4 py-2 text-xs font-bold transition-all border ${
                   priorityFilter === p
                     ? p === "All"
-                      ? "bg-gray-800 text-white border-gray-800"
+                      ? "bg-slate-900 text-white border-slate-900 shadow-sm"
                       : `${PRIORITY_CONFIG[p]?.bg} ${PRIORITY_CONFIG[p]?.text} ${PRIORITY_CONFIG[p]?.border}`
-                    : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
+                    : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
                 }`}
               >
                 {p === "All" ? <T en="All Priority" /> : <T en={p} />}
@@ -293,7 +301,7 @@ const ServantHeatmapPage = () => {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-medium text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:border-blue-400"
           >
             {categories.map((c) => (
               <option key={c} value={c}>
@@ -305,26 +313,26 @@ const ServantHeatmapPage = () => {
           <div className="w-px h-5 bg-gray-200" />
 
           {/* Layer toggles */}
-          <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-600">
+          <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-600">
             <input
               type="checkbox"
               checked={showHeatmap}
               onChange={(e) => setShowHeatmap(e.target.checked)}
-              className="accent-blue-600"
+              className="h-4 w-4 rounded accent-blue-600"
             />
             <T en="Heatmap overlay" />
           </label>
-          <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-600">
+          <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-600">
             <input
               type="checkbox"
               checked={showMarkers}
               onChange={(e) => setShowMarkers(e.target.checked)}
-              className="accent-blue-600"
+              className="h-4 w-4 rounded accent-blue-600"
             />
             <T en="Priority markers" />
           </label>
 
-          <span className="ml-auto text-xs text-gray-400">
+          <span className="ml-auto text-sm text-gray-400">
             {filtered.length} / {points.length} <T en="complaints shown" />
           </span>
         </div>

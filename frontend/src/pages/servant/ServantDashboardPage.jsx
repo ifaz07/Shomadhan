@@ -8,10 +8,12 @@ import {
   Flame,
   ArrowRight,
   Loader2,
-  Filter,
   ExternalLink,
   MapPin,
   Tag,
+  Search,
+  Navigation,
+  X,
 } from "lucide-react";
 import { servantAPI, complaintAPI } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -80,6 +82,14 @@ const STATUS_STYLE = {
   resolved: { bg: "bg-green-100", text: "text-green-700", label: "Resolved" },
   rejected: { bg: "bg-red-100", text: "text-red-700", label: "Rejected" },
 };
+
+const STATUS_FILTERS = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "Pending" },
+  { key: "in-progress", label: "In Progress" },
+  { key: "resolved", label: "Resolved" },
+  { key: "rejected", label: "Rejected" },
+];
 
 const getSlaInfo = (slaDeadline, slaDurationHours) => {
   if (!slaDeadline || !slaDurationHours) return null;
@@ -250,15 +260,14 @@ const ServantDashboardPage = () => {
   const [complaints, setComplaints] = useState([]);
   const [listLoading, setListLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("");
+  const [nearMode, setNearMode] = useState(false);
 
   const fetchComplaints = async () => {
     setListLoading(true);
     try {
       const params = {};
       if (statusFilter !== "all") params.status = statusFilter;
-      if (priorityFilter !== "all") params.priority = priorityFilter;
       if (locationFilter.trim()) params.location = locationFilter.trim();
       const res = await complaintAPI.getAll(params);
       const raw = res.data.data;
@@ -279,8 +288,43 @@ const ServantDashboardPage = () => {
   }, []);
 
   useEffect(() => {
+    if (nearMode) return;
     fetchComplaints();
-  }, [statusFilter, priorityFilter, locationFilter]);
+  }, [statusFilter, locationFilter, nearMode]);
+
+  const handleNearMe = () => {
+    if (!navigator.geolocation) return;
+    setNearMode(true);
+    setListLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await servantAPI.getComplaints({
+            status: statusFilter,
+            lat: latitude,
+            lng: longitude,
+            radius: 5,
+            limit: 50,
+          });
+          setComplaints(res.data.data || []);
+        } catch {
+          setComplaints([]);
+        } finally {
+          setListLoading(false);
+        }
+      },
+      () => {
+        setNearMode(false);
+        setListLoading(false);
+      },
+    );
+  };
+
+  const clearNearMe = () => {
+    setNearMode(false);
+    setLocationFilter("");
+  };
 
   const deptLabel = DEPT_DISPLAY[user?.department] || "Department";
   const headerStats = [
@@ -360,72 +404,64 @@ const ServantDashboardPage = () => {
             <T en="This dashboard shows all complaints across the city. Go to Department Complaints to work only on items assigned to your department." />
           </p>
 
-          <div className="flex flex-wrap items-center gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100 mb-4">
-            <span className="flex items-center gap-1 text-sm text-gray-600">
-              <Filter size={14} /> <T en="Filters" />
-            </span>
+              <div className="flex flex-wrap items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100 mb-4">
+            <div className="flex flex-wrap gap-2">
+              {STATUS_FILTERS.map((status) => (
+                <button
+                  key={status.key}
+                  onClick={() => {
+                    setStatusFilter(status.key);
+                    setNearMode(false);
+                  }}
+                  className={`rounded-xl px-3 py-2 text-xs font-bold transition-colors ${
+                    statusFilter === status.key
+                      ? "bg-slate-900 text-white"
+                      : "border border-slate-200 bg-white text-slate-500 hover:border-teal-200 hover:text-teal-700"
+                  }`}
+                >
+                  <T en={status.label} />
+                </button>
+              ))}
+            </div>
 
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm"
-            >
-              <option value="all">
-                <T en="All Status" />
-              </option>
-              <option value="pending">
-                <T en="Pending" />
-              </option>
-              <option value="in-progress">
-                <T en="In Progress" />
-              </option>
-              <option value="resolved">
-                <T en="Resolved" />
-              </option>
-              <option value="rejected">
-                <T en="Rejected" />
-              </option>
-            </select>
+            {!nearMode && (
+              <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-1.5 bg-white">
+                <Search size={13} className="text-gray-400 flex-shrink-0" />
+                <input
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  placeholder="Search location..."
+                  className="text-sm text-gray-700 outline-none bg-transparent w-40"
+                />
+                {locationFilter && (
+                  <button
+                    onClick={() => setLocationFilter("")}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+            )}
 
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm"
-            >
-              <option value="all">
-                <T en="All Priority" />
-              </option>
-              <option value="Critical">
-                <T en="Critical" />
-              </option>
-              <option value="High">
-                <T en="High" />
-              </option>
-              <option value="Medium">
-                <T en="Medium" />
-              </option>
-              <option value="Low">
-                <T en="Low" />
-              </option>
-            </select>
-
-            <input
-              value={locationFilter}
-              onChange={(e) => setLocationFilter(e.target.value)}
-              placeholder="Location..."
-              className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-40"
-            />
-
-            <button
-              onClick={() => {
-                setStatusFilter("all");
-                setPriorityFilter("all");
-                setLocationFilter("");
-              }}
-              className="text-sm text-blue-600 hover:underline"
-            >
-              <T en="Reset" />
-            </button>
+            {nearMode ? (
+              <button
+                onClick={clearNearMe}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+              >
+                <Navigation size={13} />
+                <T en="Near Me" />
+                <X size={13} className="ml-0.5" />
+              </button>
+            ) : (
+              <button
+                onClick={handleNearMe}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-teal-300 text-teal-700 hover:bg-teal-50 transition-colors"
+              >
+                <Navigation size={13} />
+                <T en="Near Me" />
+              </button>
+            )}
           </div>
 
           {listLoading ? (

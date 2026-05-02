@@ -224,12 +224,17 @@ const LoginPage = () => {
           </motion.button>
         </form>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
-          <T en="Don't have an account?" />{' '}
-          <Link to="/signup" className="text-teal-600 hover:text-teal-700 font-semibold transition-colors">
-            <T en="Create one" />
+        <div className="mt-7 border-t border-slate-100 pt-5 text-center">
+          <p className="text-sm text-slate-500">
+            <T en="New to Somadhan?" />
+          </p>
+          <Link
+            to="/signup"
+            className="mt-2 inline-flex items-center justify-center text-sm font-bold text-teal-700 transition-colors hover:text-teal-800"
+          >
+            <T en="Create your account" />
           </Link>
-        </p>
+        </div>
       </div>
 
       <p className="text-center text-xs text-white/30 mt-6">

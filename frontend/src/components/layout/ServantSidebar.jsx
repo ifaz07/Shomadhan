@@ -9,9 +9,7 @@ import {
   Menu,
   X,
   ChevronLeft,
-  Briefcase,
   Bell,
-  ShieldCheck,
   Map,
   BarChart3,
   MessageSquare,
@@ -21,6 +19,13 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { notificationAPI } from "../../services/api";
 import LanguageToggle from "../LanguageToggle";
+import { VerifiedMark } from "../VerifiedBadge";
+
+const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1");
+const resolveAvatar = (url) => {
+  if (!url) return null;
+  return url.startsWith("http") ? url : `${API_BASE.replace("/api/v1", "")}${url}`;
+};
 
 const DEPT_DISPLAY = {
   public_works: "Public Works",
@@ -59,6 +64,7 @@ const ServantSidebar = () => {
   }, [location.pathname]);
 
   const deptLabel = DEPT_DISPLAY[user?.department] || "Department";
+  const userAvatar = resolveAvatar(user?.avatar);
 
   const navItems = [
     { path: "/servant/profile", label: "My Profile", icon: User },
@@ -109,8 +115,8 @@ const ServantSidebar = () => {
       <div className="p-5 border-b border-gray-100">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-              <Briefcase size={18} className="text-white" />
+            <div className="relative w-10 h-10 rounded-full bg-[#0d3b4b]/5 flex items-center justify-center flex-shrink-0 overflow-hidden border-2 border-[#a1824a]/20">
+              <img src="/assets/auth-logo.png" alt="Logo" className="w-full h-full object-cover" />
             </div>
             <motion.div
               initial={false}
@@ -118,9 +124,9 @@ const ServantSidebar = () => {
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="overflow-hidden whitespace-nowrap"
             >
-                <h1 className="text-base font-bold text-gray-900">Somadhan</h1>
-                <p className="text-[10px] text-blue-500 font-semibold -mt-0.5">
-                  Servant Portal
+                <h1 className="text-lg font-black text-[#0d3b4b]">Somadhan</h1>
+                <p className="text-[10px] text-[#a1824a] font-bold tracking-widest uppercase -mt-1">
+                  City Govt
                 </p>
               </motion.div>
           </div>
@@ -139,15 +145,22 @@ const ServantSidebar = () => {
       <div className="p-4 border-b border-gray-100">
         <div className="flex items-center gap-3">
           <div className="relative flex-shrink-0">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
-              <span className="text-sm font-bold text-blue-700">
-                {user?.name?.charAt(0)?.toUpperCase() || "O"}
-              </span>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center overflow-hidden">
+              {userAvatar ? (
+                <img
+                  src={userAvatar}
+                  alt={user?.name || "Officer"}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-sm font-bold text-blue-700">
+                  {user?.name?.charAt(0)?.toUpperCase() || "O"}
+                </span>
+              )}
             </div>
-            {/* Green verified tick */}
-            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border border-white">
-              <ShieldCheck size={9} className="text-white" />
-            </div>
+            {user?.isVerified && (
+              <VerifiedMark className="absolute -bottom-0.5 -right-0.5" />
+            )}
           </div>
           <motion.div
             initial={false}
@@ -280,9 +293,14 @@ const ServantSidebar = () => {
       >
         {SidebarContent()}
         <button
+          type="button"
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          onMouseEnter={() => setIsCollapsed((prev) => !prev)}
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-20 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50"
+          className="absolute -right-4 top-24 h-10 w-10 bg-white border border-slate-200/80 rounded-2xl flex items-center justify-center shadow-[0_12px_30px_-18px_rgba(15,23,42,0.35)] hover:bg-slate-50 hover:shadow-[0_18px_36px_-18px_rgba(15,23,42,0.45)] transition-all duration-200"
         >
+          <span className="pointer-events-none absolute inset-y-2 left-0 w-px rounded-full bg-gradient-to-b from-transparent via-slate-200 to-transparent" />
           <ChevronLeft
             size={14}
             className={`text-gray-500 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""}`}

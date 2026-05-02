@@ -53,6 +53,11 @@ import autoTable from "jspdf-autotable";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1").replace("/api/v1", "");
 
+const resolveAvatar = (url) => {
+  if (!url) return null;
+  return url.startsWith("http") ? url : `${API_BASE}${url}`;
+};
+
 // ─── Config ───────────────────────────────────────────────────────────
 const DEPT_CONFIG = {
   public_works: {
@@ -232,6 +237,12 @@ const timeAgo = (date) => {
   if (hrs < 24) return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
 };
+
+const TIME_FILTER_OPTIONS = [
+  { key: "all", label: "All Time" },
+  { key: "monthly", label: "This Month" },
+  { key: "yearly", label: "This Year" },
+];
 
 // ─── Sub-Components ───────────────────────────────────────────────────
 const StatCard = ({ icon: Icon, label, value, color, bg, delay, subtitle }) => (
@@ -518,7 +529,37 @@ const PublicAnalyticsPage = () => {
                     without leaving the dashboard.
                   </p>
                 </div>
+                <div className="flex flex-wrap gap-2 xl:hidden">
+                  {TIME_FILTER_OPTIONS.map((option) => (
+                    <button
+                      key={option.key}
+                      onClick={() => setTimeFilter(option.key)}
+                      className={`rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.16em] transition-colors ${
+                        timeFilter === option.key
+                          ? "bg-white text-slate-900"
+                          : "bg-white/10 text-slate-200 hover:bg-white/16 hover:text-white"
+                      }`}
+                    >
+                      <T en={option.label} />
+                    </button>
+                  ))}
+                </div>
                 <div className="relative flex gap-3">
+                  <div className="hidden flex-wrap gap-2 xl:flex xl:justify-end">
+                    {TIME_FILTER_OPTIONS.map((option) => (
+                      <button
+                        key={option.key}
+                        onClick={() => setTimeFilter(option.key)}
+                        className={`rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.16em] transition-colors ${
+                          timeFilter === option.key
+                            ? "bg-white text-slate-900"
+                            : "bg-white/10 text-slate-200 hover:bg-white/16 hover:text-white"
+                        }`}
+                      >
+                        <T en={option.label} />
+                      </button>
+                    ))}
+                  </div>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -585,7 +626,7 @@ const PublicAnalyticsPage = () => {
                 <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-white">
                   {stats.goodCitizen.avatar ? (
                     <img
-                      src={`${API_BASE}${stats.goodCitizen.avatar}`}
+                      src={resolveAvatar(stats.goodCitizen.avatar)}
                       className="w-full h-full object-cover"
                     />
                   ) : (

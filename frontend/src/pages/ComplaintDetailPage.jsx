@@ -10,7 +10,6 @@ import {
   Building2,
   MessageSquare,
   User,
-  CheckCircle,
   Activity,
   AlertCircle,
   Video as VideoIcon,
@@ -24,6 +23,7 @@ import toast from "react-hot-toast";
 import { complaintAPI } from "../services/api";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import T from "../components/T";
+import VerifiedBadge from "../components/VerifiedBadge";
 
 // Fix Leaflet default icon
 const defaultIcon = L.icon({
@@ -139,6 +139,15 @@ const resolveUrl = (item) => {
   return `${base}${url}`;
 };
 
+const resolveAvatar = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  const base = (
+    import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1"
+  ).replace("/api/v1", "");
+  return `${base}${url}`;
+};
+
 // ─── Timeline Icon ────────────────────────────────────────────────────
 const TimelineIcon = ({ role }) => {
   if (role === "system")
@@ -242,6 +251,7 @@ const ComplaintDetailPage = () => {
   const evidence = complaint.evidence || [];
   const timeline = complaint.history || [];
   const hasMap = complaint.latitude && complaint.longitude;
+  const submitterAvatar = resolveAvatar(complaint.submittedBy?.avatar);
 
   return (
     <DashboardLayout>
@@ -631,9 +641,17 @@ const ComplaintDetailPage = () => {
               <T en="Submitted By" />
             </h3>
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                <User size={16} className="text-gray-500" />
-              </div>
+              {submitterAvatar ? (
+                <img
+                  src={submitterAvatar}
+                  alt={complaint.submittedBy?.name || "Citizen"}
+                  className="w-10 h-10 rounded-full object-cover border border-emerald-100 flex-shrink-0"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <User size={16} className="text-gray-500" />
+                </div>
+              )}
               <div>
                 {complaint.isAnonymous ? (
                   <p className="text-sm font-medium text-gray-700">
@@ -645,10 +663,7 @@ const ComplaintDetailPage = () => {
                       {complaint.submittedBy?.name || <T en="Citizen" />}
                     </p>
                     {complaint.submittedBy?.isVerified && (
-                      <p className="text-xs text-green-600 flex items-center gap-1 mt-0.5">
-                        <CheckCircle size={10} />
-                        <T en="Verified Citizen" />
-                      </p>
+                      <VerifiedBadge label={<T en="Verified Citizen" />} className="mt-0.5" />
                     )}
                   </>
                 )}

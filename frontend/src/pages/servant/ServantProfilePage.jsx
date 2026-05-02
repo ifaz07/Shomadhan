@@ -20,6 +20,7 @@ import { useAuth } from "../../context/AuthContext";
 import ServantLayout from "../../components/layout/ServantLayout";
 import api, { authAPI } from "../../services/api";
 import T from "../../components/T";
+import VerifiedBadge, { VerifiedMark } from "../../components/VerifiedBadge";
 
 const DEPT_DISPLAY = {
   public_works: "Public Works",
@@ -220,9 +221,12 @@ const ServantProfilePage = () => {
                       <div className="flex h-24 w-24 items-center justify-center rounded-[1.75rem] bg-white/15 text-3xl font-black text-white ring-4 ring-white/25 shadow-xl">
                         {user?.name?.charAt(0)?.toUpperCase()}
                       </div>
-                      <div className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg ring-4 ring-white/20">
-                        <ShieldCheck size={18} />
-                      </div>
+                      {user?.isVerified && (
+                        <VerifiedMark
+                          className="absolute -bottom-2 -right-2 h-10 w-10 rounded-2xl ring-4 ring-white/20"
+                          iconSize={18}
+                        />
+                      )}
                     </div>
 
                     <div>
@@ -236,6 +240,12 @@ const ServantProfilePage = () => {
                         <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-blue-700">
                           {deptLabel}
                         </span>
+                        {user?.isVerified && (
+                          <VerifiedBadge
+                            label="Verified"
+                            className="border border-emerald-200 bg-emerald-100 px-3 py-1 uppercase tracking-[0.18em]"
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -409,15 +419,15 @@ const ServantProfilePage = () => {
               </div>
 
               <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-                <div className="rounded-[1.75rem] border border-green-200 bg-green-50 p-6">
+                <div className="rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-6">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-green-600">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
                       <ShieldCheck size={28} />
                     </div>
                     <div>
-                      <p className="text-lg font-bold text-green-700"><T en="Verified" /></p>
-                      <p className="mt-1 text-sm text-green-600"><T en="Your identity has been verified via National ID." /></p>
-                      {verifiedAt && <p className="mt-1 text-xs text-green-500"><T en="Verified on" /> {verifiedAt}</p>}
+                      <p className="text-lg font-bold text-emerald-700"><T en="Verified" /></p>
+                      <p className="mt-1 text-sm text-emerald-600"><T en="Your identity has been verified via National ID." /></p>
+                      {verifiedAt && <p className="mt-1 text-xs text-emerald-500"><T en="Verified on" /> {verifiedAt}</p>}
                     </div>
                   </div>
                 </div>

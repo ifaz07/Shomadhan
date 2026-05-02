@@ -53,8 +53,13 @@ const userSchema = new mongoose.Schema(
     },
     badges: [
       {
+        type: { type: String, default: 'good_citizen_monthly' },
         name: { type: String },
         awardedAt: { type: Date, default: Date.now },
+        awardMonth: { type: Number, min: 1, max: 12 },
+        awardYear: { type: Number },
+        monthKey: { type: String },
+        awardedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       },
     ],
     role: {

@@ -39,6 +39,7 @@ import DashboardLayout from "../components/layout/DashboardLayout";
 import { authAPI } from "../services/api";
 import AvatarCropModal from "../components/AvatarCropModal";
 import T from "../components/T";
+import VerifiedBadge from "../components/VerifiedBadge";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
@@ -79,6 +80,30 @@ const resolveAvatar = (url) => {
   if (!url) return null;
   if (url.startsWith("http")) return url;
   return `${API_BASE}${url}`;
+};
+
+const isGoodCitizenMonthlyBadge = (badge = {}) =>
+  (badge.type || "good_citizen_monthly") === "good_citizen_monthly";
+
+const formatBadgePeriod = (badge = {}) => {
+  if (badge.awardMonth && badge.awardYear) {
+    return new Date(badge.awardYear, badge.awardMonth - 1, 1).toLocaleString(
+      "default",
+      {
+        month: "long",
+        year: "numeric",
+      },
+    );
+  }
+
+  if (badge.awardedAt) {
+    return new Date(badge.awardedAt).toLocaleString("default", {
+      month: "long",
+      year: "numeric",
+    });
+  }
+
+  return "Awarded";
 };
 
 const reverseGeocode = async (lat, lng, setAddress) => {
@@ -200,11 +225,27 @@ const ProfilePage = () => {
 
   const verificationStatus = user?.verificationDoc?.status || "none";
   const displayAvatar = resolveAvatar(user?.avatar);
+  const rewardBadges = (user?.badges || [])
+    .filter(isGoodCitizenMonthlyBadge)
+    .slice()
+    .sort((a, b) => new Date(b.awardedAt || 0) - new Date(a.awardedAt || 0));
 
   const completionStats = [
-    { label: "Role", value: roleMeta.label },
-    { label: "Contact", value: user?.phone ? "Added" : "Missing" },
-    { label: "Address", value: user?.presentAddress?.address ? "Pinned" : "Open" },
+    {
+      label: "Role",
+      value: roleMeta.label,
+      detail: user?.designation || user?.department?.replace?.("_", " ") || "Account type",
+    },
+    {
+      label: "Contact",
+      value: user?.phone || "Missing",
+      detail: user?.email || "Add a phone number to make your profile easier to reach",
+    },
+    {
+      label: "Address",
+      value: user?.presentAddress?.address ? "Pinned" : "Open",
+      detail: user?.presentAddress?.address || "No saved address yet",
+    },
     {
       label: "Verification",
       value:
@@ -215,6 +256,7 @@ const ProfilePage = () => {
             : verificationStatus === "rejected"
               ? "Rejected"
               : "Open",
+      detail: user?.verificationDoc?.docType || "Identity status",
     },
   ];
 
@@ -421,8 +463,8 @@ const ProfilePage = () => {
       },
       approved: {
         icon: ShieldCheck,
-        color: "text-green-600",
-        bg: "bg-green-50 border-green-200",
+        color: "text-emerald-700",
+        bg: "bg-emerald-50 border-emerald-200",
         label: <T en="Verified" />,
         desc: <T en="Your identity has been verified. You can now submit complaints." />,
       },
@@ -562,13 +604,18 @@ const ProfilePage = () => {
                         <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] ${roleMeta.badge} bg-white/95`}>
                           {roleMeta.label}
                         </span>
-                        <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-white">
-                          {verificationStatus === "approved"
-                            ? "Verified Account"
-                            : verificationStatus === "pending"
+                        {verificationStatus === "approved" ? (
+                          <VerifiedBadge
+                            label="Verified Account"
+                            className="border border-emerald-200 bg-emerald-100 px-3 py-1 uppercase tracking-[0.18em]"
+                          />
+                        ) : (
+                          <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-white">
+                            {verificationStatus === "pending"
                               ? "Verification Pending"
                               : "Profile In Progress"}
-                        </span>
+                          </span>
+                        )}
                       </div>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button
@@ -597,6 +644,9 @@ const ProfilePage = () => {
                       <div key={item.label} className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
                         <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/70">{item.label}</p>
                         <p className="mt-2 text-sm font-black text-white">{item.value}</p>
+                        {item.detail && (
+                          <p className="mt-1 text-xs leading-relaxed text-white/75 line-clamp-2">{item.detail}</p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -839,20 +889,61 @@ const ProfilePage = () => {
                     <p className="mt-2 text-sm text-teal-50/90">Your activity reputation and contribution history across the platform.</p>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/70">Status</p>
-                      <p className="mt-2 text-sm font-black text-white">{user?.isGoodCitizen ? "Good Citizen" : "Active Contributor"}</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/70">Status</p>
+                      <p className="mt-2 text-sm font-black text-white">
+                        {user?.isGoodCitizen
+                          ? "Current Monthly Winner"
+                          : rewardBadges.length > 0
+                            ? "Awarded Contributor"
+                            : "Active Contributor"}
+                      </p>
+                      </div>
+                      <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/70">Badges</p>
+                      <p className="mt-2 text-sm font-black text-white">{rewardBadges.length} Earned</p>
+                      </div>
                     </div>
-                    <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/70">Badges</p>
-                      <p className="mt-2 text-sm font-black text-white">{user?.badges?.length || 0} Earned</p>
-                    </div>
-                  </div>
                 </div>
               </div>
 
               <div className="p-6 sm:p-8">
+                <div className="mb-8">
+                  <div className="mb-5 border-b border-slate-100 pb-4">
+                    <h4 className="text-lg font-bold text-slate-900">Badge History</h4>
+                    <p className="mt-1 text-sm text-slate-500">Each monthly Good Citizen award you have earned stays on your profile permanently.</p>
+                  </div>
+
+                  <div className="divide-y divide-gray-50">
+                    {rewardBadges.length === 0 ? (
+                      <div className="rounded-2xl bg-amber-50/50 p-12 text-center">
+                        <Trophy size={32} className="mx-auto mb-3 text-amber-300" />
+                        <p className="text-sm font-medium text-amber-700">No monthly badge awards yet.</p>
+                      </div>
+                    ) : (
+                      rewardBadges.map((badge, idx) => (
+                        <div key={`${badge.monthKey || badge.awardedAt || idx}`} className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+                              <Trophy size={20} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-slate-900">{badge.name || "Good Citizen of the Month"}</p>
+                              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
+                                {formatBadgePeriod(badge)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">
+                            Monthly Award
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
                 <div className="mb-5 border-b border-slate-100 pb-4">
                   <h4 className="text-lg font-bold text-slate-900">Point History</h4>
                   <p className="mt-1 text-sm text-slate-500">A running ledger of earned points and penalties.</p>

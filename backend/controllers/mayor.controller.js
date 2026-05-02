@@ -4,6 +4,41 @@ const Groq = require('groq-sdk');
 const { sendNotification } = require('../services/notificationService');
 const nodemailer = require('nodemailer');
 
+const MONTHLY_BADGE_TYPE = 'good_citizen_monthly';
+
+const getAwardPeriodMeta = (date = new Date()) => {
+  const awardMonth = date.getMonth() + 1;
+  const awardYear = date.getFullYear();
+  const monthKey = `${awardYear}-${String(awardMonth).padStart(2, '0')}`;
+  const periodLabel = date.toLocaleString('default', {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  return { awardMonth, awardYear, monthKey, periodLabel };
+};
+
+const isMonthlyCitizenBadge = (badge = {}) =>
+  (badge.type || MONTHLY_BADGE_TYPE) === MONTHLY_BADGE_TYPE;
+
+const formatBadgePeriodLabel = (badge = {}) => {
+  if (badge.awardMonth && badge.awardYear) {
+    return new Date(badge.awardYear, badge.awardMonth - 1, 1).toLocaleString(
+      'default',
+      { month: 'long', year: 'numeric' },
+    );
+  }
+
+  if (badge.awardedAt) {
+    return new Date(badge.awardedAt).toLocaleString('default', {
+      month: 'long',
+      year: 'numeric',
+    });
+  }
+
+  return '';
+};
+
 // Initialize Groq client
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -105,14 +140,43 @@ exports.getChatBriefing = async (req, res, next) => {
  */
 exports.getCitizensByPoints = async (req, res, next) => {
   try {
+    const currentAwardPeriod = getAwardPeriodMeta();
     const citizens = await User.find({ role: 'citizen' })
-      .select('name email points isGoodCitizen avatar')
+      .select('name email points isGoodCitizen avatar badges')
       .sort({ points: -1 })
       .limit(50);
 
+    const enrichedCitizens = citizens.map((citizen) => {
+      const awardHistory = (citizen.badges || [])
+        .filter(isMonthlyCitizenBadge)
+        .map((badge) => ({
+          name: badge.name,
+          awardedAt: badge.awardedAt,
+          awardMonth: badge.awardMonth || null,
+          awardYear: badge.awardYear || null,
+          monthKey:
+            badge.monthKey ||
+            (badge.awardMonth && badge.awardYear
+              ? `${badge.awardYear}-${String(badge.awardMonth).padStart(2, '0')}`
+              : null),
+          label: formatBadgePeriodLabel(badge),
+        }))
+        .sort((a, b) => new Date(b.awardedAt || 0) - new Date(a.awardedAt || 0));
+
+      const citizenObj = citizen.toObject();
+      citizenObj.isGoodCitizen = awardHistory.some(
+        (award) => award.monthKey === currentAwardPeriod.monthKey,
+      );
+      citizenObj.badgeCount = awardHistory.length;
+      citizenObj.awardHistory = awardHistory;
+      citizenObj.latestAward = awardHistory[0] || null;
+
+      return citizenObj;
+    });
+
     res.status(200).json({
       success: true,
-      data: citizens
+      data: enrichedCitizens
     });
   } catch (error) {
     next(error);
@@ -165,31 +229,70 @@ const sendWinnerEmail = async (user, badgeName) => {
 exports.announceGoodCitizen = async (req, res, next) => {
   try {
     console.log('--- Start Announce Winner Logic ---');
-    // 1. Find the citizen with the most points who is NOT already a winner
-    const winner = await User.findOne({ role: 'citizen', isGoodCitizen: false })
+    const period = getAwardPeriodMeta();
+
+    const existingWinner = await User.findOne({
+      role: 'citizen',
+      badges: {
+        $elemMatch: {
+          type: MONTHLY_BADGE_TYPE,
+          awardMonth: period.awardMonth,
+          awardYear: period.awardYear,
+        },
+      },
+    }).select('name email points isGoodCitizen badges avatar');
+
+    if (existingWinner) {
+      if (!existingWinner.isGoodCitizen) {
+        await User.updateMany(
+          { role: 'citizen', isGoodCitizen: true },
+          { isGoodCitizen: false },
+        );
+        existingWinner.isGoodCitizen = true;
+        await existingWinner.save({ validateBeforeSave: false });
+      }
+
+      return res.status(200).json({
+        success: true,
+        alreadyAwarded: true,
+        message: `The Good Citizen award for ${period.periodLabel} has already been announced.`,
+        winner: existingWinner,
+      });
+    }
+
+    // 1. Find the citizen with the most points for the current month announcement
+    const winner = await User.findOne({ role: 'citizen' })
       .sort({ points: -1, createdAt: 1 });
 
     if (!winner) {
       console.log('No eligible winner found (all citizens might already have stars or none exist)');
       return res.status(200).json({ 
         success: false, 
-        message: "No eligible citizens found. Everyone might already be recognized!" 
+        message: "No eligible citizens found right now." 
       });
     }
 
     console.log(`Selected Winner: ${winner.name} (${winner.email}) with ${winner.points} points.`);
 
-    const badgeName = `Good Citizen of ${new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}`;
+    const badgeName = `Good Citizen of ${period.periodLabel}`;
 
-    // 2. Remove "Good Citizen" status from everyone else
-    await User.updateMany({ isGoodCitizen: true }, { isGoodCitizen: false });
+    // 2. Remove current winner status from everyone else, but keep their historical badges.
+    await User.updateMany(
+      { role: 'citizen', isGoodCitizen: true },
+      { isGoodCitizen: false },
+    );
 
     // 3. Award the winner
     winner.isGoodCitizen = true;
     winner.badges = winner.badges || [];
     winner.badges.push({
+      type: MONTHLY_BADGE_TYPE,
       name: badgeName,
-      awardedAt: new Date()
+      awardMonth: period.awardMonth,
+      awardYear: period.awardYear,
+      monthKey: period.monthKey,
+      awardedAt: new Date(),
+      awardedBy: req.user._id,
     });
     
     await winner.save();
@@ -226,15 +329,33 @@ exports.announceGoodCitizen = async (req, res, next) => {
  */
 exports.removeGoodCitizenBadge = async (req, res, next) => {
   try {
+    const period = getAwardPeriodMeta();
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
+    const nextBadges = (user.badges || []).filter((badge) => {
+      const sameType = isMonthlyCitizenBadge(badge);
+      const sameMonth =
+        badge.awardMonth === period.awardMonth &&
+        badge.awardYear === period.awardYear;
+      return !(sameType && sameMonth);
+    });
+
+    const removedCount = (user.badges || []).length - nextBadges.length;
+    if (removedCount === 0) {
+      return res.status(400).json({
+        success: false,
+        message: `No ${period.periodLabel} winner badge was found for ${user.name}.`,
+      });
+    }
+
+    user.badges = nextBadges;
     user.isGoodCitizen = false;
     await user.save();
 
     res.status(200).json({
       success: true,
-      message: `Recognition removed from ${user.name}.`,
+      message: `${period.periodLabel} recognition removed from ${user.name}.`,
       data: user
     });
   } catch (error) {

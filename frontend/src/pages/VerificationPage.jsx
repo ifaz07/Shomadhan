@@ -100,7 +100,7 @@ const VerificationPage = () => {
     const statusMap = {
       none: { icon: Shield, color: 'text-slate-400', bg: 'bg-slate-50 border-slate-200', label: 'Not Verified', desc: 'Submit your identity document to get verified and start filing complaints.' },
       pending: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: 'Verification Pending', desc: 'Your document is under review.' },
-      approved: { icon: ShieldCheck, color: 'text-teal-600', bg: 'bg-teal-50 border-teal-200', label: 'Verified', desc: 'Your identity has been verified. You can now submit complaints.' },
+      approved: { icon: ShieldCheck, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', label: 'Verified', desc: 'Your identity has been verified. You can now submit complaints.' },
       rejected: { icon: ShieldX, color: 'text-red-600', bg: 'bg-red-50 border-red-200', label: 'Verification Rejected', desc: user?.verificationDoc?.rejectionReason || 'Your document was rejected.' },
     };
     const s = statusMap[verificationStatus];

@@ -630,13 +630,23 @@ const SignupPage = () => {
             </motion.div>
           )}
         </AnimatePresence>
-        <div className="text-center mt-4">
-          <p className="text-sm text-gray-500">
-            Already have an account?{" "}
-            <Link to="/login" className="text-teal-500 hover:underline">
+        <div className="mt-6 border-t border-slate-100 pt-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+                Member Access
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-700">
+                Already have an account?
+              </p>
+            </div>
+            <Link
+              to="/login"
+              className="inline-flex items-center justify-center rounded-full border border-teal-100 bg-teal-50 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-teal-700 transition-colors hover:border-teal-200 hover:bg-teal-100 hover:text-teal-800"
+            >
               Sign In
             </Link>
-          </p>
+          </div>
         </div>
       </div>
     </AuthLayout>

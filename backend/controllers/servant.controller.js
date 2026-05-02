@@ -5,6 +5,18 @@ const {
   getDepartmentComplaintValues,
 } = require("../utils/departmentTaxonomy");
 
+const haversineKm = (lat1, lon1, lat2, lon2) => {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 // Maps priority and status to a numeric value for "always on top" sorting
 const PRIORITY_SORT_STAGE = {
   $addFields: {
@@ -44,7 +56,17 @@ const getDepartmentComplaints = async (req, res, next) => {
   try {
     const categories = getDepartmentComplaintValues(req.user.department);
 
-    const { status, priority, location, filter, page = 1, limit = 20 } = req.query;
+    const {
+      status,
+      priority,
+      location,
+      filter,
+      lat,
+      lng,
+      radius,
+      page = 1,
+      limit = 20,
+    } = req.query;
 
     const matchStage = { category: { $in: categories } };
     
@@ -68,16 +90,29 @@ const getDepartmentComplaints = async (req, res, next) => {
       };
     }
 
+    const nearLat = Number(lat);
+    const nearLng = Number(lng);
+    const radiusKm = Number(radius) || 5;
+    const useNearby =
+      Number.isFinite(nearLat) && Number.isFinite(nearLng) && radiusKm > 0;
+
+    if (useNearby) {
+      const delta = radiusKm / 111;
+      matchStage.latitude = { $gte: nearLat - delta, $lte: nearLat + delta };
+      matchStage.longitude = { $gte: nearLng - delta, $lte: nearLng + delta };
+    }
+
     const skip = (Number(page) - 1) * Number(limit);
     const pageLimit = Number(limit);
 
-    const [results, totalArr] = await Promise.all([
-      Complaint.aggregate([
+    let results = [];
+    let totalArr = 0;
+
+    if (useNearby) {
+      const candidates = await Complaint.aggregate([
         { $match: matchStage },
         PRIORITY_SORT_STAGE,
         { $sort: { _sortWeight: -1, createdAt: -1 } },
-        { $skip: skip },
-        { $limit: pageLimit },
         {
           $lookup: {
             from: "users",
@@ -88,9 +123,42 @@ const getDepartmentComplaints = async (req, res, next) => {
           },
         },
         { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-      ]),
-      Complaint.countDocuments(matchStage),
-    ]);
+      ]);
+
+      const nearby = candidates.filter((complaint) => {
+        if (complaint.latitude == null || complaint.longitude == null) return false;
+        return haversineKm(
+          nearLat,
+          nearLng,
+          complaint.latitude,
+          complaint.longitude,
+        ) <= radiusKm;
+      });
+
+      totalArr = nearby.length;
+      results = nearby.slice(skip, skip + pageLimit);
+    } else {
+      [results, totalArr] = await Promise.all([
+        Complaint.aggregate([
+          { $match: matchStage },
+          PRIORITY_SORT_STAGE,
+          { $sort: { _sortWeight: -1, createdAt: -1 } },
+          { $skip: skip },
+          { $limit: pageLimit },
+          {
+            $lookup: {
+              from: "users",
+              localField: "user",
+              foreignField: "_id",
+              as: "user",
+              pipeline: [{ $project: { name: 1, email: 1 } }],
+            },
+          },
+          { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+        ]),
+        Complaint.countDocuments(matchStage),
+      ]);
+    }
 
     res.status(200).json({
       success: true,

@@ -423,10 +423,6 @@ const UnifiedAuthPage = () => {
                         </button>
                       </div>
                       
-                      <div className="mobile-toggle">
-                        <span>Already have an account?</span>
-                        <button onClick={() => switchMode(false)}>Sign In</button>
-                      </div>
                     </motion.div>
                   )}
 
@@ -560,10 +556,6 @@ const UnifiedAuthPage = () => {
                   {isLoginLoading ? <Loader2 size={20} className="animate-spin" /> : <><T en="Sign In" /> <ArrowRight size={18} /></>}
                 </button>
 
-                <div className="mobile-toggle">
-                  <span>Don't have an account?</span>
-                  <button type="button" onClick={() => switchMode(true)}>Sign Up</button>
-                </div>
               </form>
             </div>
 

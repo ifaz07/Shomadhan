@@ -2,19 +2,20 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Filter,
   Loader2,
   CheckCircle2,
   ClipboardList,
   MapPin,
   ThumbsUp,
   Search,
+  Navigation,
   Timer,
   Tag,
   Clock,
   FileDown,
   Download,
   ChevronRight,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { servantAPI } from "../../services/api";
@@ -61,6 +62,14 @@ const STATUS_STYLE = {
   resolved: { bg: "bg-green-100", text: "text-green-700", label: "Resolved" },
   rejected: { bg: "bg-red-100", text: "text-red-700", label: "Rejected" },
 };
+
+const STATUS_FILTERS = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "Pending" },
+  { key: "in-progress", label: "In Progress" },
+  { key: "resolved", label: "Resolved" },
+  { key: "rejected", label: "Rejected" },
+];
 
 const getSlaInfo = (slaDeadline, slaDurationHours) => {
   if (!slaDeadline || !slaDurationHours) return null;
@@ -247,8 +256,8 @@ const ServantComplaintsPage = () => {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("");
+  const [nearMode, setNearMode] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -410,7 +419,6 @@ const ServantComplaintsPage = () => {
     try {
       const params = {
         status: statusFilter,
-        priority: priorityFilter,
         page,
         limit: 12,
       };
@@ -424,16 +432,60 @@ const ServantComplaintsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, priorityFilter, locationFilter, page]);
+  }, [statusFilter, locationFilter, page]);
 
   useEffect(() => {
+    if (nearMode) return;
     fetchComplaints();
-  }, [fetchComplaints]);
+  }, [fetchComplaints, nearMode]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, priorityFilter, locationFilter]);
+  }, [statusFilter, locationFilter, nearMode]);
+
+  const handleNearMe = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+    setNearMode(true);
+    setLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await servantAPI.getComplaints({
+            status: statusFilter,
+            lat: latitude,
+            lng: longitude,
+            radius: 5,
+            page: 1,
+            limit: 12,
+          });
+          setComplaints(res.data.data || []);
+          setTotal(res.data.total || 0);
+          setTotalPages(res.data.pages || 1);
+          setPage(1);
+          toast.success("Showing department complaints within 5 km of you");
+        } catch {
+          toast.error("Failed to fetch nearby department complaints");
+        } finally {
+          setLoading(false);
+        }
+      },
+      () => {
+        toast.error("Could not get your location. Please allow location access.");
+        setNearMode(false);
+        setLoading(false);
+      },
+    );
+  };
+
+  const clearNearMe = () => {
+    setNearMode(false);
+    setLocationFilter("");
+  };
 
   if (!user) return null;
 
@@ -560,84 +612,66 @@ const ServantComplaintsPage = () => {
         </div>
 
         {/* ── Filters ── */}
-        <div className="bg-white border border-gray-100 rounded-xl p-4 space-y-3">
+        <div className="bg-white border border-gray-100 rounded-xl p-4">
           <div className="flex flex-wrap items-center gap-3">
-            <Filter size={15} className="text-gray-400 shrink-0" />
+            <div className="flex flex-wrap gap-2">
+              {STATUS_FILTERS.map((status) => (
+                <button
+                  key={status.key}
+                  onClick={() => {
+                    setStatusFilter(status.key);
+                    setNearMode(false);
+                  }}
+                  className={`rounded-xl px-3 py-2 text-xs font-bold transition-colors ${
+                    statusFilter === status.key
+                      ? "bg-slate-900 text-white"
+                      : "border border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-700"
+                  }`}
+                >
+                  <T en={status.label} />
+                </button>
+              ))}
+            </div>
 
-            {/* Status filter */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {["all", "pending", "in-progress", "resolved", "rejected"].map(
-                (s) => (
+            {!nearMode && (
+              <div className="relative flex-1 max-w-xs">
+                <Search
+                  size={13}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  placeholder="Search by location..."
+                  className="w-full pl-8 pr-8 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none"
+                />
+                {locationFilter && (
                   <button
-                    key={s}
-                    onClick={() => setStatusFilter(s)}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-all border ${
-                      statusFilter === s
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
-                    }`}
+                    onClick={() => setLocationFilter("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {s === "all" ? (
-                      <T en="All Status" />
-                    ) : (
-                      <T en={STATUS_STYLE[s]?.label || s} />
-                    )}
+                    <X size={13} />
                   </button>
-                ),
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
-            <div className="w-px h-4 bg-gray-200 hidden sm:block" />
-
-            {/* Priority filter */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {["all", "Critical", "High", "Medium", "Low"].map((p) => {
-                const pStyle = PRIORITY_STYLE[p];
-                return (
-                  <button
-                    key={p}
-                    onClick={() => setPriorityFilter(p)}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-all border ${
-                      priorityFilter === p
-                        ? p === "all"
-                          ? "bg-gray-800 text-white border-gray-800"
-                          : `${pStyle?.bg} ${pStyle?.text} ${pStyle?.border}`
-                        : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
-                    }`}
-                  >
-                    {p === "all" ? <T en="All Priority" /> : <T en={p} />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Location search */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 max-w-xs">
-              <Search
-                size={13}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-                placeholder="Search by location..."
-                className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none"
-              />
-            </div>
-            {(statusFilter !== "all" ||
-              priorityFilter !== "all" ||
-              locationFilter) && (
+            {nearMode ? (
               <button
-                onClick={() => {
-                  setStatusFilter("all");
-                  setPriorityFilter("all");
-                  setLocationFilter("");
-                }}
-                className="text-xs text-blue-600 hover:underline"
+                onClick={clearNearMe}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
               >
-                <T en="Reset filters" />
+                <Navigation size={13} />
+                <T en="Near Me" />
+                <X size={13} />
+              </button>
+            ) : (
+              <button
+                onClick={handleNearMe}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
+              >
+                <Navigation size={13} />
+                <T en="Near Me" />
               </button>
             )}
           </div>
