@@ -257,6 +257,16 @@ const voteComplaint = async (req, res, next) => {
       });
     }
 
+    if (
+      complaint.user &&
+      complaint.user.toString() === req.user._id.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You cannot vote on your own complaint",
+      });
+    }
+
     const userId = req.user._id.toString();
     const alreadyVoted = complaint.votes.some((v) => v.toString() === userId);
 
@@ -293,7 +303,7 @@ const voteComplaint = async (req, res, next) => {
 
 // @desc    Get heatmap data (all complaints with coordinates + priority weight)
 // @route   GET /api/v1/complaints/heatmap
-// @access  Public
+// @access  Private
 const getHeatmapData = async (req, res, next) => {
   try {
     const complaints = await Complaint.find({
@@ -337,8 +347,11 @@ const getNearbyComplaints = async (req, res, next) => {
     const lng = parseFloat(req.query.lng);
     const radiusKm = parseFloat(req.query.radius) || 1; // default 1 km
     const category = req.query.category;
+    const title = req.query.title || "";
+    const description = req.query.description || "";
     const priority = req.query.priority;
     const status = req.query.status;
+    const similarOnly = req.query.similarOnly === "true";
 
     if (isNaN(lat) || isNaN(lng)) {
       return res.status(400).json({
@@ -348,43 +361,97 @@ const getNearbyComplaints = async (req, res, next) => {
     }
 
     // Rough bounding box for initial DB filter (1 deg lat ≈ 111 km)
-    const delta = radiusKm / 111;
-    const query = {
-      latitude: { $gte: lat - delta, $lte: lat + delta },
-      longitude: { $gte: lng - delta, $lte: lng + delta },
-      status: { $nin: ["resolved", "rejected"] },
-    };
-    if (category) {
-      const normalizedCategory = normalizeDepartmentKey(category);
-      if (normalizedCategory) {
-        query.category = {
-          $in: getDepartmentComplaintValues(normalizedCategory),
-        };
-      } else {
-        query.category = category;
+    let nearby = [];
+    if (similarOnly) {
+      const delta = 1 / 111;
+      const query = {
+        latitude: { $gte: lat - delta, $lte: lat + delta },
+        longitude: { $gte: lng - delta, $lte: lng + delta },
+        status: { $nin: ["resolved", "rejected"] },
+      };
+
+      if (category) {
+        const normalizedCategory = normalizeDepartmentKey(category);
+        if (normalizedCategory) {
+          query.category = {
+            $in: getDepartmentComplaintValues(normalizedCategory),
+          };
+        } else {
+          query.category = category;
+        }
       }
-    }
-    if (priority && priority !== "All") {
-      query.priority = priority;
-    }
-    if (status && status !== "All") {
-      query.status = status;
-    }
 
-    const candidates = await Complaint.find(query)
-      .select(
-        "ticketId title category status priority voteCount latitude longitude location createdAt",
-      )
-      .sort("-voteCount -createdAt")
-      .limit(20);
+      const candidates = await Complaint.find(query)
+        .select(
+          "ticketId title category status priority voteCount latitude longitude location createdAt user votes",
+        )
+        .sort("-voteCount -createdAt")
+        .limit(30);
 
-    // Filter to exact radius using Haversine
-    const nearby = candidates.filter((c) => {
-      if (c.latitude == null || c.longitude == null) return false;
-      return haversineKm(lat, lng, c.latitude, c.longitude) <= radiusKm;
+      nearby = candidates
+        .filter((complaint) => {
+          if (complaint.latitude == null || complaint.longitude == null) return false;
+          return haversineKm(lat, lng, complaint.latitude, complaint.longitude) <= 1;
+        })
+        .slice(0, 6);
+    } else {
+      const delta = radiusKm / 111;
+      const query = {
+        latitude: { $gte: lat - delta, $lte: lat + delta },
+        longitude: { $gte: lng - delta, $lte: lng + delta },
+        status: { $nin: ["resolved", "rejected"] },
+      };
+      if (category) {
+        const normalizedCategory = normalizeDepartmentKey(category);
+        if (normalizedCategory) {
+          query.category = {
+            $in: getDepartmentComplaintValues(normalizedCategory),
+          };
+        } else {
+          query.category = category;
+        }
+      }
+      if (priority && priority !== "All") {
+        query.priority = priority;
+      }
+      if (status && status !== "All") {
+        query.status = status;
+      }
+
+      const candidates = await Complaint.find(query)
+        .select(
+          "ticketId title category status priority voteCount latitude longitude location createdAt user votes",
+        )
+        .sort("-voteCount -createdAt")
+        .limit(20);
+
+      nearby = candidates.filter((c) => {
+        if (c.latitude == null || c.longitude == null) return false;
+        return haversineKm(lat, lng, c.latitude, c.longitude) <= radiusKm;
+      });
+    }
+    const currentUserId = req.user?._id?.toString();
+    const data = nearby.map((complaint) => {
+      const complaintOwnerId = complaint.user?.toString?.() || "";
+      const votedUserIds = Array.isArray(complaint.votes)
+        ? complaint.votes.map((vote) => vote.toString())
+        : [];
+      const isOwnComplaint =
+        Boolean(currentUserId) && complaintOwnerId === currentUserId;
+      const canVote =
+        !isOwnComplaint &&
+        complaint.status !== "resolved" &&
+        complaint.status !== "rejected";
+
+      return {
+        ...complaint.toObject(),
+        _userVoted: Boolean(currentUserId) && votedUserIds.includes(currentUserId),
+        isOwnComplaint,
+        canVote,
+      };
     });
 
-    res.status(200).json({ success: true, count: nearby.length, data: nearby });
+    res.status(200).json({ success: true, count: data.length, data });
   } catch (error) {
     next(error);
   }
@@ -713,6 +780,9 @@ const getComplaint = async (req, res, next) => {
         ? complaint.user._id
         : complaint.user;
     const isOwner = ownerId && ownerId.toString() === req.user._id.toString();
+    const votedUserIds = Array.isArray(complaint.votes)
+      ? complaint.votes.map((vote) => vote.toString())
+      : [];
 
     if (isOwner) {
       const myFeedback = await Feedback.findOne({
@@ -741,6 +811,13 @@ const getComplaint = async (req, res, next) => {
             role: complaint.user.role || "",
           }
         : null;
+
+    complaint.hasVoted = votedUserIds.includes(req.user._id.toString());
+    complaint.isOwnComplaint = Boolean(isOwner);
+    complaint.canVote =
+      !complaint.isOwnComplaint &&
+      complaint.status !== "resolved" &&
+      complaint.status !== "rejected";
 
     // Any authenticated user can view any complaint (civic transparency)
     res.status(200).json({ success: true, data: complaint });

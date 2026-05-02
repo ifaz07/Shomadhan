@@ -69,6 +69,12 @@ const emergencyBroadcastSchema = new mongoose.Schema(
       min: 0.1,
       max: 100,
     },
+    targetRoles: [
+      {
+        type: String,
+        enum: ["citizen", "mayor", "department_officer"],
+      },
+    ],
     recipientsCount: {
       type: Number,
       default: 0,

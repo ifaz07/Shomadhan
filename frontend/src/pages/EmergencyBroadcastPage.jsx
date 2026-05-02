@@ -46,6 +46,19 @@ const roleLabels = {
   department_officer: "Public Servant Emergency Desk",
 };
 
+const AUDIENCE_OPTIONS = {
+  mayor: [
+    { value: "citizen", label: "Citizens" },
+    { value: "department_officer", label: "Public Servants" },
+    { value: "citizen,department_officer", label: "Citizens + Public Servants" },
+  ],
+  department_officer: [
+    { value: "citizen", label: "Citizens" },
+    { value: "mayor", label: "Mayor" },
+    { value: "citizen,mayor", label: "Citizens + Mayor" },
+  ],
+};
+
 const MapPicker = ({ position, onChange }) => {
   useMapEvents({
     click(event) {
@@ -86,7 +99,13 @@ const EmergencyBroadcastPage = () => {
     message: "",
     areaLabel: user?.presentAddress?.address || "",
     radiusKm: "3",
+    targetRoles: isServant ? "citizen,mayor" : "citizen,department_officer",
   });
+  const audienceOptions = AUDIENCE_OPTIONS[user?.role] || AUDIENCE_OPTIONS.mayor;
+  const selectedAudienceLabel =
+    audienceOptions.find((option) => option.value === form.targetRoles)?.label ||
+    audienceOptions[0]?.label ||
+    "Recipients";
 
   const reverseGeocode = async (lat, lng) => {
     try {
@@ -202,7 +221,7 @@ const EmergencyBroadcastPage = () => {
                 {roleLabels[user?.role] || "Emergency Broadcast Desk"}
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
-                Send geo-targeted disaster alerts to citizens whose saved address falls inside the selected emergency radius.
+                Send geo-targeted disaster alerts to registered recipients whose saved address falls inside the selected emergency radius.
               </p>
             </div>
             <div className="xl:col-span-4">
@@ -211,7 +230,7 @@ const EmergencyBroadcastPage = () => {
                   Targeting Rule
                 </p>
                 <p className="mt-1 text-sm font-semibold text-white">
-                  Only citizens with saved map coordinates inside the affected radius will receive the alert.
+                  Only registered users from the selected recipient group with saved map coordinates inside the affected radius will receive the alert.
                 </p>
               </div>
             </div>
@@ -331,6 +350,24 @@ const EmergencyBroadcastPage = () => {
                 </div>
               </div>
 
+              <label className="space-y-1.5">
+                <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Send To</span>
+                <select
+                  value={form.targetRoles}
+                  onChange={(e) => setForm((prev) => ({ ...prev, targetRoles: e.target.value }))}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-rose-300 focus:bg-white"
+                >
+                  {audienceOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-500">
+                  Only registered {selectedAudienceLabel.toLowerCase()} inside the selected {Number(form.radiusKm || 0).toFixed(1)} km radius will receive this broadcast.
+                </p>
+              </label>
+
               <div className="overflow-hidden rounded-[1.75rem] border border-slate-200">
                 <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
                   <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
@@ -396,7 +433,7 @@ const EmergencyBroadcastPage = () => {
                   <div>
                     <h3 className="text-xl font-black text-slate-900">Confirm Emergency Broadcast</h3>
                     <p className="mt-1 text-sm leading-relaxed text-slate-500">
-                      This will immediately notify citizens inside the selected radius. Please confirm before sending.
+                      This will immediately notify the selected recipient group inside the chosen radius. Please confirm before sending.
                     </p>
                   </div>
                 </div>
@@ -425,6 +462,10 @@ const EmergencyBroadcastPage = () => {
                     <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Radius</p>
                     <p className="mt-1 text-sm font-bold text-slate-900">{Number(form.radiusKm || 0).toFixed(1)} km</p>
                   </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Recipients</p>
+                  <p className="mt-1 text-sm font-bold text-slate-900">{selectedAudienceLabel}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Affected Area</p>

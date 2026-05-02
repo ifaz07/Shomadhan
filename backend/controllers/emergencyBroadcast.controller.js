@@ -22,9 +22,39 @@ const DISASTER_LABELS = {
   other: "Emergency",
 };
 
+const AUDIENCE_ROLE_LABELS = {
+  citizen: "Citizen",
+  mayor: "Mayor",
+  department_officer: "Public Servant",
+};
+
+const ALLOWED_TARGET_ROLES = {
+  mayor: ["citizen", "department_officer"],
+  department_officer: ["citizen", "mayor"],
+};
+
+const parseTargetRoles = (senderRole, requestedAudience) => {
+  const allowedRoles = ALLOWED_TARGET_ROLES[senderRole] || [];
+  const normalized = String(requestedAudience || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const uniqueRequested = [...new Set(normalized)];
+  const requestedValidRoles = uniqueRequested.filter((role) =>
+    allowedRoles.includes(role),
+  );
+
+  if (requestedValidRoles.length > 0) {
+    return requestedValidRoles;
+  }
+
+  return allowedRoles;
+};
+
 const createEmergencyBroadcast = async (req, res, next) => {
   try {
-    const { title, disasterType, message, areaLabel, lat, lng, radiusKm } = req.body;
+    const { title, disasterType, message, areaLabel, lat, lng, radiusKm, targetRoles } = req.body;
 
     const parsedLat = Number(lat);
     const parsedLng = Number(lng);
@@ -51,18 +81,26 @@ const createEmergencyBroadcast = async (req, res, next) => {
       });
     }
 
-    const citizens = await User.find({
-      role: "citizen",
+    const resolvedTargetRoles = parseTargetRoles(req.user.role, targetRoles);
+    if (resolvedTargetRoles.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Select at least one valid recipient group for this emergency broadcast.",
+      });
+    }
+
+    const targetUsers = await User.find({
+      role: { $in: resolvedTargetRoles },
       "presentAddress.lat": { $ne: null },
       "presentAddress.lng": { $ne: null },
-    }).select("_id name email fcmToken presentAddress");
+    }).select("_id name email fcmToken presentAddress role");
 
-    const recipients = citizens.filter((citizen) => {
+    const recipients = targetUsers.filter((user) => {
       const distance = haversineKm(
         parsedLat,
         parsedLng,
-        citizen.presentAddress.lat,
-        citizen.presentAddress.lng
+        user.presentAddress.lat,
+        user.presentAddress.lng
       );
 
       return distance <= parsedRadius;
@@ -80,8 +118,9 @@ const createEmergencyBroadcast = async (req, res, next) => {
         lng: parsedLng,
       },
       radiusKm: parsedRadius,
+      targetRoles: resolvedTargetRoles,
       recipientsCount: recipients.length,
-      recipients: recipients.map((citizen) => citizen._id),
+      recipients: recipients.map((recipient) => recipient._id),
     });
 
     const disasterLabel = DISASTER_LABELS[disasterType] || DISASTER_LABELS.other;
@@ -89,10 +128,13 @@ const createEmergencyBroadcast = async (req, res, next) => {
       req.user.role === "mayor"
         ? "Mayor's Office"
         : `${req.user.designation || "Public Servant"} Office`;
+    const audienceLabel = resolvedTargetRoles
+      .map((role) => AUDIENCE_ROLE_LABELS[role] || role)
+      .join(", ");
 
     await Promise.all(
-      recipients.map((citizen) =>
-        sendNotification(citizen._id, {
+      recipients.map((recipient) =>
+        sendNotification(recipient._id, {
           subject: `Emergency Alert: ${disasterLabel} near ${broadcast.areaLabel}`,
           message: `${broadcast.title}. ${broadcast.message} Affected area: ${broadcast.areaLabel} within ${broadcast.radiusKm} km. Sent by ${senderLabel}.`,
           type: "warning",
@@ -109,8 +151,8 @@ const createEmergencyBroadcast = async (req, res, next) => {
       success: true,
       message:
         recipients.length > 0
-          ? `Emergency broadcast sent to ${recipients.length} citizen${recipients.length === 1 ? "" : "s"}.`
-          : "Emergency broadcast created, but no citizens were found inside the selected radius.",
+          ? `Emergency broadcast sent to ${recipients.length} ${audienceLabel.toLowerCase()} recipient${recipients.length === 1 ? "" : "s"}.`
+          : `Emergency broadcast created, but no ${audienceLabel.toLowerCase()} recipients were found inside the selected radius.`,
       data: populatedBroadcast,
     });
   } catch (error) {

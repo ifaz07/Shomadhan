@@ -205,6 +205,7 @@ const ComplaintDetailPage = () => {
         const data = res.data.data || res.data;
         setComplaint(data);
         setVoteCount(data.voteCount ?? 0);
+        setHasVoted(Boolean(data.hasVoted));
       })
       .catch(() => toast.error("Failed to load complaint"))
       .finally(() => setLoading(false));
@@ -215,15 +216,19 @@ const ComplaintDetailPage = () => {
   }, [id]);
 
   const handleVote = async () => {
-    if (complaint?.status === "resolved" || complaint?.status === "rejected")
+    if (
+      complaint?.canVote === false ||
+      complaint?.status === "resolved" ||
+      complaint?.status === "rejected"
+    )
       return;
 
     try {
-      await complaintAPI.vote(id);
-      setHasVoted((v) => !v);
-      setVoteCount((c) => (hasVoted ? c - 1 : c + 1));
-    } catch {
-      toast.error("Failed to vote");
+      const res = await complaintAPI.vote(id);
+      setHasVoted(Boolean(res.data.voted));
+      setVoteCount(res.data.voteCount ?? 0);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to vote");
     }
   };
 
@@ -318,19 +323,27 @@ const ComplaintDetailPage = () => {
 
               <button
                 onClick={handleVote}
-                disabled={isResolved || complaint.status === "rejected"}
+                disabled={complaint.canVote === false}
                 className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border transition-all ${
-                  isResolved || complaint.status === "rejected"
+                  complaint.canVote === false
                     ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
                     : hasVoted
                     ? "bg-teal-50 border-teal-300 text-teal-700"
                     : "border-gray-200 text-gray-500 hover:bg-gray-50"
                 }`}
-                title={isResolved || complaint.status === "rejected" ? "Closed complaints can no longer receive public support" : "Show public support"}
+                title={
+                  complaint.isOwnComplaint
+                    ? "You cannot vote on your own complaint"
+                    : isResolved || complaint.status === "rejected"
+                    ? "Closed complaints can no longer receive public support"
+                    : hasVoted
+                    ? "Remove vote"
+                    : "Show public support"
+                }
               >
                 <ThumbsUp
                   size={16}
-                  className={isResolved || complaint.status === "rejected" ? "text-gray-300" : hasVoted ? "text-teal-600" : "text-gray-400"}
+                  className={complaint.canVote === false ? "text-gray-300" : hasVoted ? "text-teal-600" : "text-gray-400"}
                 />
                 <span className="text-base font-bold leading-none">
                   {voteCount}

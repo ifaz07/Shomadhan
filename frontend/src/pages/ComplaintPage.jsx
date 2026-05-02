@@ -124,10 +124,21 @@ const ComplaintPage = () => {
     setFormData(prev => ({ ...prev, location: address }));
   }, []);
 
-  const fetchNearbyComplaints = useCallback(async (lat, lng, category) => {
+  const fetchNearbyComplaints = useCallback(async (lat, lng, category, title, description, location) => {
+    if (lat == null || lng == null || !category) {
+      setNearbyComplaints([]);
+      setIsLoadingNearby(false);
+      return;
+    }
+
     setIsLoadingNearby(true);
     try {
-      const res = await complaintAPI.getNearby(lat, lng, 1, category || '');
+      const res = await complaintAPI.getNearby(lat, lng, 1, category || '', {
+        title,
+        description,
+        location,
+        similarOnly: true,
+      });
       setNearbyComplaints(res.data.data || []);
     } catch {
       setNearbyComplaints([]);
@@ -137,10 +148,25 @@ const ComplaintPage = () => {
   }, []);
 
   useEffect(() => {
-    if (mapPosition) {
-      fetchNearbyComplaints(mapPosition[0], mapPosition[1], formData.category);
+    if (!mapPosition) {
+      setNearbyComplaints([]);
+      setIsLoadingNearby(false);
+      return;
     }
-  }, [mapPosition, formData.category, fetchNearbyComplaints]);
+
+    const timer = setTimeout(() => {
+      fetchNearbyComplaints(
+        mapPosition[0],
+        mapPosition[1],
+        formData.category,
+        formData.title,
+        formData.description,
+        formData.location,
+      );
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [mapPosition, formData.category, formData.title, formData.description, formData.location, fetchNearbyComplaints]);
 
   useEffect(() => {
     return () => {
@@ -361,8 +387,8 @@ const ComplaintPage = () => {
         )
       );
       toast.success(res.data.voted ? 'Upvoted!' : 'Vote removed');
-    } catch {
-      toast.error('Failed to vote');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to vote');
     } finally {
       setVotingId(null);
     }
@@ -965,7 +991,7 @@ const ComplaintPage = () => {
 
           {/* ─── Nearby Match Check ───────────────────────────────── */}
           <AnimatePresence>
-            {(hasPinnedLocation || isLoadingNearby || nearbyCount === 0) && (
+            {(hasPinnedLocation || Boolean(formData.category) || isLoadingNearby || nearbyCount === 0) && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -979,9 +1005,9 @@ const ComplaintPage = () => {
                       Similar complaints
                     </h4>
                     <p className="mt-1 text-sm text-slate-500">
-                      {hasPinnedLocation
-                        ? 'We are checking this area for existing open complaints so you can avoid filing duplicates.'
-                        : 'Set the incident location first. Similar complaints will appear here automatically if we find a nearby match.'}
+                      {hasPinnedLocation && Boolean(formData.category)
+                        ? 'We are checking open complaints in the same department within 1 km of this location so duplicate reports can be avoided.'
+                        : 'Add the location pin and department first. Then nearby complaints from the same department will appear here.'}
                     </p>
                   </div>
                   <div className="inline-flex items-center gap-2 self-start rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-amber-700">
@@ -995,15 +1021,19 @@ const ComplaintPage = () => {
                     <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
                       No location pinned yet. Once you place the location on the map, similar complaints will be checked here.
                     </div>
+                  ) : !formData.category ? (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                      Select the responsible department to narrow similar complaints correctly.
+                    </div>
                   ) : isLoadingNearby ? (
                     <div className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-5 text-sm text-amber-700">
-                      Checking nearby complaints around the selected location...
+                      Checking for open complaints from the same department within 1 km...
                     </div>
                   ) : nearbyCount === 0 ? (
                     <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-5">
-                      <p className="text-sm font-semibold text-emerald-800">0 similar complaints found nearby</p>
+                      <p className="text-sm font-semibold text-emerald-800">No nearby department complaints found</p>
                       <p className="mt-1 text-sm text-emerald-700">
-                        This looks like a fresh report for the selected area and department.
+                        This looks like a fresh report for this department in the selected 1 km area.
                       </p>
                     </div>
                   ) : (
@@ -1027,12 +1057,30 @@ const ComplaintPage = () => {
                               </div>
                               <p className="text-sm font-semibold text-slate-900 mt-2 truncate">{c.title}</p>
                               <p className="text-[11px] text-slate-400 font-mono mt-1">{c.ticketId}</p>
+                              {typeof c.similarity === 'number' && (
+                                <p className="mt-1 text-[11px] font-medium text-amber-700">
+                                  {Math.round(c.similarity * 100)}% issue match
+                                </p>
+                              )}
                             </div>
                             <button
                               type="button"
                               onClick={() => handleVote(c._id)}
-                              disabled={votingId === c._id}
-                              className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all disabled:opacity-50 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                              disabled={votingId === c._id || c.canVote === false}
+                              className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all disabled:opacity-50 ${
+                                c.canVote === false
+                                  ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
+                                  : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                              }`}
+                              title={
+                                c.isOwnComplaint
+                                  ? 'You cannot vote on your own complaint'
+                                  : c.canVote === false
+                                  ? 'Closed complaints can no longer receive public support'
+                                  : c._userVoted
+                                  ? 'Remove vote'
+                                  : 'Vote for this complaint'
+                              }
                             >
                               {votingId === c._id ? (
                                 <Loader2 size={14} className="animate-spin" />

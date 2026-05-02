@@ -39,6 +39,12 @@ const disasterLabels = {
   other: "Emergency",
 };
 
+const audienceLabels = {
+  citizen: "Citizens",
+  mayor: "Mayor",
+  department_officer: "Public Servants",
+};
+
 const EmergencyBroadcastHistoryPage = () => {
   const { user } = useAuth();
   const isServant = user?.role === "department_officer";
@@ -111,6 +117,9 @@ const EmergencyBroadcastHistoryPage = () => {
             {history.map((item, index) => {
               const Icon = disasterIcons[item.disasterType] || AlertTriangle;
               const disasterLabel = disasterLabels[item.disasterType] || "Emergency";
+              const targetAudience = Array.isArray(item.targetRoles) && item.targetRoles.length > 0
+                ? item.targetRoles.map((role) => audienceLabels[role] || role).join(" + ")
+                : "Citizens";
 
               return (
                 <motion.article
@@ -149,10 +158,13 @@ const EmergencyBroadcastHistoryPage = () => {
                       <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">
                         {item.radiusKm} km radius
                       </p>
+                      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        Target: {targetAudience}
+                      </p>
                       <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
                         <Users size={14} />
                         <span>
-                          {item.recipientsCount} citizen{item.recipientsCount === 1 ? "" : "s"} targeted
+                          {item.recipientsCount} recipient{item.recipientsCount === 1 ? "" : "s"} targeted
                         </span>
                       </div>
                     </div>

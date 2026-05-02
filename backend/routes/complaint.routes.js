@@ -23,7 +23,7 @@ const {
 // ── Public routes (NO auth required) ─────────────────────────────────────
 // IMPORTANT: Must come BEFORE /:id routes to prevent 'heatmap'/'nearby' matching as an ID
 router.get('/heatmap', getHeatmapData);
-router.get('/nearby', getNearbyComplaints);
+router.get('/nearby', protect, getNearbyComplaints);
 router.get('/feedback/all', protect, getAllFeedback);
 
 // ── Protected routes ──────────────────────────────────────────────────────
