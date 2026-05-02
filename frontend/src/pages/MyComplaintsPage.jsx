@@ -19,6 +19,7 @@ import toast from "react-hot-toast";
 import { complaintAPI } from "../services/api";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import T from "../components/T";
+import VoiceMessagePlayer from "../components/VoiceMessagePlayer";
 import { getDepartmentLabel } from "../constants/departments";
 
 // ─── Config ───────────────────────────────────────────────────────────
@@ -107,6 +108,32 @@ const getSlaInfo = (createdAt, slaDeadline) => {
   );
   const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
   return { progress, daysLeft };
+};
+
+const getEvidenceUrl = (item) => {
+  if (!item) return "";
+  return typeof item === "string" ? item : item.url || "";
+};
+
+const isAudio = (item) => {
+  const url = getEvidenceUrl(item);
+  const type = typeof item === "object" ? item?.type : "";
+  return type === "audio" || /\.(mp3|wav|ogg|webm|m4a)$/i.test(url || "");
+};
+
+const isVoiceDescription = (item) => {
+  const url = getEvidenceUrl(item);
+  return isAudio(item) && url.toLowerCase().endsWith(".webm");
+};
+
+const resolveUrl = (item) => {
+  const url = getEvidenceUrl(item);
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  const base = (
+    import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1"
+  ).replace("/api/v1", "");
+  return `${base}${url}`;
 };
 
 // ─── Status Stepper ───────────────────────────────────────────────────
@@ -265,6 +292,20 @@ const ComplaintCard = ({ complaint, index, onView }) => {
         <h3 className="font-bold text-gray-900 text-sm mb-2 leading-snug">
           {complaint.title}
         </h3>
+
+        {/* Inline Audio Player for Voice Description */}
+        {complaint.evidence && complaint.evidence.filter(isVoiceDescription).map((item, i) => (
+          <div key={`voice-${i}`} className="mb-3">
+            <p className="text-[9px] font-bold text-teal-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <RefreshCw size={9} />
+              Voice Description
+            </p>
+            <VoiceMessagePlayer 
+              src={resolveUrl(item)} 
+              className="!max-w-full !bg-teal-50/50 !border-teal-100/50"
+            />
+          </div>
+        ))}
 
         {/* Meta chips */}
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mb-1">

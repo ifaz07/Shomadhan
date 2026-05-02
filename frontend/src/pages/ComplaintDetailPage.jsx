@@ -23,6 +23,7 @@ import toast from "react-hot-toast";
 import { complaintAPI } from "../services/api";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import T from "../components/T";
+import VoiceMessagePlayer from "../components/VoiceMessagePlayer";
 import VerifiedBadge from "../components/VerifiedBadge";
 
 // Fix Leaflet default icon
@@ -129,7 +130,19 @@ const isVideo = (item) => {
   return type === "video" || /\.(mp4|mov|avi|webm|mkv)$/i.test(url || "");
 };
 
+const isAudio = (item) => {
+  const url = getEvidenceUrl(item);
+  const type = typeof item === "object" ? item?.type : "";
+  return type === "audio" || /\.(mp3|wav|ogg|webm|m4a)$/i.test(url || "");
+};
+
+const isVoiceDescription = (item) => {
+  const url = getEvidenceUrl(item);
+  return isAudio(item) && url.toLowerCase().endsWith(".webm");
+};
+
 const resolveUrl = (item) => {
+
   const url = getEvidenceUrl(item);
   if (!url) return "";
   if (url.startsWith("http")) return url;
@@ -339,9 +352,25 @@ const ComplaintDetailPage = () => {
                 <p className="text-xs text-gray-400 mb-1">
                   <T en="Description" />
                 </p>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  <T en={complaint.description} />
-                </p>
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    <T en={complaint.description} />
+                  </p>
+                  
+                  {/* Inline Audio Player for Voice Description */}
+                  {evidence.filter(isVoiceDescription).map((url, i) => (
+                    <div key={`voice-${i}`} className="p-3 bg-teal-50 border border-teal-100 rounded-xl">
+                      <p className="text-[10px] font-bold text-teal-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Activity size={10} />
+                        Voice Description Recording
+                      </p>
+                      <VoiceMessagePlayer 
+                        src={resolveUrl(url)} 
+                        className="!max-w-full !bg-white/80 backdrop-blur-sm shadow-none"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -435,13 +464,13 @@ const ComplaintDetailPage = () => {
             )}
 
             {/* Attachments */}
-            {evidence.length > 0 && (
+            {evidence.filter(url => !isVoiceDescription(url)).length > 0 && (
               <div>
                 <p className="text-sm font-semibold text-gray-700 mb-2">
-                  <T en="Attachments" /> ({evidence.length})
+                  <T en="Attachments" /> ({evidence.filter(url => !isVoiceDescription(url)).length})
                 </p>
                 <div className="flex gap-3 flex-wrap">
-                  {evidence.map((url, i) =>
+                  {evidence.filter(url => !isVoiceDescription(url)).map((url, i) =>
                     isVideo(url) ? (
                       <a
                         key={i}

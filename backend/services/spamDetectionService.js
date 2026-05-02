@@ -31,15 +31,33 @@ const OVERLAP_STOPWORDS = new Set([
   'and','the','for','from','road','area','city','district','bangladesh',
   'এবং','এই','সেই','একটি','একটা','করে','হচ্ছে','হয়েছে','আমার','আমাদের',
   'এখানে','ওখানে','রাস্তা','এলাকা','শহর','জেলা','বাংলাদেশ',
+  'near', 'beside', 'opposite', 'behind', 'front', 'side', 'কাছে', 'পাশে', 'বিপরীতে', 'পেছনে', 'সামনে'
 ]);
 
+const LOCATION_MAP = {
+  'rd': 'road',
+  'st': 'street',
+  'ave': 'avenue',
+  'sq': 'square',
+  'apt': 'apartment',
+  'no': 'number',
+  '#': 'number',
+  'sect': 'sector',
+  'h': 'house',
+  'b': 'block',
+  'রং': 'রং', // common abbreviations in Bengali can be added here
+};
+
 function normalizeText(text = '') {
-  return String(text)
+  let normalized = String(text)
     .toLowerCase()
     .normalize('NFKC')
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+  
+  // Expand abbreviations
+  return normalized.split(' ').map(word => LOCATION_MAP[word] || word).join(' ');
 }
 
 function tokenizeText(text = '') {

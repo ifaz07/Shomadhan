@@ -29,8 +29,10 @@ import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { complaintAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import T from '../components/T';
+import VoiceMessagePlayer from '../components/VoiceMessagePlayer';
 import {
   DEPARTMENT_OPTIONS,
   getDepartmentLabel,
@@ -88,6 +90,12 @@ const reverseGeocode = async (lat, lng, setAddress) => {
 
 const ComplaintPage = () => {
   const { user } = useAuth();
+  const { language } = useLanguage();
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const timerRef = useRef(null);
   const [formData, setFormData] = useState({
     title: '',
     category: '',
@@ -133,6 +141,17 @@ const ComplaintPage = () => {
       fetchNearbyComplaints(mapPosition[0], mapPosition[1], formData.category);
     }
   }, [mapPosition, formData.category, fetchNearbyComplaints]);
+
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
@@ -187,6 +206,55 @@ const ComplaintPage = () => {
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        setAudioBlob(blob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      timerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error('Error starting recording:', err);
+      toast.error('Could not access microphone');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      clearInterval(timerRef.current);
+    }
+  };
+
+  const formatDuration = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const deleteRecording = () => {
+    setAudioBlob(null);
+    setRecordingDuration(0);
   };
 
   // Prevent "Enter" from submitting the form
@@ -253,14 +321,15 @@ const ComplaintPage = () => {
   };
 
   const analyzeWithNLP = async () => {
-    if (!formData.title.trim() || !formData.description.trim()) {
-      toast.error('Please enter both title and description before analyzing');
+    if (!formData.title.trim() || (!formData.description.trim() && !audioBlob)) {
+      toast.error('Please enter title and description (or record audio) before analyzing');
       return;
     }
     setIsAnalyzing(true);
     setNlpSuggestion(null);
     try {
-      const response = await complaintAPI.analyze(formData.title, formData.description);
+      const textToAnalyze = formData.description.trim() || "Voice message description";
+      const response = await complaintAPI.analyze(formData.title, textToAnalyze);
       if (response.data.success) {
         setNlpSuggestion(response.data.data);
         toast.success('AI analysis complete!');
@@ -301,8 +370,10 @@ const ComplaintPage = () => {
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
-    if (files.length + selectedFiles.length > 5) {
-      toast.error('Maximum 5 files allowed');
+    const maxFiles = audioBlob ? 4 : 5;
+    
+    if (files.length + selectedFiles.length > maxFiles) {
+      toast.error(`Maximum ${maxFiles} additional files allowed when using voice message`);
       return;
     }
 
@@ -336,7 +407,12 @@ const ComplaintPage = () => {
     const data = new FormData();
     data.append('title', formData.title);
     data.append('category', formData.category);
-    data.append('description', formData.description);
+    
+    const finalDescription = audioBlob 
+      ? (formData.description ? `${formData.description} (Voice message attached)` : "Voice message attached")
+      : formData.description;
+    data.append('description', finalDescription);
+    
     data.append('location', formData.location);
     data.append('isAnonymous', formData.isAnonymous);
     data.append('emergencyFlag', formData.emergencyFlag);
@@ -350,6 +426,11 @@ const ComplaintPage = () => {
       data.append('evidence', file);
     });
 
+    if (audioBlob) {
+      const audioFile = new File([audioBlob], `voice-description-${Date.now()}.webm`, { type: 'audio/webm' });
+      data.append('evidence', audioFile);
+    }
+
     try {
       const response = await complaintAPI.create(data);
       if (response.data.success) {
@@ -359,6 +440,7 @@ const ComplaintPage = () => {
         setFormData({ title: '', category: '', description: '', location: '', isAnonymous: false, emergencyFlag: false });
         setFiles([]);
         setPreviews([]);
+        setAudioBlob(null);
         setMapPosition(null);
       }
     } catch (error) {
@@ -376,7 +458,7 @@ const ComplaintPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim()) return toast.error('Please enter a complaint title');
-    if (!formData.description.trim()) return toast.error('Please enter complaint details');
+    if (!formData.description.trim() && !audioBlob) return toast.error('Please enter complaint details or record a voice message');
     if (!formData.category) return toast.error('Please select a department');
     if (!formData.location.trim()) return toast.error('Please provide a complaint location');
     setShowSubmitConfirm(true);
@@ -518,16 +600,110 @@ const ComplaintPage = () => {
               <label className="text-sm font-semibold text-gray-700">
                 <T en="Detailed Description" />
               </label>
-              <textarea
-                required
-                name="description"
-                rows={4}
-                value={formData.description}
-                onChange={handleInputChange}
-                onKeyDown={(e) => e.stopPropagation()}
-                placeholder="Explain the issue in detail..."
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none resize-none"
-              />
+              
+              <div className="relative group">
+                {isRecording ? (
+                  <div className="flex items-center gap-4 p-5 bg-red-50 border-2 border-red-100 rounded-2xl shadow-inner min-h-[128px]">
+                    <div className="flex flex-col items-center justify-center gap-3 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+                        <span className="text-xl font-black text-red-600 tabular-nums tracking-wider">
+                          {formatDuration(recordingDuration)}
+                        </span>
+                      </div>
+                      
+                      {/* Animated Waveform */}
+                      <div className="flex items-end gap-1 h-8">
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                          <motion.div
+                            key={i}
+                            className="w-1 bg-red-400 rounded-full"
+                            animate={{ 
+                              height: [10, 24, 12, 30, 8][i % 5],
+                            }}
+                            transition={{ 
+                              duration: 0.5, 
+                              repeat: Infinity, 
+                              delay: i * 0.1,
+                              ease: "easeInOut" 
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          mediaRecorderRef.current?.stop();
+                          setIsRecording(false);
+                          clearInterval(timerRef.current);
+                          setAudioBlob(null);
+                          setRecordingDuration(0);
+                        }}
+                        className="p-3 rounded-xl bg-white text-slate-400 hover:text-red-500 transition-all shadow-sm border border-red-100"
+                        title="Cancel"
+                      >
+                        <X size={20} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={stopRecording}
+                        className="p-3 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-all shadow-md shadow-red-500/20"
+                        title="Save"
+                      >
+                        <CheckCircle2 size={20} />
+                      </button>
+                    </div>
+                  </div>
+                ) : audioBlob ? (
+                  <div className="p-4 bg-teal-50 border-2 border-teal-100 rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-teal-500/10 flex items-center justify-center">
+                          <Mic size={16} className="text-teal-600" />
+                        </div>
+                        <span className="text-xs font-bold text-teal-700 uppercase tracking-wider">Voice Description</span>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={deleteRecording}
+                        className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all"
+                        title="Remove"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <VoiceMessagePlayer 
+                      src={URL.createObjectURL(audioBlob)} 
+                      className="!max-w-full bg-white/80 backdrop-blur-sm border-teal-100/50 shadow-none"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <textarea
+                      required={!audioBlob}
+                      name="description"
+                      rows={4}
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      placeholder="Explain the issue in detail or use the mic to record..."
+                      className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none resize-none shadow-sm placeholder:text-slate-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={startRecording}
+                      className="absolute bottom-3 right-3 p-2.5 rounded-full bg-slate-100 text-slate-500 hover:bg-teal-500 hover:text-white transition-all shadow-sm group"
+                      title="Record Voice"
+                    >
+                      <Mic size={20} className="group-hover:scale-110 transition-transform" />
+                    </button>
+                  </>
+                )}
+              </div>
+
               <button
                 type="button"
                 onClick={analyzeWithNLP}
@@ -704,7 +880,6 @@ const ComplaintPage = () => {
             </div>
           </motion.div>
 
-          {/* ─── Nearby Complaints (pre-submission awareness) ───────── */}
           {/* ─── Evidence Upload ────────────────────────────────────── */}
           <motion.div
             variants={itemVariants}
@@ -788,7 +963,7 @@ const ComplaintPage = () => {
             </AnimatePresence>
           </motion.div>
 
-          {/* ─── Anonymous Submission ───────────────────────────────── */}
+          {/* ─── Nearby Match Check ───────────────────────────────── */}
           <AnimatePresence>
             {(hasPinnedLocation || isLoadingNearby || nearbyCount === 0) && (
               <motion.div
@@ -838,129 +1013,39 @@ const ComplaintPage = () => {
                           <div className="flex items-start gap-3">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                          <span
-                            className="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                            style={{
-                              background: c.priority === 'Critical' ? '#fee2e2' : c.priority === 'High' ? '#ffedd5' : c.priority === 'Medium' ? '#fef9c3' : '#dcfce7',
-                              color: c.priority === 'Critical' ? '#dc2626' : c.priority === 'High' ? '#ea580c' : c.priority === 'Medium' ? '#ca8a04' : '#16a34a',
-                            }}
-                          >
-                            • {c.priority}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-medium">{getDepartmentLabel(c.category)}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${c.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{c.status}</span>
+                                <span
+                                  className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                  style={{
+                                    background: c.priority === 'Critical' ? '#fee2e2' : c.priority === 'High' ? '#ffedd5' : c.priority === 'Medium' ? '#fef9c3' : '#dcfce7',
+                                    color: c.priority === 'Critical' ? '#dc2626' : c.priority === 'High' ? '#ea580c' : c.priority === 'Medium' ? '#ca8a04' : '#16a34a',
+                                  }}
+                                >
+                                  • {c.priority}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-medium">{getDepartmentLabel(c.category)}</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${c.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{c.status}</span>
                               </div>
                               <p className="text-sm font-semibold text-slate-900 mt-2 truncate">{c.title}</p>
                               <p className="text-[11px] text-slate-400 font-mono mt-1">{c.ticketId}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleVote(c._id)}
-                        disabled={votingId === c._id}
-                        className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all disabled:opacity-50 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
-                      >
-                        {votingId === c._id ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <ThumbsUp size={14} className={c._userVoted ? 'fill-amber-500' : ''} />
-                        )}
-                        <span className="text-[10px] font-bold">{c.voteCount}</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleVote(c._id)}
+                              disabled={votingId === c._id}
+                              className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all disabled:opacity-50 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                            >
+                              {votingId === c._id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <ThumbsUp size={14} className={c._userVoted ? 'fill-amber-500' : ''} />
+                              )}
+                              <span className="text-[10px] font-bold">{c.voteCount}</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-
-          {/* ─── Emergency Flag ─────────────────────────────────────── */}
-          {false && <motion.div
-            variants={itemVariants}
-            className="bg-red-50/60 rounded-2xl p-6 border border-red-100"
-          >
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <AlertTriangle size={20} className="text-red-600" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-red-900"><T en="Mark as Emergency" /></h4>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="emergencyFlag"
-                      checked={formData.emergencyFlag}
-                      onChange={handleInputChange}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
-                  </label>
-                </div>
-                <p className="text-sm text-red-700 mt-1">
-                  <T en="Flag this complaint as an emergency to mark it Critical priority immediately — use only for urgent public safety issues." />
-                </p>
-              </div>
-            </div>
-          </motion.div>}
-
-          {/* ─── Nearby Similar Complaints ──────────────────────────── */}
-          <AnimatePresence>
-            {false && mapPosition && (nearbyComplaints.length > 0 || isLoadingNearby) && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="bg-amber-50 border border-amber-200 rounded-2xl p-5"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <Users size={16} className="text-amber-600" />
-                  <h4 className="text-sm font-bold text-amber-900">
-                    Similar Complaints Nearby (within 1 km)
-                  </h4>
-                  {isLoadingNearby && <Loader2 size={14} className="animate-spin text-amber-500 ml-auto" />}
-                </div>
-                <p className="text-xs text-amber-700 mb-4">
-                  These issues already exist in your area. Consider upvoting them instead of filing a duplicate.
-                </p>
-                <div className="space-y-2">
-                  {nearbyComplaints.slice(0, 5).map((c) => (
-                    <div key={c._id} className="flex items-center gap-3 bg-white border border-amber-100 rounded-xl px-4 py-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span
-                            className="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                            style={{
-                              background: c.priority === 'Critical' ? '#fee2e2' : c.priority === 'High' ? '#ffedd5' : c.priority === 'Medium' ? '#fef9c3' : '#dcfce7',
-                              color:      c.priority === 'Critical' ? '#dc2626' : c.priority === 'High' ? '#ea580c' : c.priority === 'Medium' ? '#ca8a04' : '#16a34a',
-                            }}
-                          >
-                            ● {c.priority}
-                          </span>
-                          <span className="text-[10px] text-gray-400 font-medium">{c.category}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${c.status === 'resolved' ? 'bg-green-100 text-green-700' : c.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{c.status}</span>
-                        </div>
-                        <p className="text-sm font-medium text-gray-800 mt-0.5 truncate">{c.title}</p>
-                        <p className="text-[11px] text-gray-400 font-mono">{c.ticketId}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleVote(c._id)}
-                        disabled={votingId === c._id}
-                        className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all disabled:opacity-50 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
-                      >
-                        {votingId === c._id ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <ThumbsUp size={14} className={c._userVoted ? 'fill-amber-500' : ''} />
-                        )}
-                        <span className="text-[10px] font-bold">{c.voteCount}</span>
-                      </button>
-                    </div>
-                  ))}
                 </div>
               </motion.div>
             )}
