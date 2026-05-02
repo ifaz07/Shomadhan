@@ -1,7 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/SignupPage";
+import UnifiedAuthPage from "./pages/UnifiedAuthPage";
 import DashboardPage from "./pages/DashboardPage";
 import ProfilePage from "./pages/ProfilePage";
 import ComplaintPage from "./pages/ComplaintPage";
@@ -100,10 +99,10 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen auth-bg flex items-center justify-center">
+      <div className="min-h-screen auth-page-wrapper flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-teal-400 border-t-transparent rounded-full animate-spin" />
-          <p className="text-white/70 font-medium">Loading...</p>
+          <div className="w-12 h-12 border-4 border-[#a1824a] border-t-transparent rounded-full animate-spin" />
+          <p className="text-white font-black tracking-widest uppercase text-xs opacity-50">Loading Portal...</p>
         </div>
       </div>
     );
@@ -127,7 +126,7 @@ function App() {
           path="/login"
           element={
             <GuestRoute>
-              <LoginPage />
+              <UnifiedAuthPage />
             </GuestRoute>
           }
         />
@@ -135,7 +134,7 @@ function App() {
           path="/signup"
           element={
             <GuestRoute>
-              <SignupPage />
+              <UnifiedAuthPage />
             </GuestRoute>
           }
         />
@@ -390,3 +389,4 @@ function App() {
 }
 
 export default App;
+

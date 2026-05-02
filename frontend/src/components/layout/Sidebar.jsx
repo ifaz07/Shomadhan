@@ -36,7 +36,7 @@ const resolveAvatar = (url) => {
   return url.startsWith('http') ? url : `${API_BASE.replace('/api/v1', '')}${url}`;
 };
 
-const Sidebar = () => {
+const Sidebar = ({ transparent = false }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
@@ -203,8 +203,8 @@ const Sidebar = () => {
       <div className="p-5 border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-lg font-bold text-white font-bengali">স</span>
+            <div className="relative w-10 h-10 rounded-full bg-[#0d3b4b]/5 flex items-center justify-center flex-shrink-0 overflow-hidden border-2 border-[#a1824a]/20">
+               <img src="/assets/auth-logo.png" alt="Logo" className="w-full h-full object-cover" />
             </div>
             <motion.div
               initial={false}
@@ -212,15 +212,11 @@ const Sidebar = () => {
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="overflow-hidden whitespace-nowrap"
             >
-                <div className="hidden items-center gap-1.5">
-                   <h1 className="text-lg font-bold text-gray-900 font-bengali">সমাধান</h1>
-                   {user?.isGoodCitizen && <GoodCitizenStar size={14} />}
-                </div>
                 <div className="flex items-center gap-1.5">
-                   <h1 className="text-lg font-bold text-gray-900">Somadhan</h1>
+                   <h1 className="text-lg font-black text-[#0d3b4b]">Somadhan</h1>
                    {user?.isGoodCitizen && <GoodCitizenStar size={14} />}
                 </div>
-                <p className="text-[10px] text-blue-500 font-semibold -mt-0.5">Somadhan</p>
+                <p className="text-[10px] text-[#a1824a] font-bold tracking-widest uppercase -mt-1">City Govt</p>
               </motion.div>
           </div>
           <motion.div
@@ -237,14 +233,14 @@ const Sidebar = () => {
       <div className="p-4 border-b border-gray-100">
         <div className="flex items-center gap-3">
           <div className="relative flex-shrink-0">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-100 to-blue-100 flex items-center justify-center">
-              <span className="text-sm font-bold text-teal-700">
+            <div className="w-10 h-10 rounded-full bg-[#0d3b4b]/5 border-2 border-[#a1824a]/10 flex items-center justify-center">
+              <span className="text-sm font-black text-[#0d3b4b]">
                 {user?.name?.charAt(0)?.toUpperCase() || "C"}
               </span>
             </div>
             {user?.isVerified && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border border-white">
-                <ShieldCheck size={9} className="text-white" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#0d3b4b] rounded-full flex items-center justify-center border border-white">
+                <ShieldCheck size={9} className="text-[#a1824a]" />
               </div>
             )}
           </div>
@@ -254,13 +250,13 @@ const Sidebar = () => {
             transition={{ duration: 0.18, ease: "easeOut" }}
             className={`flex-1 min-w-0 overflow-hidden ${isCollapsed ? "w-0" : "w-auto"}`}
           >
-            <p className="text-sm font-semibold text-gray-900 truncate">
+            <p className="text-sm font-bold text-[#0d3b4b] truncate">
               {user?.name}
             </p>
-            <p className="text-[10px] text-gray-500 truncate">
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider truncate">
               {roleLabelMap[user?.role] || "User"}
             </p>
-            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold mt-0.5 ${verBadge.color}`}>
+            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold mt-0.5 ${verBadge.color === 'bg-green-100 text-green-700' ? 'bg-[#0d3b4b]/10 text-[#0d3b4b]' : verBadge.color}`}>
               {verBadge.label}
             </span>
           </motion.div>
@@ -276,12 +272,12 @@ const Sidebar = () => {
               key={item.path}
               to={item.disabled ? "#" : item.path}
               onClick={() => { if (!item.disabled) setIsOpen(false); }}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative ${
-                item.disabled ? "text-gray-300 cursor-not-allowed" : active ? "bg-gradient-to-r from-teal-50 to-blue-50 text-teal-700" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 relative ${
+                item.disabled ? "text-slate-300 cursor-not-allowed" : active ? "bg-[#0d3b4b]/5 text-[#0d3b4b]" : "text-slate-500 hover:bg-slate-50 hover:text-[#0d3b4b]"
               }`}
             >
-              {active && <motion.div layoutId="activeTab" className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-teal-500 rounded-r-full" />}
-              <Icon size={18} className={active ? "text-teal-600" : ""} />
+              {active && <motion.div layoutId="activeTab" className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-[#a1824a] rounded-r-full" />}
+              <Icon size={18} className={active ? "text-[#a1824a]" : ""} />
               <motion.span
                 initial={false}
                 animate={{ opacity: isCollapsed ? 0 : 1, x: isCollapsed ? -6 : 0 }}
@@ -291,7 +287,7 @@ const Sidebar = () => {
                 {item.label}
               </motion.span>
               {!isCollapsed && item.badge && (
-                <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                <span className="ml-auto bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
                   {item.badge}
                 </span>
               )}
@@ -301,15 +297,15 @@ const Sidebar = () => {
 
         {user?.role === 'citizen' && !isCollapsed && volunteerAds.length > 0 && (
           <div className="mt-8 px-1 pb-4">
-            <h3 className="px-3 mb-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-              <Users size={12} className="text-teal-500" /> <T en="Volunteer Opportunities" />
+            <h3 className="px-3 mb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <Users size={12} className="text-[#a1824a]" /> <T en="Volunteer Opportunities" />
             </h3>
             <div className="space-y-4">
               {volunteerAds.map(ad => (
-                <div key={ad._id} className="bg-white border border-gray-100 rounded-2xl p-3 shadow-sm hover:shadow-md transition-all group">
+                <div key={ad._id} className="bg-white border border-slate-100 rounded-2xl p-3 shadow-sm hover:shadow-md transition-all group">
                   <img src={resolveAvatar(ad.posterUrl)} alt={ad.title} className="w-full h-24 object-cover rounded-xl mb-3" />
-                  <h4 className="text-xs font-bold text-gray-800 line-clamp-1 mb-1">{ad.title}</h4>
-                  <button onClick={() => setSelectedAd(ad)} className="w-full py-2 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-2 bg-teal-600 text-white shadow-lg shadow-teal-500/20 hover:bg-teal-700 active:scale-95">
+                  <h4 className="text-xs font-black text-[#0d3b4b] line-clamp-1 mb-1">{ad.title}</h4>
+                  <button onClick={() => setSelectedAd(ad)} className="w-full py-2 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-2 bg-[#0d3b4b] text-[#a1824a] shadow-lg shadow-[#0d3b4b]/10 hover:bg-[#0d3b4b]/90 active:scale-95">
                     <T en="View Details" />
                   </button>
                 </div>
@@ -349,7 +345,7 @@ const Sidebar = () => {
         {isOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsOpen(false)} className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-40" />
-            <motion.div initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="lg:hidden fixed left-0 top-0 bottom-0 w-72 bg-white shadow-2xl z-50 overflow-hidden">
+            <motion.div initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className={`lg:hidden fixed left-0 top-0 bottom-0 w-72 ${transparent ? 'bg-white/90 backdrop-blur-md' : 'bg-white'} shadow-2xl z-50 overflow-hidden`}>
               <button onClick={() => setIsOpen(false)} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-gray-100 transition-colors z-10"><X size={20} className="text-gray-500" /></button>
               {SidebarContent()}
             </motion.div>
@@ -361,10 +357,10 @@ const Sidebar = () => {
         initial={false}
         animate={{ width: isCollapsed ? 80 : 288 }}
         transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
-        className="hidden lg:flex flex-col bg-white border-r border-gray-100 h-screen sticky top-0 overflow-hidden will-change-[width]"
+        className={`hidden lg:flex flex-col ${transparent ? 'bg-white/40 backdrop-blur-xl border-white/40 shadow-sm' : 'bg-white border-gray-100'} border-r h-screen sticky top-0 overflow-hidden will-change-[width]`}
       >
         {SidebarContent()}
-        <button onClick={() => setIsCollapsed(!isCollapsed)} className="absolute -right-3 top-20 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors">
+        <button onClick={() => setIsCollapsed(!isCollapsed)} className={`absolute -right-3 top-20 w-6 h-6 ${transparent ? 'bg-white/90' : 'bg-white'} border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors`}>
           <ChevronLeft size={14} className={`text-gray-500 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""}`} />
         </button>
       </motion.aside>

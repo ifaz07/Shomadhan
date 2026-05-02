@@ -39,10 +39,10 @@ const OAuthCallbackPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen auth-bg flex items-center justify-center">
+    <div className="min-h-screen auth-page-wrapper flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-4 border-teal-400 border-t-transparent rounded-full animate-spin" />
-        <p className="text-white/70 font-medium">Signing you in...</p>
+        <div className="w-12 h-12 border-4 border-[#a1824a] border-t-transparent rounded-full animate-spin" />
+        <p className="text-white font-black tracking-widest uppercase text-xs opacity-50">Signing you in...</p>
       </div>
     </div>
   );

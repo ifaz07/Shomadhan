@@ -1,42 +1,7 @@
 import { motion } from 'framer-motion';
 import LanguageToggle from '../LanguageToggle';
 import T from '../T';
-
-// ─── Floating decorative shapes for the background ───────────────────
-const FloatingShapes = () => (
-  <div className="absolute inset-0 overflow-hidden pointer-events-none">
-    {/* Large blurred circles */}
-    <div className="absolute -top-32 -left-32 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl animate-float" />
-    <div className="absolute top-1/3 -right-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-float-delayed" />
-    <div className="absolute -bottom-20 left-1/4 w-80 h-80 bg-cyan-500/8 rounded-full blur-3xl animate-pulse-slow" />
-
-    {/* Small geometric accents */}
-    <motion.div
-      className="absolute top-20 right-1/4 w-3 h-3 bg-teal-400/40 rounded-full"
-      animate={{ y: [0, -15, 0], opacity: [0.4, 0.8, 0.4] }}
-      transition={{ duration: 4, repeat: Infinity }}
-    />
-    <motion.div
-      className="absolute bottom-32 left-20 w-2 h-2 bg-blue-400/30 rounded-full"
-      animate={{ y: [0, -10, 0], opacity: [0.3, 0.6, 0.3] }}
-      transition={{ duration: 3, repeat: Infinity, delay: 1 }}
-    />
-    <motion.div
-      className="absolute top-1/2 left-10 w-4 h-4 bg-cyan-400/20 rounded-full"
-      animate={{ y: [0, -20, 0] }}
-      transition={{ duration: 5, repeat: Infinity, delay: 0.5 }}
-    />
-
-    {/* Grid pattern overlay */}
-    <div
-      className="absolute inset-0 opacity-[0.03]"
-      style={{
-        backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)`,
-        backgroundSize: '40px 40px',
-      }}
-    />
-  </div>
-);
+import FloatingShapes from '../FloatingShapes';
 
 // ─── Left-side branding panel (desktop only) ─────────────────────────
 const BrandingPanel = () => (
@@ -90,26 +55,35 @@ const BrandingPanel = () => (
 // ─── Main Auth Layout wrapper ────────────────────────────────────────
 const AuthLayout = ({ children }) => {
   return (
-    <div className="min-h-screen auth-bg flex relative">
-      <FloatingShapes />
+    <div className="min-h-screen auth-page-wrapper flex relative overflow-hidden">
+      {/* Background logo watermark handled by CSS class .auth-page-wrapper::before */}
 
       {/* Language toggle — fixed top-right corner */}
       <div className="fixed top-4 right-4 z-50">
         <LanguageToggle variant="dark" />
       </div>
 
-      <BrandingPanel />
-
-      {/* Right side — form area */}
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-12 relative z-10">
+      {/* Center area */}
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-12 relative z-10">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
           className="w-full max-w-md"
         >
-          {children}
+          <div className="text-center mb-8">
+             <img src="/assets/auth-logo.png" alt="Logo" className="w-24 h-24 mx-auto mb-4 drop-shadow-xl [clip-path:circle(50%)]" />
+             <h1 className="text-3xl font-black text-white tracking-tight">Somadhan</h1>
+             <div className="h-1 w-12 bg-[#a1824a] mx-auto mt-2 rounded-full" />
+          </div>
+          <div className="bg-white rounded-3xl p-8 shadow-2xl border border-white/10">
+            {children}
+          </div>
         </motion.div>
+        
+        <p className="text-white/30 text-xs mt-12 font-medium tracking-widest uppercase">
+          Government of Bangladesh
+        </p>
       </div>
     </div>
   );

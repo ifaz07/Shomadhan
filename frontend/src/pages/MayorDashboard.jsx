@@ -333,7 +333,7 @@ const MayorDashboard = () => {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <DashboardLayout bgClass="mayor-bg" showShapes={true}>
         <div className="flex items-center justify-center h-64">
           <Loader2 size={32} className="animate-spin text-teal-500" />
         </div>
@@ -361,13 +361,13 @@ const MayorDashboard = () => {
   }`;
 
   return (
-    <DashboardLayout>
+    <DashboardLayout bgClass="mayor-bg" showShapes={true}>
       <div className="mx-auto max-w-[1390px] space-y-6 px-0 sm:px-1">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-[2rem] border border-slate-200/70 bg-gradient-to-br from-slate-950 via-slate-900 to-teal-900 px-6 py-7 text-white shadow-[0_24px_60px_-28px_rgba(15,23,42,0.55)] sm:px-8 sm:py-8"
+          className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-teal-800 via-slate-800 to-blue-900 px-6 py-7 text-white shadow-xl sm:px-8 sm:py-8"
         >
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 xl:items-end">
           <div className="xl:col-span-8">

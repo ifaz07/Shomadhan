@@ -47,7 +47,7 @@ const SocialButtons = () => {
       <motion.button
         type="button"
         onClick={handleGoogleLogin}
-        className="btn-social"
+        className="flex items-center justify-center gap-3 w-full py-3 px-4 rounded-xl border-2 border-gray-100 font-bold text-[#0d3b4b] transition-all hover:bg-gray-50 hover:border-[#a1824a]/20 active:scale-[0.98]"
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
       >
@@ -58,7 +58,7 @@ const SocialButtons = () => {
       <motion.button
         type="button"
         onClick={handleFacebookLogin}
-        className="btn-social"
+        className="flex items-center justify-center gap-3 w-full py-3 px-4 rounded-xl border-2 border-gray-100 font-bold text-[#0d3b4b] transition-all hover:bg-gray-50 hover:border-[#a1824a]/20 active:scale-[0.98]"
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
       >

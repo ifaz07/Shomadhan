@@ -63,12 +63,11 @@ const ResetPasswordPage = () => {
 
   return (
     <AuthLayout>
-      <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8 sm:p-10">
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-2xl font-black text-[#0d3b4b]">
             <T en="Set new password" />
           </h2>
-          <p className="text-gray-500 mt-1 text-sm">
+          <p className="text-gray-500 mt-1 text-sm font-medium">
             <T en="Choose a strong password for your account." />
           </p>
         </div>
@@ -76,11 +75,11 @@ const ResetPasswordPage = () => {
         <form onSubmit={handleSubmit} className="space-y-5" noValidate>
           {/* New Password */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label htmlFor="password" className="block text-xs font-bold text-[#0d3b4b] uppercase mb-1.5">
               <T en="New password" />
             </label>
             <div className="relative">
-              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 theme-icon">
                 <Lock size={18} />
               </div>
               <input
@@ -90,12 +89,12 @@ const ResetPasswordPage = () => {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="At least 8 characters"
-                className={`input-field pl-11 pr-11 ${errors.password ? 'input-error' : ''}`}
+                className={`theme-input pr-11 ${errors.password ? 'border-red-400' : ''}`}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#0d3b4b] transition-colors"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -106,7 +105,7 @@ const ResetPasswordPage = () => {
                   initial={{ opacity: 0, y: -5 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -5 }}
-                  className="text-red-500 text-xs mt-1.5"
+                  className="text-red-500 text-[10px] font-bold mt-1.5"
                 >
                   {errors.password}
                 </motion.p>
@@ -116,11 +115,11 @@ const ResetPasswordPage = () => {
 
           {/* Confirm Password */}
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label htmlFor="confirmPassword" className="block text-xs font-bold text-[#0d3b4b] uppercase mb-1.5">
               <T en="Confirm password" />
             </label>
             <div className="relative">
-              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 theme-icon">
                 <Lock size={18} />
               </div>
               <input
@@ -130,12 +129,12 @@ const ResetPasswordPage = () => {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 placeholder="Repeat your password"
-                className={`input-field pl-11 pr-11 ${errors.confirmPassword ? 'input-error' : ''}`}
+                className={`theme-input pr-11 ${errors.confirmPassword ? 'border-red-400' : ''}`}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirm(!showConfirm)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#0d3b4b] transition-colors"
               >
                 {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -146,7 +145,7 @@ const ResetPasswordPage = () => {
                   initial={{ opacity: 0, y: -5 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -5 }}
-                  className="text-red-500 text-xs mt-1.5"
+                  className="text-red-500 text-[10px] font-bold mt-1.5"
                 >
                   {errors.confirmPassword}
                 </motion.p>
@@ -157,7 +156,7 @@ const ResetPasswordPage = () => {
           <motion.button
             type="submit"
             disabled={isLoading}
-            className="btn-primary w-full flex items-center justify-center gap-2"
+            className="gold-btn w-full"
             whileHover={{ scale: isLoading ? 1 : 1.01 }}
             whileTap={{ scale: isLoading ? 1 : 0.99 }}
           >
@@ -175,20 +174,15 @@ const ResetPasswordPage = () => {
           </motion.button>
         </form>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
+        <p className="text-center text-sm mt-6">
           <Link
             to="/login"
-            className="inline-flex items-center gap-1 text-teal-600 hover:text-teal-700 font-semibold transition-colors"
+            className="inline-flex items-center gap-1 text-[#0d3b4b] hover:text-[#a1824a] font-bold transition-colors"
           >
             <ArrowLeft size={14} />
             <T en="Back to sign in" />
           </Link>
         </p>
-      </div>
-
-      <p className="text-center text-xs text-white/30 mt-6">
-        © 2026 সমাধান (Somadhan). All rights reserved.
-      </p>
     </AuthLayout>
   );
 };

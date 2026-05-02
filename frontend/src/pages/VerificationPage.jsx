@@ -98,22 +98,22 @@ const VerificationPage = () => {
 
   const VerificationStatusCard = () => {
     const statusMap = {
-      none: { icon: Shield, color: 'text-gray-400', bg: 'bg-gray-50 border-gray-200', label: 'Not Verified', desc: 'Submit your identity document to get verified and start filing complaints.' },
-      pending: { icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-200', label: 'Verification Pending', desc: 'Your document is under review.' },
-      approved: { icon: ShieldCheck, color: 'text-green-600', bg: 'bg-green-50 border-green-200', label: 'Verified', desc: 'Your identity has been verified. You can now submit complaints.' },
+      none: { icon: Shield, color: 'text-slate-400', bg: 'bg-slate-50 border-slate-200', label: 'Not Verified', desc: 'Submit your identity document to get verified and start filing complaints.' },
+      pending: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', label: 'Verification Pending', desc: 'Your document is under review.' },
+      approved: { icon: ShieldCheck, color: 'text-teal-600', bg: 'bg-teal-50 border-teal-200', label: 'Verified', desc: 'Your identity has been verified. You can now submit complaints.' },
       rejected: { icon: ShieldX, color: 'text-red-600', bg: 'bg-red-50 border-red-200', label: 'Verification Rejected', desc: user?.verificationDoc?.rejectionReason || 'Your document was rejected.' },
     };
     const s = statusMap[verificationStatus];
     const Icon = s.icon;
 
     return (
-      <div className={`${s.bg} border rounded-2xl p-6 flex items-start gap-4 mb-8`}>
+      <div className={`${s.bg} border rounded-2xl p-6 flex items-start gap-4 mb-8 shadow-sm`}>
         <div className={`p-3 rounded-xl ${s.bg} border-2 border-white shadow-sm`}>
           <Icon size={24} className={s.color} />
         </div>
         <div>
           <p className={`font-bold text-lg ${s.color}`}>{s.label}</p>
-          <p className="text-sm text-gray-600 mt-1 leading-relaxed">{s.desc}</p>
+          <p className="text-sm text-slate-600 mt-1 leading-relaxed font-medium">{s.desc}</p>
         </div>
       </div>
     );
@@ -124,11 +124,11 @@ const VerificationPage = () => {
       <div className="max-w-2xl mx-auto py-8 px-4">
         <header className="mb-8 flex items-center justify-between">
           <div>
-            <Link to="/profile" className="text-teal-600 flex items-center gap-2 text-sm font-medium mb-2 hover:underline">
+            <Link to="/profile" className="text-[#0d3b4b] flex items-center gap-2 text-sm font-bold mb-2 hover:underline">
               <ArrowLeft size={16} /> Back to Profile
             </Link>
-            <h1 className="text-3xl font-bold text-gray-900">Account Verification</h1>
-            <p className="text-gray-500 mt-1">Verify your identity to unlock all features</p>
+            <h1 className="text-3xl font-black text-[#0d3b4b]">Account Verification</h1>
+            <p className="text-slate-500 mt-1 font-medium">Verify your identity to unlock all features</p>
           </div>
         </header>
 
@@ -138,22 +138,22 @@ const VerificationPage = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100"
+            className="bg-white rounded-[2rem] p-8 shadow-2xl border border-slate-100"
           >
             <form onSubmit={handleVerificationSubmit} className="space-y-6">
               {/* Doc type */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-3">Select Document Type</label>
+                <label className="block text-xs font-bold text-[#0d3b4b] uppercase mb-3 tracking-wider">Select Document Type</label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {DOC_TYPES.map((doc) => (
                     <button
                       key={doc.value}
                       type="button"
                       onClick={() => setVerDocType(doc.value)}
-                      className={`p-4 rounded-2xl border-2 text-center transition-all text-sm font-semibold ${
+                      className={`p-4 rounded-2xl border-2 text-center transition-all text-sm font-bold ${
                         verDocType === doc.value
-                          ? 'border-teal-500 bg-teal-50 text-teal-700'
-                          : 'border-gray-100 text-gray-500 hover:border-gray-200 hover:bg-gray-50'
+                          ? 'border-[#a1824a] bg-[#a1824a]/5 text-[#a1824a]'
+                          : 'border-slate-100 text-slate-400 hover:border-slate-200 hover:bg-slate-50'
                       }`}
                     >
                       {doc.label}
@@ -163,9 +163,9 @@ const VerificationPage = () => {
               </div>
 
               {/* Info Box */}
-              <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex items-start gap-3">
-                <Info size={20} className="text-blue-500 mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-blue-700 leading-relaxed">
+              <div className="bg-[#0d3b4b]/5 p-4 rounded-2xl border border-[#0d3b4b]/10 flex items-start gap-3">
+                <Info size={20} className="text-[#0d3b4b] mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-[#0d3b4b]/70 leading-relaxed font-bold">
                   {verDocType === 'nid' && "Please provide your 10-digit National ID number."}
                   {verDocType === 'birth_certificate' && "Please provide your 17-digit Birth Registration number."}
                   {verDocType === 'passport' && "Please provide your 9-character Passport number."}
@@ -174,9 +174,9 @@ const VerificationPage = () => {
 
               {/* Doc number */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Document Number</label>
+                <label className="block text-xs font-bold text-[#0d3b4b] uppercase mb-2 tracking-wider">Document Number</label>
                 <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#a1824a]">
                     <FileText size={20} />
                   </div>
                   <input
@@ -185,17 +185,17 @@ const VerificationPage = () => {
                     onKeyDown={(e) => e.stopPropagation()}
                     onChange={(e) => setVerDocNumber(e.target.value)}
                     placeholder={verDocType === 'nid' ? 'e.g. 1234567890' : verDocType === 'passport' ? 'e.g. AB1234567' : 'e.g. 20001234567890123'}
-                    className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-100 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none font-medium"
+                    className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-slate-100 focus:border-[#a1824a] focus:ring-4 focus:ring-[#a1824a]/10 transition-all outline-none font-bold text-[#0d3b4b]"
                   />
                 </div>
               </div>
 
               {/* File upload */}
               <div className="space-y-2">
-                <label className="block text-sm font-bold text-gray-700">Upload Document Copy</label>
+                <label className="block text-xs font-bold text-[#0d3b4b] uppercase tracking-wider">Upload Document Copy</label>
                 <div 
                   onClick={() => fileInputRef.current.click()}
-                  className="border-2 border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 hover:border-teal-500/50 hover:bg-teal-50/30 transition-all cursor-pointer group relative overflow-hidden"
+                  className="border-2 border-dashed border-slate-200 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 hover:border-[#a1824a]/50 hover:bg-[#a1824a]/5 transition-all cursor-pointer group relative overflow-hidden"
                 >
                   {filePreview ? (
                     <img src={filePreview} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-20" />
@@ -205,14 +205,14 @@ const VerificationPage = () => {
                     </div>
                   ) : null}
 
-                  <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center group-hover:scale-110 transition-transform relative z-10">
-                    <Upload className="text-gray-400 group-hover:text-teal-500" />
+                  <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center group-hover:scale-110 transition-transform relative z-10">
+                    <Upload className="text-slate-400 group-hover:text-[#a1824a]" />
                   </div>
                   <div className="text-center relative z-10">
-                    <p className="text-sm font-medium text-gray-700">
+                    <p className="text-sm font-bold text-[#0d3b4b]">
                       {verFile ? verFile.name : 'Click to upload your document'}
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">JPG, PNG or PDF up to 5MB</p>
+                    <p className="text-xs text-slate-400 mt-1 font-medium">JPG, PNG or PDF up to 5MB</p>
                   </div>
                   <input
                     type="file"
@@ -227,14 +227,14 @@ const VerificationPage = () => {
               <motion.button
                 type="submit"
                 disabled={verLoading}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-teal-500 to-blue-600 text-white font-bold text-lg shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
+                className="w-full py-4 rounded-2xl bg-[#0d3b4b] text-[#a1824a] font-black text-lg shadow-xl flex items-center justify-center gap-2 hover:bg-[#0d3b4b]/90 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
                 whileHover={{ scale: verLoading ? 1 : 1.01 }}
                 whileTap={{ scale: verLoading ? 1 : 0.99 }}
               >
                 {verLoading ? (
                   <Loader2 size={22} className="animate-spin" />
                 ) : (
-                  <Clock size={22} />
+                  <ShieldCheck size={22} />
                 )}
                 <span>{verLoading ? 'Submitting...' : 'Submit for Review'}</span>
               </motion.button>

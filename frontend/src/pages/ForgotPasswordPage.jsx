@@ -38,7 +38,6 @@ const ForgotPasswordPage = () => {
 
   return (
     <AuthLayout>
-      <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8 sm:p-10">
         {submitted ? (
           // ─── Success state ──────────────────────────────────────────
           <motion.div
@@ -47,9 +46,9 @@ const ForgotPasswordPage = () => {
             className="text-center py-4"
           >
             <div className="flex justify-center mb-4">
-              <CheckCircle size={52} className="text-teal-500" />
+              <CheckCircle size={52} className="text-[#a1824a]" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-2xl font-bold text-[#0d3b4b] mb-2">
               <T en="Check your email" />
             </h2>
             <p className="text-gray-500 text-sm mb-6">
@@ -57,7 +56,7 @@ const ForgotPasswordPage = () => {
             </p>
             <Link
               to="/login"
-              className="inline-flex items-center gap-2 text-sm text-teal-600 hover:text-teal-700 font-semibold transition-colors"
+              className="inline-flex items-center gap-2 text-sm text-[#a1824a] hover:underline font-bold transition-colors"
             >
               <ArrowLeft size={16} />
               <T en="Back to sign in" />
@@ -67,21 +66,21 @@ const ForgotPasswordPage = () => {
           // ─── Form state ─────────────────────────────────────────────
           <>
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-2xl font-black text-[#0d3b4b]">
                 <T en="Forgot password?" />
               </h2>
-              <p className="text-gray-500 mt-1 text-sm">
+              <p className="text-gray-500 mt-1 text-sm font-medium">
                 <T en="Enter your email and we'll send you a reset link." />
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="email" className="block text-xs font-bold text-[#0d3b4b] uppercase mb-1.5">
                   <T en="Email address" />
                 </label>
                 <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 theme-icon">
                     <Mail size={18} />
                   </div>
                   <input
@@ -94,7 +93,7 @@ const ForgotPasswordPage = () => {
                       if (error) setError('');
                     }}
                     placeholder="you@example.com"
-                    className={`input-field pl-11 ${error ? 'input-error' : ''}`}
+                    className={`theme-input ${error ? 'border-red-400' : ''}`}
                   />
                 </div>
                 <AnimatePresence>
@@ -103,7 +102,7 @@ const ForgotPasswordPage = () => {
                       initial={{ opacity: 0, y: -5 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -5 }}
-                      className="text-red-500 text-xs mt-1.5"
+                      className="text-red-500 text-[10px] font-bold mt-1.5"
                     >
                       {error}
                     </motion.p>
@@ -114,7 +113,7 @@ const ForgotPasswordPage = () => {
               <motion.button
                 type="submit"
                 disabled={isLoading}
-                className="btn-primary w-full flex items-center justify-center gap-2"
+                className="gold-btn w-full"
                 whileHover={{ scale: isLoading ? 1 : 1.01 }}
                 whileTap={{ scale: isLoading ? 1 : 0.99 }}
               >
@@ -132,10 +131,10 @@ const ForgotPasswordPage = () => {
               </motion.button>
             </form>
 
-            <p className="text-center text-sm text-gray-500 mt-6">
+            <p className="text-center text-sm mt-6">
               <Link
                 to="/login"
-                className="inline-flex items-center gap-1 text-teal-600 hover:text-teal-700 font-semibold transition-colors"
+                className="inline-flex items-center gap-1 text-[#0d3b4b] hover:text-[#a1824a] font-bold transition-colors"
               >
                 <ArrowLeft size={14} />
                 <T en="Back to sign in" />
@@ -143,11 +142,6 @@ const ForgotPasswordPage = () => {
             </p>
           </>
         )}
-      </div>
-
-      <p className="text-center text-xs text-white/30 mt-6">
-        © 2026 সমাধান (Somadhan). All rights reserved.
-      </p>
     </AuthLayout>
   );
 };
