@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Video,
   Mic,
@@ -22,30 +22,36 @@ import {
   ThumbsUp,
   AlertTriangle,
   Users,
-} from 'lucide-react';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import toast from 'react-hot-toast';
-import { Link } from 'react-router-dom';
-import { complaintAPI } from '../services/api';
-import { useAuth } from '../context/AuthContext';
-import DashboardLayout from '../components/layout/DashboardLayout';
-import T from '../components/T';
+} from "lucide-react";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  useMapEvents,
+  useMap,
+} from "react-leaflet";
+import L from "leaflet";
+import toast from "react-hot-toast";
+import { Link } from "react-router-dom";
+import { complaintAPI } from "../services/api";
+import { useAuth } from "../context/AuthContext";
+import DashboardLayout from "../components/layout/DashboardLayout";
+import T from "../components/T";
 import {
   DEPARTMENT_OPTIONS,
   getDepartmentLabel,
-} from '../constants/departments';
-import SmartInputWrapper from '../components/common/SmartInputWrapper';
+} from "../constants/departments";
+import SmartInputWrapper from "../components/common/SmartInputWrapper";
 
 // Fix for default marker icons in Leaflet with React
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 let DefaultIcon = L.icon({
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
   iconSize: [25, 41],
-  iconAnchor: [12, 41]
+  iconAnchor: [12, 41],
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
@@ -67,33 +73,31 @@ const LocationMarker = ({ position, setPosition, setAddress }) => {
     }
   }, [position, map]);
 
-  return position === null ? null : (
-    <Marker position={position} />
-  );
+  return position === null ? null : <Marker position={position} />;
 };
 
 // Function to get address from coordinates using Nominatim (OSM)
 const reverseGeocode = async (lat, lng, setAddress) => {
   try {
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
     );
     const data = await response.json();
     if (data && data.display_name) {
       setAddress(data.display_name);
     }
   } catch (error) {
-    console.error('Geocoding error:', error);
+    console.error("Geocoding error:", error);
   }
 };
 
 const ComplaintPage = () => {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
-    title: '',
-    category: '',
-    description: '',
-    location: '',
+    title: "",
+    category: "",
+    description: "",
+    location: "",
     isAnonymous: false,
     emergencyFlag: false,
   });
@@ -114,13 +118,13 @@ const ComplaintPage = () => {
 
   // ── Hooks that must be declared before any early return ─────────────
   const setAddress = useCallback((address) => {
-    setFormData(prev => ({ ...prev, location: address }));
+    setFormData((prev) => ({ ...prev, location: address }));
   }, []);
 
   const fetchNearbyComplaints = useCallback(async (lat, lng, category) => {
     setIsLoadingNearby(true);
     try {
-      const res = await complaintAPI.getNearby(lat, lng, 1, category || '');
+      const res = await complaintAPI.getNearby(lat, lng, 1, category || "");
       setNearbyComplaints(res.data.data || []);
     } catch {
       setNearbyComplaints([]);
@@ -140,8 +144,8 @@ const ComplaintPage = () => {
     const previousHtmlOverflow = document.documentElement.style.overflow;
 
     if (showSubmitConfirm) {
-      document.body.style.overflow = 'hidden';
-      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
     }
 
     return () => {
@@ -151,7 +155,7 @@ const ComplaintPage = () => {
   }, [showSubmitConfirm]);
 
   if (!user?.isVerified) {
-    const isPendingVerification = user?.verificationDoc?.status === 'pending';
+    const isPendingVerification = user?.verificationDoc?.status === "pending";
 
     return (
       <DashboardLayout>
@@ -164,17 +168,29 @@ const ComplaintPage = () => {
             <div className="w-20 h-20 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-6">
               <ShieldCheck size={40} className="text-yellow-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4"><T en="Account Verification Required" /></h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              <T en="Account Verification Required" />
+            </h2>
             <p className="text-gray-600 mb-8 leading-relaxed">
-              <T en={isPendingVerification
-                ? 'Your verification request is still under admin review. You can submit complaints after it is approved.'
-                : 'To submit complaints and help improve our community, you need to verify your account with a valid document (NID, Birth Certificate, or Passport).'} />
+              <T
+                en={
+                  isPendingVerification
+                    ? "Your verification request is still under admin review. You can submit complaints after it is approved."
+                    : "To submit complaints and help improve our community, you need to verify your account with a valid document (NID, Birth Certificate, or Passport)."
+                }
+              />
             </p>
             <Link
               to="/verify"
               className="inline-flex items-center gap-2 bg-teal-500 text-white px-8 py-3 rounded-xl font-bold hover:bg-teal-600 transition-all shadow-lg shadow-teal-500/20"
             >
-              <T en={isPendingVerification ? 'Check Verification Status' : 'Verify My Account'} />
+              <T
+                en={
+                  isPendingVerification
+                    ? "Check Verification Status"
+                    : "Verify My Account"
+                }
+              />
             </Link>
           </motion.div>
         </div>
@@ -186,16 +202,16 @@ const ComplaintPage = () => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
   // Prevent "Enter" from submitting the form
   const preventEnterSubmit = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       e.stopPropagation();
-      if (e.target.name === 'location') {
+      if (e.target.name === "location") {
         searchLocation();
       }
     }
@@ -204,7 +220,7 @@ const ComplaintPage = () => {
   const getCurrentLocation = () => {
     setIsLocating(true);
     if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
+      toast.error("Geolocation is not supported by your browser");
       setIsLocating(false);
       return;
     }
@@ -215,14 +231,14 @@ const ComplaintPage = () => {
         setMapPosition([latitude, longitude]);
         reverseGeocode(latitude, longitude, setAddress);
         setIsLocating(false);
-        toast.success('Location found!');
+        toast.success("Location found!");
       },
       (error) => {
-        console.error('Geolocation error:', error);
-        toast.error('Unable to retrieve your location');
+        console.error("Geolocation error:", error);
+        toast.error("Unable to retrieve your location");
         setIsLocating(false);
       },
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true },
     );
   };
 
@@ -232,7 +248,7 @@ const ComplaintPage = () => {
     setIsSearching(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.location)}&limit=1`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.location)}&limit=1`,
       );
       const data = await response.json();
 
@@ -240,14 +256,14 @@ const ComplaintPage = () => {
         const { lat, lon, display_name } = data[0];
         const newPos = [parseFloat(lat), parseFloat(lon)];
         setMapPosition(newPos);
-        setFormData(prev => ({ ...prev, location: display_name }));
-        toast.success('Location found on map');
+        setFormData((prev) => ({ ...prev, location: display_name }));
+        toast.success("Location found on map");
       } else {
-        toast.error('Location not found. Try being more specific.');
+        toast.error("Location not found. Try being more specific.");
       }
     } catch (error) {
-      console.error('Search error:', error);
-      toast.error('Error searching for location');
+      console.error("Search error:", error);
+      toast.error("Error searching for location");
     } finally {
       setIsSearching(false);
     }
@@ -255,19 +271,22 @@ const ComplaintPage = () => {
 
   const analyzeWithNLP = async () => {
     if (!formData.title.trim() || !formData.description.trim()) {
-      toast.error('Please enter both title and description before analyzing');
+      toast.error("Please enter both title and description before analyzing");
       return;
     }
     setIsAnalyzing(true);
     setNlpSuggestion(null);
     try {
-      const response = await complaintAPI.analyze(formData.title, formData.description);
+      const response = await complaintAPI.analyze(
+        formData.title,
+        formData.description,
+      );
       if (response.data.success) {
         setNlpSuggestion(response.data.data);
-        toast.success('AI analysis complete!');
+        toast.success("AI analysis complete!");
       }
     } catch (error) {
-      toast.error('Analysis failed. Please try again.');
+      toast.error("Analysis failed. Please try again.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -275,10 +294,18 @@ const ComplaintPage = () => {
 
   const applySuggestion = () => {
     if (nlpSuggestion?.category) {
-      setFormData(prev => ({ ...prev, category: nlpSuggestion.category }));
+      setFormData((prev) => ({ ...prev, category: nlpSuggestion.category }));
       setNlpSuggestion(null);
-        toast.success(`Department set to "${getDepartmentLabel(nlpSuggestion.category)}"`);
+      toast.success(
+        `Department set to "${getDepartmentLabel(nlpSuggestion.category)}"`,
+      );
     }
+  };
+
+  const notifyAnalysisOngoing = () => {
+    toast.error(
+      "Department analysis is ongoing. Please wait a moment before submitting.",
+    );
   };
 
   // Vote on a nearby complaint
@@ -286,15 +313,20 @@ const ComplaintPage = () => {
     setVotingId(id);
     try {
       const res = await complaintAPI.vote(id);
-      setNearbyComplaints(prev =>
-        prev.map(c => c._id === id
-          ? { ...c, voteCount: res.data.voteCount, _userVoted: res.data.voted }
-          : c
-        )
+      setNearbyComplaints((prev) =>
+        prev.map((c) =>
+          c._id === id
+            ? {
+                ...c,
+                voteCount: res.data.voteCount,
+                _userVoted: res.data.voted,
+              }
+            : c,
+        ),
       );
-      toast.success(res.data.voted ? 'Upvoted!' : 'Vote removed');
+      toast.success(res.data.voted ? "Upvoted!" : "Vote removed");
     } catch {
-      toast.error('Failed to vote');
+      toast.error("Failed to vote");
     } finally {
       setVotingId(null);
     }
@@ -303,7 +335,7 @@ const ComplaintPage = () => {
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
     if (files.length + selectedFiles.length > 5) {
-      toast.error('Maximum 5 files allowed');
+      toast.error("Maximum 5 files allowed");
       return;
     }
 
@@ -311,12 +343,12 @@ const ComplaintPage = () => {
     setFiles(newFiles);
 
     // Create previews
-    const newPreviews = selectedFiles.map(file => ({
+    const newPreviews = selectedFiles.map((file) => ({
       name: file.name,
       type: file.type,
-      url: URL.createObjectURL(file)
+      url: URL.createObjectURL(file),
     }));
-    setPreviews(prev => [...prev, ...newPreviews]);
+    setPreviews((prev) => [...prev, ...newPreviews]);
   };
 
   const removeFile = (index) => {
@@ -331,43 +363,58 @@ const ComplaintPage = () => {
   };
 
   const performSubmit = async () => {
-    if (!formData.category) return toast.error('Please select a department');
+    if (isAnalyzing) {
+      notifyAnalysisOngoing();
+      return;
+    }
+
+    if (!formData.category) return toast.error("Please select a department");
 
     setIsSubmitting(true);
     const data = new FormData();
-    data.append('title', formData.title);
-    data.append('category', formData.category);
-    data.append('description', formData.description);
-    data.append('location', formData.location);
-    data.append('isAnonymous', formData.isAnonymous);
-    data.append('emergencyFlag', formData.emergencyFlag);
+    data.append("title", formData.title);
+    data.append("category", formData.category);
+    data.append("description", formData.description);
+    data.append("location", formData.location);
+    data.append("isAnonymous", formData.isAnonymous);
+    data.append("emergencyFlag", formData.emergencyFlag);
 
     if (mapPosition) {
-      data.append('latitude', mapPosition[0]);
-      data.append('longitude', mapPosition[1]);
+      data.append("latitude", mapPosition[0]);
+      data.append("longitude", mapPosition[1]);
     }
 
-    files.forEach(file => {
-      data.append('evidence', file);
+    files.forEach((file) => {
+      data.append("evidence", file);
     });
 
     try {
       const response = await complaintAPI.create(data);
       if (response.data.success) {
         setSpamWarning(null);
+        setNlpSuggestion(null);
         setShowSubmitConfirm(false);
-        toast.success('Complaint submitted successfully!');
-        setFormData({ title: '', category: '', description: '', location: '', isAnonymous: false, emergencyFlag: false });
+        toast.success("Complaint submitted successfully!");
+        setFormData({
+          title: "",
+          category: "",
+          description: "",
+          location: "",
+          isAnonymous: false,
+          emergencyFlag: false,
+        });
         setFiles([]);
         setPreviews([]);
         setMapPosition(null);
       }
     } catch (error) {
-      console.error('Submission error:', error);
+      console.error("Submission error:", error);
       if (error.response?.status === 409 && error.response.data?.duplicate) {
         setSpamWarning(error.response.data.duplicate);
       } else {
-        toast.error(error.response?.data?.message || 'Failed to submit complaint');
+        toast.error(
+          error.response?.data?.message || "Failed to submit complaint",
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -376,10 +423,17 @@ const ComplaintPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title.trim()) return toast.error('Please enter a complaint title');
-    if (!formData.description.trim()) return toast.error('Please enter complaint details');
-    if (!formData.category) return toast.error('Please select a department');
-    if (!formData.location.trim()) return toast.error('Please provide a complaint location');
+    if (isAnalyzing) {
+      notifyAnalysisOngoing();
+      return;
+    }
+    if (!formData.title.trim())
+      return toast.error("Please enter a complaint title");
+    if (!formData.description.trim())
+      return toast.error("Please enter complaint details");
+    if (!formData.category) return toast.error("Please select a department");
+    if (!formData.location.trim())
+      return toast.error("Please provide a complaint location");
     setShowSubmitConfirm(true);
   };
 
@@ -388,21 +442,28 @@ const ComplaintPage = () => {
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.5, staggerChildren: 0.1 }
-    }
+      transition: { duration: 0.5, staggerChildren: 0.1 },
+    },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, x: -20 },
-    visible: { opacity: 1, x: 0 }
+    visible: { opacity: 1, x: 0 },
   };
 
   const nearbyCount = nearbyComplaints.length;
   const hasPinnedLocation = Boolean(mapPosition);
+  const isSubmitBlocked = isSubmitting || isAnalyzing;
   const topSuggestions =
     nlpSuggestion?.topCategories ||
     (nlpSuggestion
-      ? [{ category: nlpSuggestion.category, confidence: nlpSuggestion.confidence, department: nlpSuggestion.department }]
+      ? [
+          {
+            category: nlpSuggestion.category,
+            confidence: nlpSuggestion.confidence,
+            department: nlpSuggestion.department,
+          },
+        ]
       : []);
 
   return (
@@ -438,16 +499,28 @@ const ComplaintPage = () => {
 
             <div className="xl:col-span-4 grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-1 gap-3">
               <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Step 1</p>
-                <p className="mt-1 text-sm font-semibold text-white">Describe the issue clearly</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
+                  Step 1
+                </p>
+                <p className="mt-1 text-sm font-semibold text-white">
+                  Describe the issue clearly
+                </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Step 2</p>
-                <p className="mt-1 text-sm font-semibold text-white">Pin the exact location</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
+                  Step 2
+                </p>
+                <p className="mt-1 text-sm font-semibold text-white">
+                  Pin the exact location
+                </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Step 3</p>
-                <p className="mt-1 text-sm font-semibold text-white">Upload supporting evidence</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
+                  Step 3
+                </p>
+                <p className="mt-1 text-sm font-semibold text-white">
+                  Upload supporting evidence
+                </p>
               </div>
             </div>
           </div>
@@ -464,8 +537,12 @@ const ComplaintPage = () => {
           <div className="xl:col-span-12 bg-white rounded-[2rem] shadow-[0_22px_50px_-30px_rgba(15,23,42,0.28)] border border-white/80 ring-1 ring-slate-100 p-6 md:p-8 space-y-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">Incident Brief</p>
-                <h3 className="mt-2 text-lg font-bold text-slate-900">Tell us what happened</h3>
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">
+                  Incident Brief
+                </p>
+                <h3 className="mt-2 text-lg font-bold text-slate-900">
+                  Tell us what happened
+                </h3>
               </div>
               <div className="hidden sm:flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-500">
                 <Building2 size={14} className="text-teal-500" />
@@ -479,7 +556,9 @@ const ComplaintPage = () => {
                 </label>
                 <SmartInputWrapper
                   value={formData.title}
-                  onValueChange={(val) => setFormData(prev => ({ ...prev, title: val }))}
+                  onValueChange={(val) =>
+                    setFormData((prev) => ({ ...prev, title: val }))
+                  }
                   context="civic complaint title"
                 >
                   <input
@@ -515,7 +594,9 @@ const ComplaintPage = () => {
                 >
                   <option value="">Select a department</option>
                   {DEPARTMENT_OPTIONS.map((dept) => (
-                    <option key={dept.value} value={dept.value}>{dept.label}</option>
+                    <option key={dept.value} value={dept.value}>
+                      {dept.label}
+                    </option>
                   ))}
                 </select>
               </motion.div>
@@ -527,14 +608,19 @@ const ComplaintPage = () => {
               </label>
               <SmartInputWrapper
                 value={formData.description}
-                onValueChange={(val) => setFormData(prev => ({ ...prev, description: val }))}
+                onValueChange={(val) =>
+                  setFormData((prev) => ({ ...prev, description: val }))
+                }
                 onAudioRecorded={(file) => {
-                  setFiles(prev => [...prev, file]);
-                  setPreviews(prev => [...prev, {
-                    name: file.name,
-                    type: file.type,
-                    url: URL.createObjectURL(file)
-                  }]);
+                  setFiles((prev) => [...prev, file]);
+                  setPreviews((prev) => [
+                    ...prev,
+                    {
+                      name: file.name,
+                      type: file.type,
+                      url: URL.createObjectURL(file),
+                    },
+                  ]);
                 }}
                 context="detailed civic complaint description"
               >
@@ -552,7 +638,7 @@ const ComplaintPage = () => {
               <button
                 type="button"
                 onClick={analyzeWithNLP}
-                disabled={isAnalyzing}
+                disabled={isSubmitBlocked}
                 className="mt-2 flex items-center gap-2 px-4 py-2 bg-violet-50 text-violet-700 border border-violet-200 rounded-xl text-sm font-semibold hover:bg-violet-100 transition-all disabled:opacity-50"
               >
                 {isAnalyzing ? (
@@ -560,7 +646,11 @@ const ComplaintPage = () => {
                 ) : (
                   <Sparkles size={15} />
                 )}
-                {isAnalyzing ? <T en="Analyzing..." /> : <T en="Find Department" />}
+                {isAnalyzing ? (
+                  <T en="Analyzing..." />
+                ) : (
+                  <T en="Find Department" />
+                )}
               </button>
             </motion.div>
           </div>
@@ -594,11 +684,18 @@ const ComplaintPage = () => {
                     <T en="TOP SUGGESTED DEPARTMENTS" />
                   </div>
                   {topSuggestions.map((item, idx) => (
-                    <div key={`${item.category}-${idx}`} className="bg-white rounded-xl p-4 border border-violet-100 flex items-center justify-between gap-4">
+                    <div
+                      key={`${item.category}-${idx}`}
+                      className="bg-white rounded-xl p-4 border border-violet-100 flex items-center justify-between gap-4"
+                    >
                       <div className="flex items-center gap-3">
-                        <span className="text-xs font-bold text-violet-400">#{idx + 1}</span>
+                        <span className="text-xs font-bold text-violet-400">
+                          #{idx + 1}
+                        </span>
                         <div>
-                          <span className="text-base font-bold text-gray-900">{getDepartmentLabel(item.category)}</span>
+                          <span className="text-base font-bold text-gray-900">
+                            {getDepartmentLabel(item.category)}
+                          </span>
                           <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
                             <Building2 size={11} />
                             {item.department.name}
@@ -606,11 +703,15 @@ const ComplaintPage = () => {
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        <span className="text-xs font-semibold text-violet-600">{Math.round(item.confidence * 100)}%</span>
+                        <span className="text-xs font-semibold text-violet-600">
+                          {Math.round(item.confidence * 100)}%
+                        </span>
                         <div className="w-20 h-1.5 rounded-full bg-gray-100 overflow-hidden">
                           <div
                             className="h-full bg-violet-500 rounded-full transition-all"
-                            style={{ width: `${Math.round(item.confidence * 100)}%` }}
+                            style={{
+                              width: `${Math.round(item.confidence * 100)}%`,
+                            }}
                           />
                         </div>
                       </div>
@@ -620,7 +721,9 @@ const ComplaintPage = () => {
 
                 {nlpSuggestion.keywords?.length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold text-gray-500 mb-2"><T en="EXTRACTED KEYWORDS" /></p>
+                    <p className="text-xs font-semibold text-gray-500 mb-2">
+                      <T en="EXTRACTED KEYWORDS" />
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {nlpSuggestion.keywords.map((kw) => (
                         <span
@@ -657,7 +760,9 @@ const ComplaintPage = () => {
                   <MapPin className="text-teal-500" size={20} />
                   <T en="Incident Location" />
                 </h3>
-                <p className="text-sm text-gray-500 mt-1"><T en="Search an area or pin it on the map" /></p>
+                <p className="text-sm text-gray-500 mt-1">
+                  <T en="Search an area or pin it on the map" />
+                </p>
               </div>
 
               <div className="flex gap-2">
@@ -692,7 +797,10 @@ const ComplaintPage = () => {
                     placeholder="Search area (e.g. Dhanmondi, Dhaka)"
                     className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none"
                   />
-                  <MapPin size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <MapPin
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  />
                 </div>
                 <button
                   type="button"
@@ -700,7 +808,11 @@ const ComplaintPage = () => {
                   disabled={isSearching}
                   className="px-4 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors flex items-center justify-center min-w-[50px] disabled:bg-gray-400"
                 >
-                  {isSearching ? <Loader2 size={20} className="animate-spin" /> : <Search size={20} />}
+                  {isSearching ? (
+                    <Loader2 size={20} className="animate-spin" />
+                  ) : (
+                    <Search size={20} />
+                  )}
                 </button>
               </div>
 
@@ -708,13 +820,17 @@ const ComplaintPage = () => {
                 <MapContainer
                   center={mapPosition || [23.8103, 90.4125]} // Default to Dhaka
                   zoom={13}
-                  style={{ height: '100%', width: '100%' }}
+                  style={{ height: "100%", width: "100%" }}
                 >
                   <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
-                  <LocationMarker position={mapPosition} setPosition={setMapPosition} setAddress={setAddress} />
+                  <LocationMarker
+                    position={mapPosition}
+                    setPosition={setMapPosition}
+                    setAddress={setAddress}
+                  />
                 </MapContainer>
 
                 <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm flex items-center gap-2 text-[10px] font-medium text-gray-600">
@@ -732,14 +848,21 @@ const ComplaintPage = () => {
             className="xl:col-span-12 bg-white rounded-[2rem] shadow-[0_22px_50px_-30px_rgba(15,23,42,0.24)] border border-white/80 ring-1 ring-slate-100 p-6 md:p-8"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-700"><T en="Supporting Evidence" /></h3>
-              <span className="text-xs text-gray-400"><T en="Max 5 files (Images, Video, Audio)" /></span>
+              <h3 className="text-sm font-semibold text-gray-700">
+                <T en="Supporting Evidence" />
+              </h3>
+              <span className="text-xs text-gray-400">
+                <T en="Max 5 files (Images, Video, Audio)" />
+              </span>
             </div>
 
             <div className="mb-5 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Review Tip</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                Review Tip
+              </p>
               <p className="mt-1 text-sm text-slate-600 leading-relaxed">
-                Add a photo, short video, or audio clip if it helps prove the issue faster.
+                Add a photo, short video, or audio clip if it helps prove the
+                issue faster.
               </p>
             </div>
 
@@ -751,8 +874,12 @@ const ComplaintPage = () => {
                 <Upload className="text-gray-400 group-hover:text-teal-500" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-700"><T en="Click to upload or drag and drop" /></p>
-                <p className="text-xs text-gray-400 mt-1"><T en="PNG, JPG, MP4, MP3 up to 10MB each" /></p>
+                <p className="text-sm font-medium text-gray-700">
+                  <T en="Click to upload or drag and drop" />
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  <T en="PNG, JPG, MP4, MP3 up to 10MB each" />
+                </p>
               </div>
               <input
                 type="file"
@@ -769,7 +896,7 @@ const ComplaintPage = () => {
               {previews.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
+                  animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                   className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mt-6"
                 >
@@ -780,9 +907,13 @@ const ComplaintPage = () => {
                       animate={{ scale: 1, opacity: 1 }}
                       className="relative group aspect-square rounded-xl overflow-hidden border border-gray-100 bg-gray-50"
                     >
-                      {preview.type.startsWith('image/') ? (
-                        <img src={preview.url} alt="preview" className="w-full h-full object-cover" />
-                      ) : preview.type.startsWith('video/') ? (
+                      {preview.type.startsWith("image/") ? (
+                        <img
+                          src={preview.url}
+                          alt="preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : preview.type.startsWith("video/") ? (
                         <div className="w-full h-full flex items-center justify-center text-blue-500">
                           <Video size={32} />
                         </div>
@@ -811,7 +942,7 @@ const ComplaintPage = () => {
 
           {/* ─── Anonymous Submission ───────────────────────────────── */}
           <AnimatePresence>
-            {(hasPinnedLocation || isLoadingNearby || nearbyCount === 0) && (
+            {(formData.category && formData.category !== 'Select a department' && mapPosition && hasPinnedLocation) && (hasPinnedLocation || isLoadingNearby || nearbyCount === 0) && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -820,26 +951,35 @@ const ComplaintPage = () => {
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-4">
                   <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-500">Nearby Match Check</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-500">
+                      Nearby Match Check
+                    </p>
                     <h4 className="mt-2 text-lg font-bold text-slate-900">
                       Similar complaints
                     </h4>
                     <p className="mt-1 text-sm text-slate-500">
                       {hasPinnedLocation
-                        ? 'We are checking this area for existing open complaints so you can avoid filing duplicates.'
-                        : 'Set the incident location first. Similar complaints will appear here automatically if we find a nearby match.'}
+                        ? "We are checking this area for existing open complaints so you can avoid filing duplicates."
+                        : "Set the incident location first. Similar complaints will appear here automatically if we find a nearby match."}
                     </p>
                   </div>
                   <div className="inline-flex items-center gap-2 self-start rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-amber-700">
-                    {isLoadingNearby ? <Loader2 size={15} className="animate-spin" /> : <Users size={15} />}
-                    <span className="text-xs font-bold uppercase tracking-[0.18em]">Matches</span>
+                    {isLoadingNearby ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : (
+                      <Users size={15} />
+                    )}
+                    <span className="text-xs font-bold uppercase tracking-[0.18em]">
+                      Matches
+                    </span>
                     <span className="text-lg font-black">{nearbyCount}</span>
                   </div>
                 </div>
                 <div className="space-y-3">
                   {!hasPinnedLocation ? (
                     <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
-                      No location pinned yet. Once you place the location on the map, similar complaints will be checked here.
+                      No location pinned yet. Once you place the location on the
+                      map, similar complaints will be checked here.
                     </div>
                   ) : isLoadingNearby ? (
                     <div className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-5 text-sm text-amber-700">
@@ -847,49 +987,86 @@ const ComplaintPage = () => {
                     </div>
                   ) : nearbyCount === 0 ? (
                     <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-5">
-                      <p className="text-sm font-semibold text-emerald-800">0 similar complaints found nearby</p>
+                      <p className="text-sm font-semibold text-emerald-800">
+                        0 similar complaints found nearby
+                      </p>
                       <p className="mt-1 text-sm text-emerald-700">
-                        This looks like a fresh report for the selected area and department.
+                        This looks like a fresh report for the selected area and
+                        department.
                       </p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
                       {nearbyComplaints.slice(0, 4).map((c) => (
-                        <div key={c._id} className="rounded-2xl border border-amber-100 bg-amber-50/35 p-4">
+                        <div
+                          key={c._id}
+                          className="rounded-2xl border border-amber-100 bg-amber-50/35 p-4"
+                        >
                           <div className="flex items-start gap-3">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                          <span
-                            className="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                            style={{
-                              background: c.priority === 'Critical' ? '#fee2e2' : c.priority === 'High' ? '#ffedd5' : c.priority === 'Medium' ? '#fef9c3' : '#dcfce7',
-                              color: c.priority === 'Critical' ? '#dc2626' : c.priority === 'High' ? '#ea580c' : c.priority === 'Medium' ? '#ca8a04' : '#16a34a',
-                            }}
-                          >
-                            • {c.priority}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-medium">{getDepartmentLabel(c.category)}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${c.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{c.status}</span>
+                                <span
+                                  className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                  style={{
+                                    background:
+                                      c.priority === "Critical"
+                                        ? "#fee2e2"
+                                        : c.priority === "High"
+                                          ? "#ffedd5"
+                                          : c.priority === "Medium"
+                                            ? "#fef9c3"
+                                            : "#dcfce7",
+                                    color:
+                                      c.priority === "Critical"
+                                        ? "#dc2626"
+                                        : c.priority === "High"
+                                          ? "#ea580c"
+                                          : c.priority === "Medium"
+                                            ? "#ca8a04"
+                                            : "#16a34a",
+                                  }}
+                                >
+                                  • {c.priority}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-medium">
+                                  {c.category}
+                                </span>
+                                <span
+                                  className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${c.status === "in-progress" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}
+                                >
+                                  {c.status}
+                                </span>
                               </div>
-                              <p className="text-sm font-semibold text-slate-900 mt-2 truncate">{c.title}</p>
-                              <p className="text-[11px] text-slate-400 font-mono mt-1">{c.ticketId}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleVote(c._id)}
-                        disabled={votingId === c._id}
-                        className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all disabled:opacity-50 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
-                      >
-                        {votingId === c._id ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <ThumbsUp size={14} className={c._userVoted ? 'fill-amber-500' : ''} />
-                        )}
-                        <span className="text-[10px] font-bold">{c.voteCount}</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                              <p className="text-sm font-semibold text-slate-900 mt-2 truncate">
+                                {c.title}
+                              </p>
+                              <p className="text-[11px] text-slate-400 font-mono mt-1">
+                                {c.ticketId}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleVote(c._id)}
+                              disabled={votingId === c._id}
+                              className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all disabled:opacity-50 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                            >
+                              {votingId === c._id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <ThumbsUp
+                                  size={14}
+                                  className={
+                                    c._userVoted ? "fill-amber-500" : ""
+                                  }
+                                />
+                              )}
+                              <span className="text-[10px] font-bold">
+                                {c.voteCount}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -897,94 +1074,137 @@ const ComplaintPage = () => {
             )}
           </AnimatePresence>
 
-
           {/* ─── Emergency Flag ─────────────────────────────────────── */}
-          {false && <motion.div
-            variants={itemVariants}
-            className="bg-red-50/60 rounded-2xl p-6 border border-red-100"
-          >
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <AlertTriangle size={20} className="text-red-600" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-red-900"><T en="Mark as Emergency" /></h4>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="emergencyFlag"
-                      checked={formData.emergencyFlag}
-                      onChange={handleInputChange}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
-                  </label>
+          {false && (
+            <motion.div
+              variants={itemVariants}
+              className="bg-red-50/60 rounded-2xl p-6 border border-red-100"
+            >
+              <div className="flex items-start gap-4">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <AlertTriangle size={20} className="text-red-600" />
                 </div>
-                <p className="text-sm text-red-700 mt-1">
-                  <T en="Flag this complaint as an emergency to mark it Critical priority immediately — use only for urgent public safety issues." />
-                </p>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-red-900">
+                      <T en="Mark as Emergency" />
+                    </h4>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="emergencyFlag"
+                        checked={formData.emergencyFlag}
+                        onChange={handleInputChange}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                    </label>
+                  </div>
+                  <p className="text-sm text-red-700 mt-1">
+                    <T en="Flag this complaint as an emergency to mark it Critical priority immediately — use only for urgent public safety issues." />
+                  </p>
+                </div>
               </div>
-            </div>
-          </motion.div>}
+            </motion.div>
+          )}
 
           {/* ─── Nearby Similar Complaints ──────────────────────────── */}
           <AnimatePresence>
-            {false && mapPosition && (nearbyComplaints.length > 0 || isLoadingNearby) && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="bg-amber-50 border border-amber-200 rounded-2xl p-5"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <Users size={16} className="text-amber-600" />
-                  <h4 className="text-sm font-bold text-amber-900">
-                    Similar Complaints Nearby (within 1 km)
-                  </h4>
-                  {isLoadingNearby && <Loader2 size={14} className="animate-spin text-amber-500 ml-auto" />}
-                </div>
-                <p className="text-xs text-amber-700 mb-4">
-                  These issues already exist in your area. Consider upvoting them instead of filing a duplicate.
-                </p>
-                <div className="space-y-2">
-                  {nearbyComplaints.slice(0, 5).map((c) => (
-                    <div key={c._id} className="flex items-center gap-3 bg-white border border-amber-100 rounded-xl px-4 py-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span
-                            className="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                            style={{
-                              background: c.priority === 'Critical' ? '#fee2e2' : c.priority === 'High' ? '#ffedd5' : c.priority === 'Medium' ? '#fef9c3' : '#dcfce7',
-                              color:      c.priority === 'Critical' ? '#dc2626' : c.priority === 'High' ? '#ea580c' : c.priority === 'Medium' ? '#ca8a04' : '#16a34a',
-                            }}
-                          >
-                            ● {c.priority}
-                          </span>
-                          <span className="text-[10px] text-gray-400 font-medium">{c.category}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${c.status === 'resolved' ? 'bg-green-100 text-green-700' : c.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{c.status}</span>
-                        </div>
-                        <p className="text-sm font-medium text-gray-800 mt-0.5 truncate">{c.title}</p>
-                        <p className="text-[11px] text-gray-400 font-mono">{c.ticketId}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleVote(c._id)}
-                        disabled={votingId === c._id}
-                        className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all disabled:opacity-50 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+            {false &&
+              mapPosition &&
+              (nearbyComplaints.length > 0 || isLoadingNearby) && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="bg-amber-50 border border-amber-200 rounded-2xl p-5"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <Users size={16} className="text-amber-600" />
+                    <h4 className="text-sm font-bold text-amber-900">
+                      Similar Complaints Nearby (within 1 km)
+                    </h4>
+                    {isLoadingNearby && (
+                      <Loader2
+                        size={14}
+                        className="animate-spin text-amber-500 ml-auto"
+                      />
+                    )}
+                  </div>
+                  <p className="text-xs text-amber-700 mb-4">
+                    These issues already exist in your area. Consider upvoting
+                    them instead of filing a duplicate.
+                  </p>
+                  <div className="space-y-2">
+                    {nearbyComplaints.slice(0, 5).map((c) => (
+                      <div
+                        key={c._id}
+                        className="flex items-center gap-3 bg-white border border-amber-100 rounded-xl px-4 py-3"
                       >
-                        {votingId === c._id ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <ThumbsUp size={14} className={c._userVoted ? 'fill-amber-500' : ''} />
-                        )}
-                        <span className="text-[10px] font-bold">{c.voteCount}</span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                              style={{
+                                background:
+                                  c.priority === "Critical"
+                                    ? "#fee2e2"
+                                    : c.priority === "High"
+                                      ? "#ffedd5"
+                                      : c.priority === "Medium"
+                                        ? "#fef9c3"
+                                        : "#dcfce7",
+                                color:
+                                  c.priority === "Critical"
+                                    ? "#dc2626"
+                                    : c.priority === "High"
+                                      ? "#ea580c"
+                                      : c.priority === "Medium"
+                                        ? "#ca8a04"
+                                        : "#16a34a",
+                              }}
+                            >
+                              ● {c.priority}
+                            </span>
+                            <span className="text-[10px] text-gray-400 font-medium">
+                              {c.category}
+                            </span>
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${c.status === "resolved" ? "bg-green-100 text-green-700" : c.status === "in-progress" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}
+                            >
+                              {c.status}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium text-gray-800 mt-0.5 truncate">
+                            {c.title}
+                          </p>
+                          <p className="text-[11px] text-gray-400 font-mono">
+                            {c.ticketId}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleVote(c._id)}
+                          disabled={votingId === c._id}
+                          className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all disabled:opacity-50 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                        >
+                          {votingId === c._id ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <ThumbsUp
+                              size={14}
+                              className={c._userVoted ? "fill-amber-500" : ""}
+                            />
+                          )}
+                          <span className="text-[10px] font-bold">
+                            {c.voteCount}
+                          </span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
           </AnimatePresence>
 
           {/* ─── Spam / Duplicate Warning ───────────────────────────── */}
@@ -997,21 +1217,30 @@ const ComplaintPage = () => {
                 className="xl:col-span-12 bg-red-50 border border-red-200 rounded-[2rem] p-5 shadow-[0_16px_32px_-28px_rgba(220,38,38,0.45)]"
               >
                 <div className="flex items-start gap-3">
-                  <AlertCircle size={20} className="text-red-500 mt-0.5 shrink-0" />
+                  <AlertCircle
+                    size={20}
+                    className="text-red-500 mt-0.5 shrink-0"
+                  />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-red-900"><T en="Duplicate Complaint Detected" /></p>
+                    <p className="text-sm font-bold text-red-900">
+                      <T en="Duplicate Complaint Detected" />
+                    </p>
                     <p className="text-sm text-red-700 mt-1">
                       <T en="A similar complaint from the same area was already submitted within the last 24 hours. Please check the existing ticket before submitting again." />
                     </p>
                     <div className="mt-3 flex flex-wrap items-center gap-3">
                       <div className="flex items-center gap-2 bg-white border border-red-200 rounded-lg px-3 py-1.5">
-                        <span className="text-xs text-gray-500 font-medium"><T en="Existing ticket" /></span>
-                        <span className="text-sm font-bold text-gray-900 font-mono">{spamWarning.ticketId}</span>
+                        <span className="text-xs text-gray-500 font-medium">
+                          <T en="Existing ticket" />
+                        </span>
+                        <span className="text-sm font-bold text-gray-900 font-mono">
+                          {spamWarning.ticketId}
+                        </span>
                         <button
                           type="button"
                           onClick={() => {
                             navigator.clipboard.writeText(spamWarning.ticketId);
-                            toast.success('Ticket ID copied');
+                            toast.success("Ticket ID copied");
                           }}
                           className="text-gray-400 hover:text-gray-600 transition-colors"
                         >
@@ -1019,7 +1248,8 @@ const ComplaintPage = () => {
                         </button>
                       </div>
                       <span className="text-xs text-red-600 font-medium bg-red-100 px-2 py-1 rounded-full">
-                        {Math.round(spamWarning.similarity * 100)}% similar · {spamWarning.method}
+                        {Math.round(spamWarning.similarity * 100)}% similar ·{" "}
+                        {spamWarning.method}
                       </span>
                     </div>
                   </div>
@@ -1039,17 +1269,22 @@ const ComplaintPage = () => {
           <motion.div variants={itemVariants} className="xl:col-span-12 pt-2">
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitBlocked}
               className={`w-full py-4 rounded-[1.6rem] flex items-center justify-center gap-2 text-white font-bold text-lg shadow-[0_22px_45px_-20px_rgba(13,148,136,0.45)] transition-all ${
-                isSubmitting
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-600 hover:scale-[1.01] active:scale-[0.99]'
+                isSubmitBlocked
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-600 hover:scale-[1.01] active:scale-[0.99]"
               }`}
             >
               {isSubmitting ? (
                 <>
                   <Loader2 size={20} className="animate-spin" />
                   <T en="Submitting..." />
+                </>
+              ) : isAnalyzing ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" />
+                  <T en="Department Analysis Ongoing" />
                 </>
               ) : (
                 <>
@@ -1093,7 +1328,9 @@ const ComplaintPage = () => {
                     </div>
                     <button
                       type="button"
-                      onClick={() => !isSubmitting && setShowSubmitConfirm(false)}
+                      onClick={() =>
+                        !isSubmitting && setShowSubmitConfirm(false)
+                      }
                       className="text-gray-400 hover:text-gray-600 transition-colors"
                     >
                       <X size={18} />
@@ -1108,16 +1345,28 @@ const ComplaintPage = () => {
                     </p>
                     <div className="space-y-2">
                       <div>
-                        <p className="text-sm text-gray-400"><T en="Title" /></p>
-                        <p className="text-sm font-semibold text-gray-900">{formData.title}</p>
+                        <p className="text-sm text-gray-400">
+                          <T en="Title" />
+                        </p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {formData.title}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-400"><T en="Department" /></p>
-                        <p className="text-sm font-semibold text-gray-900">{getDepartmentLabel(formData.category)}</p>
+                        <p className="text-sm text-gray-400">
+                          <T en="Department" />
+                        </p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {getDepartmentLabel(formData.category)}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-400"><T en="Location" /></p>
-                        <p className="text-sm font-semibold text-gray-900 line-clamp-2">{formData.location}</p>
+                        <p className="text-sm text-gray-400">
+                          <T en="Location" />
+                        </p>
+                        <p className="text-sm font-semibold text-gray-900 line-clamp-2">
+                          {formData.location}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1133,28 +1382,49 @@ const ComplaintPage = () => {
                       }
                       className={`rounded-2xl border p-4 text-left transition-all min-w-0 ${
                         formData.isAnonymous
-                          ? 'border-teal-200 bg-teal-50 shadow-sm'
-                          : 'border-gray-200 bg-gray-50 hover:border-teal-200 hover:bg-teal-50/60'
+                          ? "border-teal-200 bg-teal-50 shadow-sm"
+                          : "border-gray-200 bg-gray-50 hover:border-teal-200 hover:bg-teal-50/60"
                       }`}
                     >
                       <div className="flex flex-col gap-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <Info size={16} className={formData.isAnonymous ? 'text-teal-600 flex-shrink-0' : 'text-gray-400 flex-shrink-0'} />
-                              <p className="text-sm font-bold text-gray-900 leading-tight"><T en="Anonymous Submission" /></p>
+                              <Info
+                                size={16}
+                                className={
+                                  formData.isAnonymous
+                                    ? "text-teal-600 flex-shrink-0"
+                                    : "text-gray-400 flex-shrink-0"
+                                }
+                              />
+                              <p className="text-sm font-bold text-gray-900 leading-tight">
+                                <T en="Anonymous Submission" />
+                              </p>
                             </div>
                           </div>
-                          <div className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${formData.isAnonymous ? 'bg-teal-500' : 'bg-gray-200'}`}>
+                          <div
+                            className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${formData.isAnonymous ? "bg-teal-500" : "bg-gray-200"}`}
+                          >
                             <span
                               className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                                formData.isAnonymous ? 'translate-x-5' : 'translate-x-0.5'
+                                formData.isAnonymous
+                                  ? "translate-x-5"
+                                  : "translate-x-0.5"
                               }`}
                             />
                           </div>
                         </div>
-                        <p className={`text-xs leading-relaxed break-words ${formData.isAnonymous ? 'text-teal-700' : 'text-gray-500'}`}>
-                          <T en={formData.isAnonymous ? 'Other citizens will not see your name. The responsible department can still see your real details.' : 'Your name can be shown to other users on the complaint detail page.'} />
+                        <p
+                          className={`text-xs leading-relaxed break-words ${formData.isAnonymous ? "text-teal-700" : "text-gray-500"}`}
+                        >
+                          <T
+                            en={
+                              formData.isAnonymous
+                                ? "Other citizens will not see your name. The responsible department can still see your real details."
+                                : "Your name can be shown to other users on the complaint detail page."
+                            }
+                          />
                         </p>
                       </div>
                     </button>
@@ -1169,28 +1439,49 @@ const ComplaintPage = () => {
                       }
                       className={`rounded-2xl border p-4 text-left transition-all min-w-0 ${
                         formData.emergencyFlag
-                          ? 'border-red-200 bg-red-50 shadow-sm'
-                          : 'border-gray-200 bg-gray-50 hover:border-red-200 hover:bg-red-50/60'
+                          ? "border-red-200 bg-red-50 shadow-sm"
+                          : "border-gray-200 bg-gray-50 hover:border-red-200 hover:bg-red-50/60"
                       }`}
                     >
                       <div className="flex flex-col gap-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <AlertTriangle size={16} className={formData.emergencyFlag ? 'text-red-600 flex-shrink-0' : 'text-gray-400 flex-shrink-0'} />
-                              <p className="text-sm font-bold text-gray-900 leading-tight"><T en="Emergency Priority" /></p>
+                              <AlertTriangle
+                                size={16}
+                                className={
+                                  formData.emergencyFlag
+                                    ? "text-red-600 flex-shrink-0"
+                                    : "text-gray-400 flex-shrink-0"
+                                }
+                              />
+                              <p className="text-sm font-bold text-gray-900 leading-tight">
+                                <T en="Emergency Priority" />
+                              </p>
                             </div>
                           </div>
-                          <div className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${formData.emergencyFlag ? 'bg-red-500' : 'bg-gray-200'}`}>
+                          <div
+                            className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${formData.emergencyFlag ? "bg-red-500" : "bg-gray-200"}`}
+                          >
                             <span
                               className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                                formData.emergencyFlag ? 'translate-x-5' : 'translate-x-0.5'
+                                formData.emergencyFlag
+                                  ? "translate-x-5"
+                                  : "translate-x-0.5"
                               }`}
                             />
                           </div>
                         </div>
-                        <p className={`text-xs leading-relaxed break-words ${formData.emergencyFlag ? 'text-red-700' : 'text-gray-500'}`}>
-                          <T en={formData.emergencyFlag ? 'This complaint will be submitted as an emergency and marked Critical immediately.' : 'This complaint will be submitted as a normal report.'} />
+                        <p
+                          className={`text-xs leading-relaxed break-words ${formData.emergencyFlag ? "text-red-700" : "text-gray-500"}`}
+                        >
+                          <T
+                            en={
+                              formData.emergencyFlag
+                                ? "This complaint will be submitted as an emergency and marked Critical immediately."
+                                : "This complaint will be submitted as a normal report."
+                            }
+                          />
                         </p>
                       </div>
                     </button>
@@ -1209,11 +1500,11 @@ const ComplaintPage = () => {
                   <button
                     type="button"
                     onClick={performSubmit}
-                    disabled={isSubmitting}
+                    disabled={isSubmitBlocked}
                     className={`sm:flex-1 py-3 rounded-2xl text-white font-semibold transition-all shadow-lg ${
                       formData.emergencyFlag
-                        ? 'bg-gradient-to-r from-red-500 to-orange-500 shadow-red-500/20 hover:scale-[1.01]'
-                        : 'bg-gradient-to-r from-teal-500 to-blue-600 shadow-teal-500/20 hover:scale-[1.01]'
+                        ? "bg-gradient-to-r from-red-500 to-orange-500 shadow-red-500/20 hover:scale-[1.01]"
+                        : "bg-gradient-to-r from-teal-500 to-blue-600 shadow-teal-500/20 hover:scale-[1.01]"
                     } disabled:opacity-60 disabled:cursor-not-allowed`}
                   >
                     {isSubmitting ? (
@@ -1221,8 +1512,19 @@ const ComplaintPage = () => {
                         <Loader2 size={18} className="animate-spin" />
                         <T en="Submitting..." />
                       </span>
+                    ) : isAnalyzing ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 size={18} className="animate-spin" />
+                        <T en="Department Analysis Ongoing" />
+                      </span>
                     ) : (
-                      <T en={formData.emergencyFlag ? 'Submit as Emergency' : 'Confirm & Submit'} />
+                      <T
+                        en={
+                          formData.emergencyFlag
+                            ? "Submit as Emergency"
+                            : "Confirm & Submit"
+                        }
+                      />
                     )}
                   </button>
                 </div>

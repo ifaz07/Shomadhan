@@ -128,13 +128,13 @@ const Sidebar = ({ transparent = false }) => {
     },
     {
       path: "/mayor/reports",
-      label: <T en="Reports & PDFs" />,
+      label: <T en="Reports" />,
       icon: FileDown,
       roles: ["mayor"],
     },
     {
       path: "/admin/reports",
-      label: <T en="Reports & PDFs" />,
+      label: <T en="Reports" />,
       icon: FileDown,
       roles: ["admin"],
     },

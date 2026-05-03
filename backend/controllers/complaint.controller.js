@@ -526,8 +526,12 @@ const deleteComplaint = async (req, res, next) => {
 // @access  Private
 const getPublicStats = async (req, res, next) => {
   try {
-    const { filter } = req.query; // 'monthly' or 'yearly'
-    let dateFilter = { status: { $ne: "rejected" } };
+    const { filter, includeRejected } = req.query; // 'monthly' or 'yearly'
+    let dateFilter = {};
+
+    if (includeRejected !== "true") {
+      dateFilter.status = { $ne: "rejected" };
+    }
 
     if (filter === "monthly") {
       const startOfMonth = new Date();
@@ -565,6 +569,7 @@ const getPublicStats = async (req, res, next) => {
         pending: 0,
         resolved: 0,
         inProgress: 0,
+        rejected: 0,
       };
       return acc;
     }, {});
@@ -575,7 +580,8 @@ const getPublicStats = async (req, res, next) => {
       medium = 0,
       low = 0,
       inProgress = 0,
-      resolved = 0;
+      resolved = 0,
+      rejected = 0;
 
     all.forEach((c) => {
       total++;
@@ -585,6 +591,7 @@ const getPublicStats = async (req, res, next) => {
       if (c.priority === "Low") low++;
       if (c.status === "in-progress") inProgress++;
       if (c.status === "resolved") resolved++;
+      if (c.status === "rejected") rejected++;
 
       const deptKey = normalizeDepartmentKey(c.category);
       if (deptKey && deptStats[deptKey]) {
@@ -592,10 +599,10 @@ const getPublicStats = async (req, res, next) => {
         if (c.priority === "Critical") deptStats[deptKey].critical++;
         if (c.status === "pending") deptStats[deptKey].pending++;
         if (c.status === "in-progress") {
-          deptStats[deptKey].pending++;
           deptStats[deptKey].inProgress++;
         }
         if (c.status === "resolved") deptStats[deptKey].resolved++;
+        if (c.status === "rejected") deptStats[deptKey].rejected++;
       }
     });
 
@@ -609,6 +616,7 @@ const getPublicStats = async (req, res, next) => {
         low,
         inProgress,
         resolved,
+        rejected,
         departments: deptStats,
         goodCitizen,
       },

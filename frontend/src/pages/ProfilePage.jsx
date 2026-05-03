@@ -510,7 +510,7 @@ const ProfilePage = () => {
 
   return (
     <DashboardLayout>
-      <div className="mx-auto max-w-6xl space-y-5">
+      <div className="w-full space-y-5 px-0 sm:px-1">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}

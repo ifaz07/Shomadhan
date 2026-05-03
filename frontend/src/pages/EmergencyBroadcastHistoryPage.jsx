@@ -75,7 +75,7 @@ const EmergencyBroadcastHistoryPage = () => {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="w-full space-y-6 px-0 sm:px-1">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}

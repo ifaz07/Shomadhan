@@ -47,6 +47,15 @@ const roleLabels = {
   department_officer: "Public Servant Emergency Desk",
 };
 
+const MIN_RADIUS_KM = 0.5;
+const MAX_RADIUS_KM = 100;
+
+const clampRadiusKm = (value) => {
+  const numericValue = Number.parseFloat(value);
+  if (!Number.isFinite(numericValue)) return MIN_RADIUS_KM;
+  return Math.min(MAX_RADIUS_KM, Math.max(MIN_RADIUS_KM, numericValue));
+};
+
 const MapPicker = ({ position, onChange }) => {
   useMapEvents({
     click(event) {
@@ -88,6 +97,12 @@ const EmergencyBroadcastPage = () => {
     areaLabel: user?.presentAddress?.address || "",
     radiusKm: "3",
   });
+  const radiusKmValue = clampRadiusKm(form.radiusKm);
+
+  const updateRadiusKm = (value) => {
+    const sanitizedValue = clampRadiusKm(value);
+    setForm((prev) => ({ ...prev, radiusKm: sanitizedValue.toString() }));
+  };
 
   const reverseGeocode = async (lat, lng) => {
     try {
@@ -141,6 +156,10 @@ const EmergencyBroadcastPage = () => {
       toast.error("Complete the emergency broadcast form first");
       return false;
     }
+    if (!Number.isFinite(radiusKmValue) || radiusKmValue < MIN_RADIUS_KM || radiusKmValue > MAX_RADIUS_KM) {
+      toast.error(`Radius must stay between ${MIN_RADIUS_KM} and ${MAX_RADIUS_KM} km`);
+      return false;
+    }
     return true;
   };
 
@@ -154,7 +173,7 @@ const EmergencyBroadcastPage = () => {
       formData.append("message", form.message);
       formData.append("disasterType", form.disasterType);
       formData.append("areaLabel", form.areaLabel);
-      formData.append("radiusKm", form.radiusKm);
+      formData.append("radiusKm", radiusKmValue.toString());
       formData.append("lat", mapPosition[0]);
       formData.append("lng", mapPosition[1]);
       
@@ -197,7 +216,7 @@ const EmergencyBroadcastPage = () => {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="w-full space-y-6 px-0 sm:px-1">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
@@ -323,11 +342,11 @@ const EmergencyBroadcastPage = () => {
                   <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Radius (km)</span>
                   <input
                     type="range"
-                    min="0.5"
-                    max="20"
+                    min={MIN_RADIUS_KM}
+                    max={MAX_RADIUS_KM}
                     step="0.5"
-                    value={form.radiusKm}
-                    onChange={(e) => setForm((prev) => ({ ...prev, radiusKm: e.target.value }))}
+                    value={radiusKmValue}
+                    onChange={(e) => updateRadiusKm(e.target.value)}
                     className="w-full accent-rose-600"
                   />
                 </label>
@@ -336,11 +355,12 @@ const EmergencyBroadcastPage = () => {
                   <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Exact Radius</span>
                   <input
                     type="number"
-                    min="0.1"
-                    max="100"
+                    min={MIN_RADIUS_KM}
+                    max={MAX_RADIUS_KM}
                     step="0.1"
                     value={form.radiusKm}
-                    onChange={(e) => setForm((prev) => ({ ...prev, radiusKm: e.target.value }))}
+                    onChange={(e) => updateRadiusKm(e.target.value)}
+                    onBlur={() => updateRadiusKm(form.radiusKm)}
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-rose-300 focus:bg-white"
                     required
                   />
@@ -348,7 +368,7 @@ const EmergencyBroadcastPage = () => {
 
                 <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-500">Live Radius</p>
-                  <p className="mt-1 text-2xl font-black text-rose-700">{Number(form.radiusKm || 0).toFixed(1)}</p>
+                  <p className="mt-1 text-2xl font-black text-rose-700">{radiusKmValue.toFixed(1)}</p>
                   <p className="text-xs font-medium text-rose-600">kilometers</p>
                 </div>
               </div>
@@ -369,7 +389,7 @@ const EmergencyBroadcastPage = () => {
                     {mapPosition && (
                       <Circle
                         center={mapPosition}
-                        radius={Number(form.radiusKm || 0) * 1000}
+                        radius={radiusKmValue * 1000}
                         pathOptions={{ color: "#e11d48", fillColor: "#fb7185", fillOpacity: 0.2 }}
                       />
                     )}
@@ -445,7 +465,7 @@ const EmergencyBroadcastPage = () => {
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                     <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Radius</p>
-                    <p className="mt-1 text-sm font-bold text-slate-900">{Number(form.radiusKm || 0).toFixed(1)} km</p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">{radiusKmValue.toFixed(1)} km</p>
                   </div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
