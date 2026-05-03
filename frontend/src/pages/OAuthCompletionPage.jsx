@@ -5,6 +5,7 @@ import { Upload, CheckCircle, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { getDefaultDashboardRoute } from "../utils/roleRoutes";
+import { getApiBaseUrl } from "../utils/apiBase";
 import T from "../components/T";
 
 const OAuthCompletionPage = () => {
@@ -102,7 +103,7 @@ const OAuthCompletionPage = () => {
       formDataObj.append("file", formData.file);
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1"}/auth/verify-oauth`,
+        `${getApiBaseUrl()}/auth/verify-oauth`,
         {
           method: "POST",
           headers: {

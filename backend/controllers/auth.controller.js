@@ -2,12 +2,9 @@ const { validationResult } = require("express-validator");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const User = require("../models/User.model");
+const { getClientUrl } = require("../config/runtimeUrls");
 
-const clientUrl =
-  process.env.CLIENT_URL ||
-  (process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:5173");
+const clientUrl = getClientUrl();
 
 const hasCurrentMonthlyBadge = (user, date = new Date()) => {
   const month = date.getMonth() + 1;

@@ -252,7 +252,11 @@ const UnifiedAuthPage = () => {
       
       if (signupData.role === 'mayor' || signupData.role === 'department_officer') {
         toast.success("Account created! Please wait for admin verification.");
-        setTimeout(() => window.location.reload(), 2000);
+        setTimeout(() => {
+          setIsRightPanelActive(false);
+          navigate("/login", { replace: true });
+          setStep(1);
+        }, 1200);
       } else {
         toast.success("Account created successfully!");
       }
@@ -490,7 +494,12 @@ const UnifiedAuthPage = () => {
                       <div className="flex gap-2 mt-6">
                         <button onClick={() => setStep(3)} className="px-4 py-3 rounded-xl border-2 border-[#e2e8f0] text-gray-500 font-bold hover:bg-gray-50"><ArrowLeft size={18} /></button>
                         <button onClick={handleSignupSubmit} disabled={isSignupLoading} className="gold-btn flex-1">
-                          {isSignupLoading ? <Loader2 className="animate-spin" size={20} /> : "Create Account"}
+                          {isSignupLoading ? (
+                            <>
+                              <Loader2 className="animate-spin" size={20} />
+                              <span>Creating Account...</span>
+                            </>
+                          ) : "Create Account"}
                         </button>
                       </div>
                     </motion.div>

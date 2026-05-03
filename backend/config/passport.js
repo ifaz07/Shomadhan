@@ -2,13 +2,9 @@ const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const FacebookStrategy = require("passport-facebook").Strategy;
 const User = require("../models/User.model");
+const { getBackendUrl } = require("./runtimeUrls");
 
-const deploymentOrigin = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "";
-const backendBaseUrl =
-  process.env.BACKEND_URL ||
-  (deploymentOrigin ? `${deploymentOrigin}/backend` : "http://localhost:5001");
+const backendBaseUrl = getBackendUrl();
 const hasGoogleOAuth =
   Boolean(process.env.GOOGLE_CLIENT_ID) &&
   Boolean(process.env.GOOGLE_CLIENT_SECRET);

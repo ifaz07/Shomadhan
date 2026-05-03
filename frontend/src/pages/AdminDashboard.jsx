@@ -17,12 +17,13 @@ import {
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import DashboardLayout from '../components/layout/DashboardLayout';
+import { getApiBaseUrl, getAssetBaseUrl } from '../utils/apiBase';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE = getApiBaseUrl();
 
 const resolveFileUrl = (url) => {
   if (!url) return null;
-  return url.startsWith('http') ? url : `${API_BASE.replace('/api/v1', '')}${url}`;
+  return url.startsWith('http') ? url : `${getAssetBaseUrl()}${url}`;
 };
 
 const formatDepartment = (value) => {

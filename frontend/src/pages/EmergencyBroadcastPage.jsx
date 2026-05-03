@@ -14,6 +14,8 @@ import { emergencyBroadcastAPI } from "../services/api";
 import SmartInputWrapper from "../components/common/SmartInputWrapper";
 
 const DHAKA_CENTER = [23.8103, 90.4125];
+const MIN_RADIUS_KM = 0.5;
+const MAX_RADIUS_KM = 100;
 
 const defaultIcon = L.icon({
   iconUrl: markerIcon,
@@ -107,6 +109,19 @@ const EmergencyBroadcastPage = () => {
     audienceOptions.find((option) => option.value === form.targetRoles)?.label ||
     audienceOptions[0]?.label ||
     "Recipients";
+  const radiusKmValue = Number.parseFloat(form.radiusKm || MIN_RADIUS_KM) || MIN_RADIUS_KM;
+
+  const updateRadiusKm = (value) => {
+    const parsedValue = Number.parseFloat(String(value).trim());
+
+    if (!Number.isFinite(parsedValue)) {
+      setForm((prev) => ({ ...prev, radiusKm: String(MIN_RADIUS_KM) }));
+      return;
+    }
+
+    const clampedValue = Math.min(MAX_RADIUS_KM, Math.max(MIN_RADIUS_KM, parsedValue));
+    setForm((prev) => ({ ...prev, radiusKm: clampedValue.toString() }));
+  };
 
   const reverseGeocode = async (lat, lng) => {
     try {
@@ -178,6 +193,7 @@ const EmergencyBroadcastPage = () => {
       formData.append("disasterType", form.disasterType);
       formData.append("areaLabel", form.areaLabel);
       formData.append("radiusKm", radiusKmValue.toString());
+      formData.append("targetRoles", form.targetRoles);
       formData.append("lat", mapPosition[0]);
       formData.append("lng", mapPosition[1]);
       
@@ -193,6 +209,7 @@ const EmergencyBroadcastPage = () => {
         ...prev,
         title: "",
         message: "",
+        radiusKm: "3",
       }));
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to send emergency alert");

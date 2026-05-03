@@ -50,11 +50,19 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     const { data } = await authAPI.register(userData);
-    if (data.data.token) {
+    const nextUser = data.data.user;
+    const shouldPersistSession = Boolean(data.data.token) && nextUser?.isActive !== false;
+
+    if (shouldPersistSession) {
         localStorage.setItem('token', data.data.token);
         localStorage.setItem('loginTime', new Date().toISOString());
+        setUser(nextUser);
+    } else {
+      localStorage.removeItem('token');
+      localStorage.removeItem('loginTime');
+      setUser(null);
     }
-    setUser(data.data.user);
+
     toast.success('Account created successfully!');
     return data;
   };

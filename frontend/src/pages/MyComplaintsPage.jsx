@@ -21,6 +21,7 @@ import DashboardLayout from "../components/layout/DashboardLayout";
 import T from "../components/T";
 import VoiceMessagePlayer from "../components/VoiceMessagePlayer";
 import { getDepartmentLabel } from "../constants/departments";
+import { getAssetBaseUrl } from "../utils/apiBase";
 
 // ─── Config ───────────────────────────────────────────────────────────
 const PRIORITY_CONFIG = {
@@ -130,10 +131,7 @@ const resolveUrl = (item) => {
   const url = getEvidenceUrl(item);
   if (!url) return "";
   if (url.startsWith("http")) return url;
-  const base = (
-    import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1"
-  ).replace("/api/v1", "");
-  return `${base}${url}`;
+  return `${getAssetBaseUrl()}${url}`;
 };
 
 // ─── Status Stepper ───────────────────────────────────────────────────

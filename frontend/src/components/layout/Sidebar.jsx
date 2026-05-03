@@ -30,11 +30,12 @@ import LanguageToggle from "../LanguageToggle";
 import T from "../T";
 import GoodCitizenStar from "../GoodCitizenStar";
 import VerifiedBadge, { VerifiedMark } from "../VerifiedBadge";
+import { getApiBaseUrl, getAssetBaseUrl } from "../../utils/apiBase";
 
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1');
+const API_BASE = getApiBaseUrl();
 const resolveAvatar = (url) => {
   if (!url) return null;
-  return url.startsWith('http') ? url : `${API_BASE.replace('/api/v1', '')}${url}`;
+  return url.startsWith('http') ? url : `${getAssetBaseUrl()}${url}`;
 };
 
 const Sidebar = ({ transparent = false }) => {

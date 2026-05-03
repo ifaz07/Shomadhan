@@ -42,6 +42,7 @@ import T from "../components/T";
 import VerifiedBadge from "../components/VerifiedBadge";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import { getAssetBaseUrl } from "../utils/apiBase";
 
 const defaultIcon = L.icon({
   iconUrl: markerIcon,
@@ -51,7 +52,7 @@ const defaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = defaultIcon;
 
-const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1").replace("/api/v1", "");
+const API_BASE = getAssetBaseUrl();
 
 const ROLE_META = {
   citizen: {

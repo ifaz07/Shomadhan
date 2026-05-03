@@ -29,6 +29,7 @@ import T from "../components/T";
 import VoiceMessagePlayer from "../components/VoiceMessagePlayer";
 import VerifiedBadge from "../components/VerifiedBadge";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
+import { getAssetBaseUrl } from "../utils/apiBase";
 
 // Fix Leaflet default icon
 const defaultIcon = L.icon({
@@ -146,23 +147,16 @@ const isVoiceDescription = (item) => {
 };
 
 const resolveUrl = (item) => {
-
   const url = getEvidenceUrl(item);
   if (!url) return "";
   if (url.startsWith("http")) return url;
-  const base = (
-    import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1"
-  ).replace("/api/v1", "");
-  return `${base}${url}`;
+  return `${getAssetBaseUrl()}${url}`;
 };
 
 const resolveAvatar = (url) => {
   if (!url) return "";
   if (url.startsWith("http")) return url;
-  const base = (
-    import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1"
-  ).replace("/api/v1", "");
-  return `${base}${url}`;
+  return `${getAssetBaseUrl()}${url}`;
 };
 
 // â”€â”€â”€ Timeline Icon â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

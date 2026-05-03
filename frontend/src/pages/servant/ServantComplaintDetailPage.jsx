@@ -16,6 +16,7 @@ import toast from "react-hot-toast";
 import { servantAPI } from "../../services/api";
 import ServantLayout from "../../components/layout/ServantLayout";
 import T from "../../components/T";
+import { getAssetBaseUrl } from "../../utils/apiBase";
 
 const defaultIcon = L.icon({
   iconUrl: markerIconUrl,
@@ -144,8 +145,7 @@ const resolveUrl = (item) => {
   const url = getEvidenceUrl(item);
   if (!url) return "";
   if (url.startsWith("http")) return url;
-  const base = (import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1").replace("/api/v1", "");
-  return `${base}${url}`;
+  return `${getAssetBaseUrl()}${url}`;
 };
 
 // ─── Timeline Icon ─────────────────────────────────────────────────

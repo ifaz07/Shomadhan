@@ -14,8 +14,9 @@ import { useAuth } from '../context/AuthContext';
 import { complaintAPI } from '../services/api';
 import MayorChatbot from '../components/MayorChatbot';
 import GoodCitizenStar from '../components/GoodCitizenStar';
+import { getApiBaseUrl, getAssetBaseUrl } from '../utils/apiBase';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE = getApiBaseUrl();
 
 // ─── Helpers ──────────────────────────────────
 const timeAgo = (date) => {
@@ -30,7 +31,7 @@ const timeAgo = (date) => {
 
 const resolveAvatar = (url) => {
   if (!url) return null;
-  return url.startsWith('http') ? url : `${API_BASE.replace('/api/v1', '')}${url}`;
+  return url.startsWith('http') ? url : `${getAssetBaseUrl()}${url}`;
 };
 
 const getCurrentAwardMonthKey = () => {

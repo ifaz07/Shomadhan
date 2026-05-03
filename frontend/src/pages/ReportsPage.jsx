@@ -11,8 +11,9 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 import { complaintAPI, reportAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getDepartmentLabel, normalizeDepartmentValue } from '../constants/departments';
+import { getApiBaseUrl } from '../utils/apiBase';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE = getApiBaseUrl();
 
 const triggerDownload = (blob, filename) => {
   const url = URL.createObjectURL(blob);
