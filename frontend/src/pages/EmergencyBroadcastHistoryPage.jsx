@@ -39,6 +39,15 @@ const disasterLabels = {
   other: "Emergency",
 };
 
+const resolveUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  const base = (
+    import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1"
+  ).replace("/api/v1", "");
+  return `${base}${url}`;
+};
+
 const EmergencyBroadcastHistoryPage = () => {
   const { user } = useAuth();
   const isServant = user?.role === "department_officer";
@@ -138,6 +147,20 @@ const EmergencyBroadcastHistoryPage = () => {
                   </div>
 
                   <p className="mt-5 text-sm leading-7 text-slate-600 whitespace-pre-line">{item.message}</p>
+
+                  {/* Audio Player for Voice Alert */}
+                  {item.audioUrl && (
+                    <div className="mt-5 p-4 rounded-2xl bg-rose-50 border border-rose-100/50 shadow-sm">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Radio size={14} className="text-rose-600" />
+                        <span className="text-[10px] font-black text-rose-700 uppercase tracking-widest">Official Voice Alert</span>
+                      </div>
+                      <audio controls className="w-full h-9">
+                        <source src={resolveUrl(item.audioUrl)} type="audio/webm" />
+                        Your browser does not support the audio element.
+                      </audio>
+                    </div>
+                  )}
 
                   <div className="mt-5 grid gap-3 md:grid-cols-2">
                     <div className="rounded-2xl bg-slate-50 px-4 py-4">

@@ -79,6 +79,10 @@ const emergencyBroadcastSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    audioUrl: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,

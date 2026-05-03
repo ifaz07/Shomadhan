@@ -102,7 +102,7 @@ const OAuthCompletionPage = () => {
       formDataObj.append("file", formData.file);
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1"}/auth/verify-oauth`,
+        `${import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1"}/auth/verify-oauth`,
         {
           method: "POST",
           headers: {

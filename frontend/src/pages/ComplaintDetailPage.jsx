@@ -13,7 +13,10 @@ import {
   Activity,
   AlertCircle,
   Video as VideoIcon,
+  Trash2,
+  Mic,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -24,6 +27,7 @@ import { complaintAPI } from "../services/api";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import T from "../components/T";
 import VerifiedBadge from "../components/VerifiedBadge";
+import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 
 // Fix Leaflet default icon
 const defaultIcon = L.icon({
@@ -129,12 +133,18 @@ const isVideo = (item) => {
   return type === "video" || /\.(mp4|mov|avi|webm|mkv)$/i.test(url || "");
 };
 
+const isAudio = (item) => {
+  const url = getEvidenceUrl(item);
+  const type = typeof item === "object" ? item?.type : "";
+  return type === "audio" || /\.(mp3|wav|webm|ogg|m4a)$/i.test(url || "");
+};
+
 const resolveUrl = (item) => {
   const url = getEvidenceUrl(item);
   if (!url) return "";
   if (url.startsWith("http")) return url;
   const base = (
-    import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1"
+    import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1"
   ).replace("/api/v1", "");
   return `${base}${url}`;
 };
@@ -143,7 +153,7 @@ const resolveAvatar = (url) => {
   if (!url) return "";
   if (url.startsWith("http")) return url;
   const base = (
-    import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1"
+    import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1"
   ).replace("/api/v1", "");
   return `${base}${url}`;
 };
@@ -178,9 +188,12 @@ const ComplaintDetailPage = () => {
   const backPath = state?.from || -1;
   const backLabel = state?.label || "Back";
   const isMyComplaint = state?.from === "/my-complaints";
+  const { user } = useAuth();
 
   const [complaint, setComplaint] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(0);
 
@@ -211,6 +224,24 @@ const ComplaintDetailPage = () => {
       setVoteCount((c) => (hasVoted ? c - 1 : c + 1));
     } catch {
       toast.error("Failed to vote");
+    }
+  };
+
+  const handleDelete = () => {
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await complaintAPI.delete(id);
+      toast.success("Complaint deleted successfully");
+      navigate("/my-complaints");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete complaint");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -264,12 +295,6 @@ const ComplaintDetailPage = () => {
           <ArrowLeft size={15} />
           <T en={backLabel} />
         </button>
-        <span className="text-sm text-gray-400">
-          <T en="Viewing as:" />{" "}
-          <span className="font-medium text-gray-600">
-            <T en={isMyComplaint ? "Submitter" : "User"} />
-          </span>
-        </span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
@@ -303,29 +328,53 @@ const ComplaintDetailPage = () => {
                 )}
               </div>
 
-              <button
-                onClick={handleVote}
-                disabled={isResolved || complaint.status === "rejected"}
-                className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border transition-all ${
-                  isResolved || complaint.status === "rejected"
-                    ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-                    : hasVoted
-                    ? "bg-teal-50 border-teal-300 text-teal-700"
-                    : "border-gray-200 text-gray-500 hover:bg-gray-50"
-                }`}
-                title={isResolved || complaint.status === "rejected" ? "Closed complaints can no longer receive public support" : "Show public support"}
-              >
-                <ThumbsUp
-                  size={16}
-                  className={isResolved || complaint.status === "rejected" ? "text-gray-300" : hasVoted ? "text-teal-600" : "text-gray-400"}
-                />
-                <span className="text-base font-bold leading-none">
-                  {voteCount}
-                </span>
-                <span className="text-[11px] text-gray-400 leading-none">
-                  <T en={isResolved || complaint.status === "rejected" ? "rejected" : "Upvotes"} />
-                </span>
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Delete Button - visible for owner, but disabled if not pending */}
+                {complaint.user && user && (complaint.user._id === user._id || complaint.user === user._id) && (
+                    <button
+                      onClick={handleDelete}
+                      disabled={isDeleting || complaint.status !== "pending"}
+                      className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border transition-all ${
+                        complaint.status !== "pending"
+                          ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                          : "border-red-200 text-red-500 hover:bg-red-50"
+                      } disabled:pointer-events-none`}
+                      title={complaint.status !== "pending" ? "Only pending complaints can be deleted" : "Delete this complaint"}
+                    >
+                    <Trash2 size={16} className={complaint.status !== "pending" ? "text-gray-300" : "text-red-400"} />
+                    <span className="text-sm font-bold leading-none">
+                      <T en="Delete" />
+                    </span>
+                    <span className={`text-[11px] leading-none ${complaint.status !== "pending" ? "text-gray-400" : "text-red-400"}`}>
+                      <T en="Remove" />
+                    </span>
+                  </button>
+                )}
+
+                <button
+                  onClick={handleVote}
+                  disabled={isResolved || complaint.status === "rejected"}
+                  className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border transition-all ${
+                    isResolved || complaint.status === "rejected"
+                      ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                      : hasVoted
+                      ? "bg-teal-50 border-teal-300 text-teal-700"
+                      : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                  }`}
+                  title={isResolved || complaint.status === "rejected" ? "Closed complaints can no longer receive public support" : "Show public support"}
+                >
+                  <ThumbsUp
+                    size={16}
+                    className={isResolved || complaint.status === "rejected" ? "text-gray-300" : hasVoted ? "text-teal-600" : "text-gray-400"}
+                  />
+                  <span className="text-base font-bold leading-none">
+                    {voteCount}
+                  </span>
+                  <span className="text-[11px] text-gray-400 leading-none">
+                    <T en={isResolved || complaint.status === "rejected" ? "rejected" : "Upvotes"} />
+                  </span>
+                </button>
+              </div>
             </div>
 
             {/* Title */}
@@ -342,6 +391,22 @@ const ComplaintDetailPage = () => {
                 <p className="text-sm text-gray-700 leading-relaxed">
                   <T en={complaint.description} />
                 </p>
+
+                {/* Voice Note Player (if audio exists) */}
+                {evidence.some(isAudio) && (
+                  <div className="mt-4 p-4 rounded-2xl bg-teal-50 border border-teal-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Mic size={14} className="text-teal-600" />
+                      <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wider">Citizen's Original Voice Message</span>
+                    </div>
+                    {evidence.filter(isAudio).map((url, i) => (
+                      <audio key={i} controls className="w-full h-8 custom-audio-player">
+                        <source src={resolveUrl(url)} type="audio/webm" />
+                        Your browser does not support the audio element.
+                      </audio>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -672,6 +737,13 @@ const ComplaintDetailPage = () => {
           </motion.div>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        loading={isDeleting}
+      />
     </DashboardLayout>
   );
 };

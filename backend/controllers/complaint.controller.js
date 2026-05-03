@@ -18,6 +18,9 @@ const {
   getDepartmentComplaintValues,
   normalizeDepartmentKey,
 } = require("../utils/departmentTaxonomy");
+const Notification = require("../models/Notification.model");
+const fs = require("fs");
+const path = require("path");
 
 const getCurrentAwardPeriod = (date = new Date()) => ({
   awardMonth: date.getMonth() + 1,
@@ -94,7 +97,7 @@ const createComplaint = async (req, res, next) => {
     }
 
     const finalStatus =
-      aiStatus.is_prank && aiStatus.confidence_score >= 0.8
+      aiStatus.is_prank && aiStatus.confidence_score >= 0.7
         ? "rejected"
         : "pending";
 
@@ -476,6 +479,39 @@ const deleteComplaint = async (req, res, next) => {
         message: "Not authorized to delete this complaint",
       });
     }
+
+    // Only pending complaints can be deleted by the user
+    if (req.user.role !== "admin" && complaint.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Only pending complaints can be deleted",
+      });
+    }
+
+    // ─── Clean up associated data ──────────────────────────────────
+    // 1. Delete associated feedback
+    await Feedback.deleteMany({ complaint: complaint._id });
+
+    // 2. Delete associated notifications
+    await Notification.deleteMany({ relatedTicket: complaint._id });
+
+    // 3. Delete evidence files from disk
+    if (complaint.evidence && complaint.evidence.length > 0) {
+      complaint.evidence.forEach((ev) => {
+        if (ev.url) {
+          // url is like /uploads/evidence/filename.jpg
+          const filePath = path.join(__dirname, "..", ev.url);
+          if (fs.existsSync(filePath)) {
+            try {
+              fs.unlinkSync(filePath);
+            } catch (err) {
+              console.warn(`[File Cleanup] Failed to delete ${filePath}:`, err.message);
+            }
+          }
+        }
+      });
+    }
+
     await complaint.deleteOne();
     res
       .status(200)

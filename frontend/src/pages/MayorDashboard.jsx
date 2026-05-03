@@ -16,7 +16,7 @@ import MayorChatbot from '../components/MayorChatbot';
 import GoodCitizenStar from '../components/GoodCitizenStar';
 import { getDepartmentLabel, normalizeDepartmentValue } from '../constants/departments';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 // ─── Helpers ──────────────────────────────────
 const timeAgo = (date) => {

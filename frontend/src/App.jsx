@@ -20,6 +20,7 @@ import FeedbackPage from "./pages/FeedbackPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import MayorDashboard from "./pages/MayorDashboard";
 import MayorPendingPage from "./pages/MayorPendingPage";
+import ReportsPage from "./pages/ReportsPage";
 import ServantPendingPage from "./pages/ServantPendingPage";
 import ServantDashboardPage from "./pages/servant/ServantDashboardPage";
 import ServantComplaintsPage from "./pages/servant/ServantComplaintsPage";
@@ -275,6 +276,22 @@ function App() {
         />
         <Route path="/mayor/pending" element={<MayorPendingPage />} />
         <Route path="/servant/pending" element={<ServantPendingPage />} />
+        <Route
+          path="/mayor/reports"
+          element={
+            <MayorRoute>
+              <ReportsPage />
+            </MayorRoute>
+          }
+        />
+        <Route
+          path="/admin/reports"
+          element={
+            <AdminRoute>
+              <ReportsPage />
+            </AdminRoute>
+          }
+        />
         <Route
           path="/admin/dashboard"
           element={

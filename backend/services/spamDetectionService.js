@@ -188,19 +188,21 @@ async function analyzePrankPotential(title, description) {
   
   // 1. Local Rule-Based Scorer (Always works, even without internet/keys)
   const prankPatterns = [
-    { words: ['alien', 'ufo', 'space', 'mars', 'galaxy'], score: 0.95 },
-    { words: ['ghost', 'zombie', 'vampire', 'magic', 'supernatural', 'monster'], score: 0.9 },
-    { words: ['superman', 'batman', 'spiderman', 'avengers', 'marvel', 'superhero'], score: 0.95 },
-    { words: ['biryani', 'pizza', 'burger', 'delicious', 'tasty', 'eating'], score: 0.4 }, 
-    { words: ['cow', 'goat', 'animal', 'talking'], score: 0.3 },
+    { words: ['alien', 'ufo', 'space', 'mars', 'galaxy', 'planet', 'sun', 'moon', 'star', 'earth', 'squirrel'], score: 0.95 },
+    { words: ['ghost', 'zombie', 'vampire', 'magic', 'supernatural', 'monster', 'haunted'], score: 0.9 },
+    { words: ['superman', 'batman', 'spiderman', 'avengers', 'marvel', 'superhero', 'thanos'], score: 0.95 },
+    { words: ['biryani', 'pizza', 'burger', 'delicious', 'tasty', 'eating', 'food'], score: 0.4 }, 
+    { words: ['talking', 'singing', 'dancing', 'flying'], score: 0.5 },
     { words: ['killed me', 'i am dead', 'ghost of me', 'dying in'], score: 0.95 },
-    { words: ['prank', 'joke', 'just kidding', 'test', 'fake'], score: 0.9 },
+    { words: ['prank', 'joke', 'just kidding', 'test', 'fake', 'nonsense', 'testing', 'revolution', 'plotting'], score: 0.9 },
   ];
 
   let localScore = 0;
-  // Dynamic combined checks for specific cases like "cow eating man"
+  // Dynamic combined checks for specific cases like "sun crashing" or "cow eating man"
+  if (text.includes('sun') && (text.includes('crash') || text.includes('fall'))) localScore = 0.98;
   if (text.includes('cow') && text.includes('eating')) localScore = 0.9;
   if (text.includes('flying') && text.includes('man')) localScore = 0.85;
+  if (text.includes('alien') || text.includes('ufo')) localScore = 0.95;
 
   prankPatterns.forEach(pattern => {
     if (pattern.words.some(word => text.includes(word))) {
@@ -231,7 +233,11 @@ async function analyzePrankPotential(title, description) {
           body: JSON.stringify({
             inputs: `${title}: ${description}`,
             parameters: {
-              candidate_labels: ["serious civic complaint", "prank or joke", "nonsense"],
+              candidate_labels: [
+                "mundane city maintenance report about roads or water or waste", 
+                "fictional or imaginary story about animals or people", 
+                "humorous prank or joke or nonsense"
+              ],
               wait_for_model: true
             }
           })
@@ -241,15 +247,41 @@ async function analyzePrankPotential(title, description) {
       if (response.ok) {
         const result = await response.json();
         
-        const prankIdx = result.labels.indexOf("prank or joke");
-        const nonsenseIdx = result.labels.indexOf("nonsense");
-        const aiScore = Math.max(result.scores[prankIdx], result.scores[nonsenseIdx]);
+        let labels = [];
+        let scores = [];
 
-        console.log(`[AI Prank Check] HF Success: PrankScore=${aiScore.toFixed(2)}`);
+        // 1. Handle "Array of {label, score}" format
+        if (Array.isArray(result) && result[0]?.label) {
+          labels = result.map(item => item.label);
+          scores = result.map(item => item.score);
+        } 
+        // 2. Handle standard {labels: [], scores: []} format
+        else {
+          const data = Array.isArray(result) ? result[0] : result;
+          labels = data?.labels || [];
+          scores = data?.scores || [];
+        }
+        
+        if (!labels.length) {
+          console.error("[AI Prank Check] Raw HF Response:", JSON.stringify(result));
+          throw new Error("Invalid response format from Hugging Face: labels missing");
+        }
+
+        const prankIdx = labels.indexOf("fictional or imaginary story about animals or people");
+        const nonsenseIdx = labels.indexOf("humorous prank or joke or nonsense");
+        
+        if (prankIdx === -1 || nonsenseIdx === -1) {
+          throw new Error("Required labels not found in AI response");
+        }
+
+        const aiScore = Math.max(scores[prankIdx] || 0, scores[nonsenseIdx] || 0);
+
+        console.log(`[AI Prank Check] HF Success: PrankScore=${aiScore.toFixed(2)} for "${title}"`);
         return {
-          is_prank: aiScore > 0.7,
+          is_prank: aiScore > 0.55, // Further lowered threshold for more aggressive detection
           confidence_score: aiScore
         };
+        
       } else {
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.includes("application/json")) {

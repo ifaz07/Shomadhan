@@ -35,6 +35,7 @@ import {
   DEPARTMENT_OPTIONS,
   getDepartmentLabel,
 } from '../constants/departments';
+import SmartInputWrapper from '../components/common/SmartInputWrapper';
 
 // Fix for default marker icons in Leaflet with React
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -476,19 +477,25 @@ const ComplaintPage = () => {
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                   <T en="Complaint Title" />
                 </label>
-                <input
-                  required
-                  type="text"
-                  name="title"
+                <SmartInputWrapper
                   value={formData.title}
-                  onChange={handleInputChange}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    preventEnterSubmit(e);
-                  }}
-                  placeholder="Short, descriptive title"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none"
-                />
+                  onValueChange={(val) => setFormData(prev => ({ ...prev, title: val }))}
+                  context="civic complaint title"
+                >
+                  <input
+                    required
+                    type="text"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      preventEnterSubmit(e);
+                    }}
+                    placeholder="Short, descriptive title"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none"
+                  />
+                </SmartInputWrapper>
               </motion.div>
 
               <motion.div variants={itemVariants} className="space-y-2">
@@ -518,16 +525,30 @@ const ComplaintPage = () => {
               <label className="text-sm font-semibold text-gray-700">
                 <T en="Detailed Description" />
               </label>
-              <textarea
-                required
-                name="description"
-                rows={4}
+              <SmartInputWrapper
                 value={formData.description}
-                onChange={handleInputChange}
-                onKeyDown={(e) => e.stopPropagation()}
-                placeholder="Explain the issue in detail..."
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none resize-none"
-              />
+                onValueChange={(val) => setFormData(prev => ({ ...prev, description: val }))}
+                onAudioRecorded={(file) => {
+                  setFiles(prev => [...prev, file]);
+                  setPreviews(prev => [...prev, {
+                    name: file.name,
+                    type: file.type,
+                    url: URL.createObjectURL(file)
+                  }]);
+                }}
+                context="detailed civic complaint description"
+              >
+                <textarea
+                  required
+                  name="description"
+                  rows={4}
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  placeholder="Explain the issue in detail..."
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none resize-none"
+                />
+              </SmartInputWrapper>
               <button
                 type="button"
                 onClick={analyzeWithNLP}

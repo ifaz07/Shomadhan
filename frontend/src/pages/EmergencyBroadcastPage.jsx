@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertTriangle, Loader2, MapPin, Radio, Send, X } from "lucide-react";
+import { AlertTriangle, Loader2, MapPin, Radio, Send, X, Mic } from "lucide-react";
 import { Circle, MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -11,6 +11,7 @@ import DashboardLayout from "../components/layout/DashboardLayout";
 import ServantLayout from "../components/layout/ServantLayout";
 import { useAuth } from "../context/AuthContext";
 import { emergencyBroadcastAPI } from "../services/api";
+import SmartInputWrapper from "../components/common/SmartInputWrapper";
 
 const DHAKA_CENTER = [23.8103, 90.4125];
 
@@ -143,18 +144,28 @@ const EmergencyBroadcastPage = () => {
     return true;
   };
 
+  const [audioFile, setAudioFile] = useState(null);
+
   const sendBroadcast = async () => {
     setSubmitting(true);
     try {
-      const payload = {
-        ...form,
-        lat: mapPosition[0],
-        lng: mapPosition[1],
-      };
+      const formData = new FormData();
+      formData.append("title", form.title);
+      formData.append("message", form.message);
+      formData.append("disasterType", form.disasterType);
+      formData.append("areaLabel", form.areaLabel);
+      formData.append("radiusKm", form.radiusKm);
+      formData.append("lat", mapPosition[0]);
+      formData.append("lng", mapPosition[1]);
+      
+      if (audioFile) {
+        formData.append("audio", audioFile);
+      }
 
-      const res = await emergencyBroadcastAPI.create(payload);
+      const res = await emergencyBroadcastAPI.create(formData);
       toast.success(res.data.message || "Emergency alert sent");
       setConfirmOpen(false);
+      setAudioFile(null);
       setForm((prev) => ({
         ...prev,
         title: "",
@@ -234,14 +245,19 @@ const EmergencyBroadcastPage = () => {
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-1.5">
                   <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Alert Title</span>
-                  <input
-                    type="text"
+                  <SmartInputWrapper
                     value={form.title}
-                    onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                    placeholder="Flash flood warning near Dhanmondi"
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-rose-300 focus:bg-white"
-                    required
-                  />
+                    onValueChange={(val) => setForm(prev => ({ ...prev, title: val }))}
+                  >
+                    <input
+                      type="text"
+                      value={form.title}
+                      onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="Flash flood warning near Dhanmondi"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-rose-300 focus:bg-white"
+                      required
+                    />
+                  </SmartInputWrapper>
                 </label>
 
                 <label className="space-y-1.5">
@@ -262,14 +278,20 @@ const EmergencyBroadcastPage = () => {
 
               <label className="space-y-1.5">
                 <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Emergency Message</span>
-                <textarea
-                  rows="5"
+                <SmartInputWrapper
                   value={form.message}
-                  onChange={(e) => setForm((prev) => ({ ...prev, message: e.target.value }))}
-                  placeholder="State what happened, the risk, and what citizens should do immediately."
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-rose-300 focus:bg-white"
-                  required
-                />
+                  onValueChange={(val) => setForm(prev => ({ ...prev, message: val }))}
+                  onAudioRecorded={(file) => setAudioFile(file)}
+                >
+                  <textarea
+                    rows="5"
+                    value={form.message}
+                    onChange={(e) => setForm(prev => ({ ...prev, message: e.target.value }))}
+                    placeholder="State what happened, the risk, and what citizens should do immediately."
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-rose-300 focus:bg-white"
+                    required
+                  />
+                </SmartInputWrapper>
               </label>
 
               <div className="grid gap-4 md:grid-cols-[1fr_auto]">

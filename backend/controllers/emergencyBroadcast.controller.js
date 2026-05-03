@@ -82,6 +82,7 @@ const createEmergencyBroadcast = async (req, res, next) => {
       radiusKm: parsedRadius,
       recipientsCount: recipients.length,
       recipients: recipients.map((citizen) => citizen._id),
+      audioUrl: req.file ? `/uploads/${req.file.filename}` : null,
     });
 
     const disasterLabel = DISASTER_LABELS[disasterType] || DISASTER_LABELS.other;
