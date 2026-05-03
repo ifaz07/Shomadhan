@@ -1,12 +1,9 @@
 const multer = require('multer');
 const path   = require('path');
-const fs     = require('fs');
-
-const uploadDir = path.join(__dirname, '../uploads/avatars');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const { getUploadDir } = require('../utils/uploadPaths');
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
+  destination: (req, file, cb) => cb(null, getUploadDir('avatars')),
   // Always overwrite the same filename per user so old files don't pile up
   filename: (req, file, cb) => {
     cb(null, `avatar-${req.user.id}${path.extname(file.originalname).toLowerCase()}`);

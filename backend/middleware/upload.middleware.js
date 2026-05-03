@@ -1,17 +1,11 @@
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
-
-// Ensure upload directory exists
-const uploadDir = path.join(__dirname, '../uploads/evidence');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+const { getUploadDir } = require('../utils/uploadPaths');
 
 // Storage configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    cb(null, getUploadDir('evidence'));
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
