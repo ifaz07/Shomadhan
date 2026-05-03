@@ -51,7 +51,7 @@ const defaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = defaultIcon;
 
-const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1").replace("/api/v1", "");
+const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1").replace("/api/v1", "");
 
 const ROLE_META = {
   citizen: {
@@ -510,7 +510,7 @@ const ProfilePage = () => {
 
   return (
     <DashboardLayout>
-      <div className="mx-auto max-w-6xl space-y-5">
+      <div className="w-full space-y-5 px-0 sm:px-1">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}

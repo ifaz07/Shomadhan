@@ -395,8 +395,32 @@ async function callHuggingFaceAPI(text) {
   };
 }
 
+async function translateToEnglish(text) {
+  // Simple check for Bangla characters (U+0980 to U+09FF)
+  if (!/[\u0980-\u09FF]/.test(text)) return text;
+
+  try {
+    const res = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
+        text.slice(0, 500)
+      )}&langpair=bn|en`
+    );
+    const data = await res.json();
+    if (data.responseData && data.responseData.translatedText) {
+      console.log("[NLP] Translated Bangla to English for analysis");
+      return data.responseData.translatedText;
+    }
+  } catch (err) {
+    console.error("[Translation Error]:", err.message);
+  }
+  return text; // Fallback to original if translation fails
+}
+
 async function classifyComplaint(title, description) {
-  const text = `${title}. ${description}`;
+  // 1. Prepare and Translate if needed
+  const rawText = `${title}. ${description}`;
+  const text = await translateToEnglish(rawText);
+  
   const keywords = extractKeywords(text);
 
   let classificationResult;

@@ -21,7 +21,7 @@ import { notificationAPI } from "../../services/api";
 import LanguageToggle from "../LanguageToggle";
 import { VerifiedMark } from "../VerifiedBadge";
 
-const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1");
+const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1");
 const resolveAvatar = (url) => {
   if (!url) return null;
   return url.startsWith("http") ? url : `${API_BASE.replace("/api/v1", "")}${url}`;

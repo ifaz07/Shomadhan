@@ -13,7 +13,10 @@ import {
   Activity,
   AlertCircle,
   Video as VideoIcon,
+  Trash2,
+  Mic,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -25,6 +28,7 @@ import DashboardLayout from "../components/layout/DashboardLayout";
 import T from "../components/T";
 import VoiceMessagePlayer from "../components/VoiceMessagePlayer";
 import VerifiedBadge from "../components/VerifiedBadge";
+import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 
 // Fix Leaflet default icon
 const defaultIcon = L.icon({
@@ -34,7 +38,7 @@ const defaultIcon = L.icon({
   iconAnchor: [12, 41],
 });
 
-// ─── Config ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const PRIORITY_CONFIG = {
   Critical: { badge: "bg-red-500 text-white", border: "border-red-400" },
   High: { badge: "bg-orange-500 text-white", border: "border-orange-400" },
@@ -83,7 +87,7 @@ const DEPT_LABEL = {
   police: "Police Department",
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const timeAgo = (date) => {
   if (!date) return "";
   const diff = Date.now() - new Date(date).getTime();
@@ -147,7 +151,7 @@ const resolveUrl = (item) => {
   if (!url) return "";
   if (url.startsWith("http")) return url;
   const base = (
-    import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1"
+    import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1"
   ).replace("/api/v1", "");
   return `${base}${url}`;
 };
@@ -156,12 +160,12 @@ const resolveAvatar = (url) => {
   if (!url) return "";
   if (url.startsWith("http")) return url;
   const base = (
-    import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1"
+    import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1"
   ).replace("/api/v1", "");
   return `${base}${url}`;
 };
 
-// ─── Timeline Icon ────────────────────────────────────────────────────
+// â”€â”€â”€ Timeline Icon â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const TimelineIcon = ({ role }) => {
   if (role === "system")
     return (
@@ -183,7 +187,7 @@ const TimelineIcon = ({ role }) => {
   );
 };
 
-// ─── Main Page ────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ComplaintDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -191,9 +195,12 @@ const ComplaintDetailPage = () => {
   const backPath = state?.from || -1;
   const backLabel = state?.label || "Back";
   const isMyComplaint = state?.from === "/my-complaints";
+  const { user } = useAuth();
 
   const [complaint, setComplaint] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(0);
 
@@ -232,7 +239,25 @@ const ComplaintDetailPage = () => {
     }
   };
 
-  // ── Loading ──────────────────────────────────────────────────────
+  const handleDelete = () => {
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await complaintAPI.delete(id);
+      toast.success("Complaint deleted successfully");
+      navigate("/my-complaints");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete complaint");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
+
+  // â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (loading)
     return (
       <DashboardLayout>
@@ -242,7 +267,7 @@ const ComplaintDetailPage = () => {
       </DashboardLayout>
     );
 
-  // ── Not found ────────────────────────────────────────────────────
+  // â”€â”€ Not found â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!complaint)
     return (
       <DashboardLayout>
@@ -282,16 +307,10 @@ const ComplaintDetailPage = () => {
           <ArrowLeft size={15} />
           <T en={backLabel} />
         </button>
-        <span className="text-sm text-gray-400">
-          <T en="Viewing as:" />{" "}
-          <span className="font-medium text-gray-600">
-            <T en={isMyComplaint ? "Submitter" : "User"} />
-          </span>
-        </span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-        {/* ══ Left main column ══════════════════════════════════ */}
+        {/* â•â• Left main column â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         <div className="lg:col-span-3 flex flex-col gap-5">
           {/* Header card */}
           <motion.div
@@ -413,7 +432,7 @@ const ComplaintDetailPage = () => {
                     en={
                       CATEGORY_LABEL[complaint.category] ||
                       complaint.category ||
-                      "—"
+                      "â€”"
                     }
                   />
                 </p>
@@ -428,7 +447,7 @@ const ComplaintDetailPage = () => {
                     en={
                       DEPT_LABEL[complaint.department] ||
                       complaint.department ||
-                      "—"
+                      "â€”"
                     }
                   />
                 </p>
@@ -469,7 +488,7 @@ const ComplaintDetailPage = () => {
                   </>
                 ) : (
                   <p className="text-xs text-gray-400 italic">
-                    No resolution deadline assigned yet — department review
+                    No resolution deadline assigned yet â€” department review
                     pending
                   </p>
                 )}
@@ -575,7 +594,7 @@ const ComplaintDetailPage = () => {
           </motion.div>
         </div>
 
-        {/* ══ Right sidebar ════════════════════════════════════ */}
+        {/* â•â• Right sidebar â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         <div className="lg:col-span-2 flex flex-col gap-5">
           {/* Location */}
           <motion.div
@@ -714,6 +733,13 @@ const ComplaintDetailPage = () => {
           </motion.div>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        loading={isDeleting}
+      />
     </DashboardLayout>
   );
 };

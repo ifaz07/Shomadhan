@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1";
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -103,6 +103,9 @@ export const complaintAPI = {
 
   // Get all citizen feedback entries
   getAllFeedback: () => api.get("/complaints/feedback/all"),
+
+  // Delete a complaint
+  delete: (id) => api.delete(`/complaints/${id}`),
 };
 
 // ─── Servant (department officer) API calls ───────────────────────────
@@ -127,4 +130,12 @@ export const emergencyBroadcastAPI = {
   create: (data) => api.post("/emergency-broadcasts", data),
 };
 
+export const reportAPI = {
+  downloadComplaintReport: (id) =>
+    api.get(`/reports/complaint/${id}`, { responseType: 'blob' }),
+  downloadSummaryReport: (params) =>
+    api.get('/reports/summary', { params, responseType: 'blob' }),
+};
+
 export default api;
+

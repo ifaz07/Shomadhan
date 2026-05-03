@@ -18,6 +18,9 @@ const {
   getDepartmentComplaintValues,
   normalizeDepartmentKey,
 } = require("../utils/departmentTaxonomy");
+const Notification = require("../models/Notification.model");
+const fs = require("fs");
+const path = require("path");
 
 const getCurrentAwardPeriod = (date = new Date()) => ({
   awardMonth: date.getMonth() + 1,
@@ -94,7 +97,7 @@ const createComplaint = async (req, res, next) => {
     }
 
     const finalStatus =
-      aiStatus.is_prank && aiStatus.confidence_score >= 0.8
+      aiStatus.is_prank && aiStatus.confidence_score >= 0.7
         ? "rejected"
         : "pending";
 
@@ -543,6 +546,39 @@ const deleteComplaint = async (req, res, next) => {
         message: "Not authorized to delete this complaint",
       });
     }
+
+    // Only pending complaints can be deleted by the user
+    if (req.user.role !== "admin" && complaint.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Only pending complaints can be deleted",
+      });
+    }
+
+    // ─── Clean up associated data ──────────────────────────────────
+    // 1. Delete associated feedback
+    await Feedback.deleteMany({ complaint: complaint._id });
+
+    // 2. Delete associated notifications
+    await Notification.deleteMany({ relatedTicket: complaint._id });
+
+    // 3. Delete evidence files from disk
+    if (complaint.evidence && complaint.evidence.length > 0) {
+      complaint.evidence.forEach((ev) => {
+        if (ev.url) {
+          // url is like /uploads/evidence/filename.jpg
+          const filePath = path.join(__dirname, "..", ev.url);
+          if (fs.existsSync(filePath)) {
+            try {
+              fs.unlinkSync(filePath);
+            } catch (err) {
+              console.warn(`[File Cleanup] Failed to delete ${filePath}:`, err.message);
+            }
+          }
+        }
+      });
+    }
+
     await complaint.deleteOne();
     res
       .status(200)
@@ -557,8 +593,12 @@ const deleteComplaint = async (req, res, next) => {
 // @access  Private
 const getPublicStats = async (req, res, next) => {
   try {
-    const { filter } = req.query; // 'monthly' or 'yearly'
-    let dateFilter = { status: { $ne: "rejected" } };
+    const { filter, includeRejected } = req.query; // 'monthly' or 'yearly'
+    let dateFilter = {};
+
+    if (includeRejected !== "true") {
+      dateFilter.status = { $ne: "rejected" };
+    }
 
     if (filter === "monthly") {
       const startOfMonth = new Date();
@@ -596,6 +636,7 @@ const getPublicStats = async (req, res, next) => {
         pending: 0,
         resolved: 0,
         inProgress: 0,
+        rejected: 0,
       };
       return acc;
     }, {});
@@ -606,7 +647,8 @@ const getPublicStats = async (req, res, next) => {
       medium = 0,
       low = 0,
       inProgress = 0,
-      resolved = 0;
+      resolved = 0,
+      rejected = 0;
 
     all.forEach((c) => {
       total++;
@@ -616,6 +658,7 @@ const getPublicStats = async (req, res, next) => {
       if (c.priority === "Low") low++;
       if (c.status === "in-progress") inProgress++;
       if (c.status === "resolved") resolved++;
+      if (c.status === "rejected") rejected++;
 
       const deptKey = normalizeDepartmentKey(c.category);
       if (deptKey && deptStats[deptKey]) {
@@ -623,10 +666,10 @@ const getPublicStats = async (req, res, next) => {
         if (c.priority === "Critical") deptStats[deptKey].critical++;
         if (c.status === "pending") deptStats[deptKey].pending++;
         if (c.status === "in-progress") {
-          deptStats[deptKey].pending++;
           deptStats[deptKey].inProgress++;
         }
         if (c.status === "resolved") deptStats[deptKey].resolved++;
+        if (c.status === "rejected") deptStats[deptKey].rejected++;
       }
     });
 
@@ -640,6 +683,7 @@ const getPublicStats = async (req, res, next) => {
         low,
         inProgress,
         resolved,
+        rejected,
         departments: deptStats,
         goodCitizen,
       },

@@ -19,6 +19,7 @@ import {
   Users,
   Check,
   Loader2,
+  FileDown,
 } from "lucide-react";
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
@@ -30,7 +31,7 @@ import T from "../T";
 import GoodCitizenStar from "../GoodCitizenStar";
 import VerifiedBadge, { VerifiedMark } from "../VerifiedBadge";
 
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1');
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1');
 const resolveAvatar = (url) => {
   if (!url) return null;
   return url.startsWith('http') ? url : `${API_BASE.replace('/api/v1', '')}${url}`;
@@ -124,6 +125,18 @@ const Sidebar = ({ transparent = false }) => {
       label: <T en="Emergency Broadcast History" />,
       icon: History,
       roles: ["mayor"],
+    },
+    {
+      path: "/mayor/reports",
+      label: <T en="Reports" />,
+      icon: FileDown,
+      roles: ["mayor"],
+    },
+    {
+      path: "/admin/reports",
+      label: <T en="Reports" />,
+      icon: FileDown,
+      roles: ["admin"],
     },
   ];
 

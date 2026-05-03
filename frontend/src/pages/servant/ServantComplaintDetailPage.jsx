@@ -5,7 +5,7 @@ import {
   ArrowLeft, MapPin, Clock, Tag, Building2, ThumbsUp,
   CheckCircle, Activity, MessageSquare, AlertCircle,
   Shield, Timer, X, Loader2, Mail, Phone, UserCircle,
-  Video as VideoIcon,
+  Video as VideoIcon, Mic,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
@@ -134,11 +134,17 @@ const isVideo = (item) => {
   return type === "video" || /\.(mp4|mov|avi|webm|mkv)$/i.test(url || "");
 };
 
+const isAudio = (item) => {
+  const url = getEvidenceUrl(item);
+  const type = typeof item === "object" ? item?.type : "";
+  return type === "audio" || /\.(mp3|wav|webm|ogg|m4a)$/i.test(url || "");
+};
+
 const resolveUrl = (item) => {
   const url = getEvidenceUrl(item);
   if (!url) return "";
   if (url.startsWith("http")) return url;
-  const base = (import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1").replace("/api/v1", "");
+  const base = (import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1").replace("/api/v1", "");
   return `${base}${url}`;
 };
 
@@ -352,9 +358,27 @@ const ServantComplaintDetailPage = () => {
 
               {/* Description */}
               {complaint.description && (
-                <p className="text-sm text-gray-600 leading-relaxed mb-4 bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  {complaint.description}
-                </p>
+                <>
+                  <p className="text-sm text-gray-600 leading-relaxed mb-4 bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    {complaint.description}
+                  </p>
+                  
+                  {/* Voice Note Player (if audio exists) */}
+                  {evidence.some(isAudio) && (
+                    <div className="mb-5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock size={14} className="text-blue-600" />
+                        <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">Citizen Voice Recording</span>
+                      </div>
+                      {evidence.filter(isAudio).map((url, i) => (
+                        <audio key={i} controls className="w-full h-8">
+                          <source src={resolveUrl(url)} type="audio/webm" />
+                          Your browser does not support the audio element.
+                        </audio>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Date + location row */}

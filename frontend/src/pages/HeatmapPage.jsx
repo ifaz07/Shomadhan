@@ -166,7 +166,7 @@ const HeatmapPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-5 p-6">
+      <div className="flex w-full flex-col gap-5 px-0 sm:px-1">
 
         {/* ── Header ── */}
         <motion.div

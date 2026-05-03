@@ -1,6 +1,8 @@
 {
   "dependencies": {
     "groq-sdk": "^1.1.2",
-    "node-cron": "^4.2.1"
+    "node-cron": "^4.2.1",
+    "pdfkit": "^0.18.0",
+    "recharts": "^3.8.1"
   }
 }

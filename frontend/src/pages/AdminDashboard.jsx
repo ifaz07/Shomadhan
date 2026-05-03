@@ -18,7 +18,7 @@ import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import DashboardLayout from '../components/layout/DashboardLayout';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 const resolveFileUrl = (url) => {
   if (!url) return null;
@@ -277,7 +277,7 @@ const AdminDashboard = () => {
 
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="w-full space-y-6 px-0 sm:px-1">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
             <h1 className="text-2xl font-bold text-gray-900">System Administration</h1>

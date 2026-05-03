@@ -1,19 +1,15 @@
 const Complaint = require('../models/Complaint.model');
-const {
-  getDepartmentComplaintValues,
-  normalizeDepartmentKey,
-} = require('../utils/departmentTaxonomy');
+const { normalizeDepartmentKey } = require('../utils/departmentTaxonomy');
+
 
 const HF_SIMILARITY_URL =
-  'https://router.huggingface.co/hf-inference/models/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2';
+  "https://router.huggingface.co/hf-inference/models/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2";
 const HF_API_KEY = process.env.HUGGINGFACE_API_KEY;
 
-const DUPLICATE_RADIUS_KM = 0.5;
-const SIMILAR_COMPLAINT_RADIUS_KM = 1.0;
-const DUPLICATE_SIMILARITY_THRESHOLD = 0.65;
-const SIMILAR_COMPLAINT_THRESHOLD = 0.5;
-const LOCATION_SIMILARITY_THRESHOLD = 0.3;
-const TIME_WINDOW_MS = 24 * 60 * 60 * 1000;
+const RADIUS_KM = 0.5;             
+const SIMILARITY_THRESHOLD = 0.65; 
+const LOCATION_SIMILARITY_THRESHOLD = 0.45;
+const TIME_WINDOW_MS = 24 * 60 * 60 * 1000; 
 
 function haversineDistance(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -27,69 +23,29 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
 }
 
 const OVERLAP_STOPWORDS = new Set([
-  'the', 'a', 'an', 'is', 'it', 'in', 'on', 'at', 'to', 'of', 'and', 'or', 'but', 'for',
-  'with', 'this', 'that', 'there', 'are', 'was', 'were', 'has', 'have', 'had', 'been',
-  'be', 'by', 'from', 'as', 'not', 'no', 'so', 'if', 'we', 'i', 'my', 'our', 'your',
-  'he', 'she', 'they', 'their', 'its', 'do', 'did', 'will', 'would', 'can', 'could',
-  'should', 'may', 'might', 'am', 'also', 'very', 'just', 'more', 'some', 'any', 'all',
-  'and', 'the', 'for', 'from', 'road', 'area', 'city', 'district', 'bangladesh',
-  'এবং', 'এই', 'সেই', 'একটি', 'একটা', 'করে', 'হচ্ছে', 'হয়েছে', 'আমার', 'আমাদের',
-  'এখানে', 'ওখানে', 'রাস্তা', 'এলাকা', 'শহর', 'জেলা', 'বাংলাদেশ',
-  'near', 'beside', 'opposite', 'behind', 'front', 'side', 'কাছে', 'পাশে', 'বিপরীতে', 'পেছনে', 'সামনে',
+  'the','a','an','is','it','in','on','at','to','of','and','or','but','for',
+  'with','this','that','there','are','was','were','has','have','had','been',
+  'be','by','from','as','not','no','so','if','we','i','my','our','your',
+  'he','she','they','their','its','do','did','will','would','can','could',
+  'should','may','might','am','also','very','just','more','some','any','all',
+  'and','the','for','from','road','area','city','district','bangladesh',
+  'এবং','এই','সেই','একটি','একটা','করে','হচ্ছে','হয়েছে','আমার','আমাদের',
+  'এখানে','ওখানে','রাস্তা','এলাকা','শহর','জেলা','বাংলাদেশ',
 ]);
 
-const LOCATION_MAP = {
-  rd: 'road',
-  st: 'street',
-  ave: 'avenue',
-  sq: 'square',
-  apt: 'apartment',
-  no: 'number',
-  '#': 'number',
-  sect: 'sector',
-  h: 'house',
-  b: 'block',
-  'রং': 'রং',
-};
-
-const ISSUE_TERM_MAP = {
-  scarcity: 'shortage',
-  scacity: 'shortage',
-  shortage: 'shortage',
-  lacking: 'shortage',
-  lack: 'shortage',
-  unavailable: 'shortage',
-  outage: 'outage',
-  blackout: 'outage',
-  powercut: 'outage',
-  power_cut: 'outage',
-  waterlog: 'waterlogging',
-  waterlogged: 'waterlogging',
-  waterlogging: 'waterlogging',
-  drain: 'drainage',
-  drainage: 'drainage',
-  garbage: 'waste',
-  trash: 'waste',
-  waste: 'waste',
-};
-
-function normalizeText(text = '') {
+function normalizeText(text = "") {
   return String(text)
     .toLowerCase()
     .normalize('NFKC')
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ')
-    .trim()
-    .split(' ')
-    .map((word) => LOCATION_MAP[word] || word)
-    .join(' ');
+    .trim();
 }
 
-function tokenizeText(text = '') {
+function tokenizeText(text = "") {
   return normalizeText(text)
     .split(' ')
-    .map((word) => ISSUE_TERM_MAP[word] || word)
-    .filter((word) => word.length > 1 && !OVERLAP_STOPWORDS.has(word));
+    .filter((w) => w.length > 1 && !OVERLAP_STOPWORDS.has(w));
 }
 
 function wordOverlapSimilarity(text1, text2) {
@@ -107,10 +63,10 @@ function wordOverlapSimilarity(text1, text2) {
 
 async function callHFSimilarity(text1, text2) {
   const response = await fetch(HF_SIMILARITY_URL, {
-    method: 'POST',
+    method: "POST",
     headers: {
       Authorization: `Bearer ${HF_API_KEY}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       inputs: {
@@ -130,15 +86,17 @@ async function callHFSimilarity(text1, text2) {
 }
 
 async function computeSimilarity(text1, text2) {
-  if (HF_API_KEY && HF_API_KEY !== 'your_huggingface_api_key_here') {
+  if (HF_API_KEY && HF_API_KEY !== "your_huggingface_api_key_here") {
     try {
       const score = await callHFSimilarity(text1, text2);
-      return { score, method: 'semantic' };
+      return { score, method: "semantic" };
     } catch (err) {
-      console.warn('[SpamDetection] HF similarity failed, using word-overlap fallback:', err.message);
+      console.warn(
+        "[SpamDetection] HF similarity failed, using word-overlap fallback:",
+        err.message,
+      );
     }
   }
-
   return { score: wordOverlapSimilarity(text1, text2), method: 'keyword' };
 }
 
@@ -163,15 +121,14 @@ function isSameArea({
   radiusKm = DUPLICATE_RADIUS_KM,
 }) {
   const hasNewCoords = newLatitude != null && newLongitude != null;
-  const hasExistingCoords = existingLatitude != null && existingLongitude != null;
+  const hasExistingCoords =
+    existingLatitude != null && existingLongitude != null;
 
   if (hasNewCoords && hasExistingCoords) {
-    if (
+    return (
       haversineDistance(newLatitude, newLongitude, existingLatitude, existingLongitude) <=
-      radiusKm
-    ) {
-      return true;
-    }
+      RADIUS_KM
+    );
   }
 
   const normalizedNewLocation = normalizeText(newLocation);
@@ -184,9 +141,6 @@ function isSameArea({
   const newTokens = tokenizeText(normalizedNewLocation);
   const existingTokens = tokenizeText(normalizedExistingLocation);
   const hasSpecificEnoughLocation = (tokens, text) => tokens.length >= 3 || text.length >= 18;
-  const sharedLocationTokens = newTokens.filter((token) =>
-    existingTokens.includes(token),
-  );
 
   if (
     hasSpecificEnoughLocation(newTokens, normalizedNewLocation) &&
@@ -199,13 +153,13 @@ function isSameArea({
     return true;
   }
 
-  if (sharedLocationTokens.length >= 2) {
-    return true;
-  }
-
   return (
-    wordOverlapSimilarity(normalizedNewLocation, normalizedExistingLocation) >=
-    LOCATION_SIMILARITY_THRESHOLD
+    haversineDistance(
+      newLatitude,
+      newLongitude,
+      existingLatitude,
+      existingLongitude,
+    ) <= 1.0 // Changed RADIUS_KM to 1km
   );
 }
 
@@ -327,18 +281,20 @@ async function findSimilarComplaints({
 
 async function analyzePrankPotential(title, description) {
   const text = `${title} ${description}`.toLowerCase();
-
+  
+  // 1. Local Rule-Based Scorer (Always works, even without internet/keys)
   const prankPatterns = [
     { words: ['alien', 'ufo', 'space', 'mars', 'galaxy'], score: 0.95 },
     { words: ['ghost', 'zombie', 'vampire', 'magic', 'supernatural', 'monster'], score: 0.9 },
     { words: ['superman', 'batman', 'spiderman', 'avengers', 'marvel', 'superhero'], score: 0.95 },
-    { words: ['biryani', 'pizza', 'burger', 'delicious', 'tasty', 'eating'], score: 0.4 },
+    { words: ['biryani', 'pizza', 'burger', 'delicious', 'tasty', 'eating'], score: 0.4 }, 
     { words: ['cow', 'goat', 'animal', 'talking'], score: 0.3 },
     { words: ['killed me', 'i am dead', 'ghost of me', 'dying in'], score: 0.95 },
     { words: ['prank', 'joke', 'just kidding', 'test', 'fake'], score: 0.9 },
   ];
 
   let localScore = 0;
+  // Dynamic combined checks for specific cases like "cow eating man"
   if (text.includes('cow') && text.includes('eating')) localScore = 0.9;
   if (text.includes('flying') && text.includes('man')) localScore = 0.85;
 
@@ -349,52 +305,57 @@ async function analyzePrankPotential(title, description) {
   });
 
   if (localScore >= 0.85) {
-    console.log(`[AI Prank Check] Local Rules detected prank (${localScore}): "${title}"`);
+    console.log(
+      `[AI Prank Check] Local Rules detected prank (${localScore}): "${title}"`,
+    );
     return { is_prank: true, confidence_score: localScore };
   }
 
   const HF_TOKEN = process.env.HUGGINGFACE_API_KEY;
-  if (HF_TOKEN && HF_TOKEN !== 'your_huggingface_api_key_here') {
+  if (HF_TOKEN && HF_TOKEN !== "your_huggingface_api_key_here") {
     try {
       console.log(`[AI Prank Check] Attempting HF Analysis: "${title}"`);
 
       const response = await fetch(
-        'https://router.huggingface.co/hf-inference/models/facebook/bart-large-mnli',
+        "https://router.huggingface.co/hf-inference/models/facebook/bart-large-mnli",
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            Authorization: `Bearer ${HF_TOKEN}`,
-            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${HF_TOKEN}`,
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             inputs: `${title}: ${description}`,
             parameters: {
-              candidate_labels: ['serious civic complaint', 'prank or joke', 'nonsense'],
-              wait_for_model: true,
-            },
-          }),
-        },
+              candidate_labels: ["serious civic complaint", "prank or joke", "nonsense"],
+              wait_for_model: true
+            }
+          })
+        }
       );
 
       if (response.ok) {
         const result = await response.json();
-        const prankIdx = result.labels.indexOf('prank or joke');
-        const nonsenseIdx = result.labels.indexOf('nonsense');
+        
+        const prankIdx = result.labels.indexOf("prank or joke");
+        const nonsenseIdx = result.labels.indexOf("nonsense");
         const aiScore = Math.max(result.scores[prankIdx], result.scores[nonsenseIdx]);
 
-        console.log(`[AI Prank Check] HF Success: PrankScore=${aiScore.toFixed(2)}`);
+        console.log(
+          `[AI Prank Check] HF Success: PrankScore=${aiScore.toFixed(2)} for "${title}"`,
+        );
         return {
           is_prank: aiScore > 0.7,
-          confidence_score: aiScore,
+          confidence_score: aiScore
         };
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const errData = await response.json();
-        console.warn(`[AI Prank Check] HF API Error: ${errData.error || response.statusText}`);
       } else {
-        console.warn(`[AI Prank Check] HF API returned non-JSON response: ${response.status}`);
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+           const errData = await response.json();
+           console.warn(`[AI Prank Check] HF API Error: ${errData.error || response.statusText}`);
+        } else {
+           console.warn(`[AI Prank Check] HF API returned non-JSON response: ${response.status}`);
+        }
       }
     } catch (err) {
       console.warn(`[AI Prank Check] HF Connection failed: ${err.message}`);
@@ -407,69 +368,73 @@ async function analyzePrankPotential(title, description) {
   };
 }
 
-async function checkForDuplicates(title, description, latitude, longitude, location, userId, category) {
-  if (!userId) return { isSpam: false };
-
-  const openMatches = await findSimilarComplaints({
-    title,
-    description,
-    latitude,
-    longitude,
-    location,
-    category,
-    userId,
-    onlyUser: true,
-    openOnly: true,
-    limit: 1,
-    minSimilarity: DUPLICATE_SIMILARITY_THRESHOLD,
-    areaRadiusKm: DUPLICATE_RADIUS_KM,
-  });
-
-  if (openMatches.length > 0) {
-    const match = openMatches[0];
-    return {
-      isSpam: true,
-      originalTicketId: match.ticketId,
-      originalId: match._id.toString(),
-      similarity: match.similarity,
-      method: match.matchMethod,
-    };
+async function checkForDuplicates(
+  title,
+  description,
+  latitude,
+  longitude,
+  location,
+  userId,
+  category,
+) {
+  // ✓ NEW: Return early if category/department is not selected
+  if (!category || category === "Select a department") {
+    return { isSpam: false }; // No similar complaints until department is picked
   }
 
-  const recentMatches = await findSimilarComplaints({
-    title,
-    description,
-    latitude,
-    longitude,
-    location,
-    category,
-    userId,
-    onlyUser: true,
-    openOnly: false,
-    createdAfter: new Date(Date.now() - TIME_WINDOW_MS),
-    statusExclusions: ['rejected'],
-    limit: 1,
-    minSimilarity: DUPLICATE_SIMILARITY_THRESHOLD,
-    areaRadiusKm: DUPLICATE_RADIUS_KM,
+  // ✓ NEW: Return early if location coordinates are missing
+  if (latitude == null || longitude == null) {
+    return { isSpam: false }; // No similar complaints until GPS location is set
+  }
+
+  const since = new Date(Date.now() - TIME_WINDOW_MS);
+
+  const recentComplaints = await Complaint.find({
+    user: userId,
+    createdAt: { $gte: since },
+    'spamCheck.isDuplicate': { $ne: true },
+    status: { $ne: 'rejected' },
+  }).select('title description latitude longitude location category ticketId _id');
+
+  const candidates = recentComplaints.filter((candidate) => {
+    if (!isSameCategory(category, candidate.category)) {
+      return false;
+    }
+
+    return isSameArea({
+      newLatitude: latitude,
+      newLongitude: longitude,
+      existingLatitude: candidate.latitude,
+      existingLongitude: candidate.longitude,
+      newLocation: location,
+      existingLocation: candidate.location,
+    });
   });
 
-  if (recentMatches.length > 0) {
-    const match = recentMatches[0];
-    return {
-      isSpam: true,
-      originalTicketId: match.ticketId,
-      originalId: match._id.toString(),
-      similarity: match.similarity,
-      method: match.matchMethod,
-    };
+  if (candidates.length === 0) return { isSpam: false };
+
+  const newText = `${title} ${description}`;
+
+  for (const candidate of candidates) {
+    const candidateText = `${candidate.title} ${candidate.description}`;
+    const { score, method } = await computeSimilarity(newText, candidateText);
+
+    if (score >= SIMILARITY_THRESHOLD) {
+      console.log(
+        `[SpamDetection] Duplicate detected — similarity: ${(score * 100).toFixed(1)}% ` +
+        `(${method}) vs ticket ${candidate.ticketId}`
+      );
+      return {
+        isSpam: true,
+        originalTicketId: candidate.ticketId,
+        originalId: candidate._id.toString(),
+        similarity: Math.round(score * 100) / 100,
+        method,
+      };
+    }
   }
 
   return { isSpam: false };
 }
 
-module.exports = {
-  checkForDuplicates,
-  findSimilarComplaints,
-  haversineDistance,
-  analyzePrankPotential,
-};
+module.exports = { checkForDuplicates, haversineDistance, analyzePrankPotential };

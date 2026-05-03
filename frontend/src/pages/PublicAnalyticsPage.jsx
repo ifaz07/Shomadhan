@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  BarChart3,
   CheckCircle2,
   Clock,
   FileText,
@@ -14,15 +13,11 @@ import {
   Trash2,
   Shield,
   Leaf,
-  RefreshCw,
   MapPin,
-  Tag,
   ChevronRight,
   Activity,
   Download,
   FileDown,
-  Calendar as CalendarIcon,
-  Printer,
   Loader2,
   PieChart as PieChartIcon,
   Target,
@@ -48,10 +43,9 @@ import ServantLayout from "../components/layout/ServantLayout";
 import T from "../components/T";
 import { useAuth } from "../context/AuthContext";
 import GoodCitizenStar from "../components/GoodCitizenStar";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+import { reportAPI } from "../services/api";
 
-const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5001/api/v1").replace("/api/v1", "");
+const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1").replace("/api/v1", "");
 
 const resolveAvatar = (url) => {
   if (!url) return null;
@@ -244,6 +238,33 @@ const TIME_FILTER_OPTIONS = [
   { key: "yearly", label: "This Year" },
 ];
 
+const STATUS_MIX_CONFIG = {
+  resolved: {
+    label: "Resolved",
+    color: "#10b981",
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+  },
+  "in-progress": {
+    label: "In Progress",
+    color: "#6366f1",
+    bg: "bg-indigo-50",
+    text: "text-indigo-700",
+  },
+  pending: {
+    label: "Pending",
+    color: "#94a3b8",
+    bg: "bg-slate-100",
+    text: "text-slate-700",
+  },
+  rejected: {
+    label: "Rejected",
+    color: "#ef4444",
+    bg: "bg-rose-50",
+    text: "text-rose-700",
+  },
+};
+
 // ─── Sub-Components ───────────────────────────────────────────────────
 const StatCard = ({ icon: Icon, label, value, color, bg, delay, subtitle }) => (
   <motion.div
@@ -279,6 +300,54 @@ const SkeletonCard = ({ h = "h-28" }) => (
   />
 );
 
+const AnalyticsTooltip = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const data = payload[0]?.payload;
+  if (!data) return null;
+
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white/95 px-4 py-3 shadow-xl backdrop-blur-sm">
+      <p className="text-sm font-black text-slate-900">{data.name}</p>
+      <div className="mt-2 space-y-1.5 text-xs font-semibold text-slate-600">
+        <div className="flex items-center justify-between gap-4">
+          <span>Total cases</span>
+          <span className="font-black text-slate-900">{data.total ?? data.value ?? 0}</span>
+        </div>
+        {typeof data.resolved === "number" && (
+          <div className="flex items-center justify-between gap-4">
+            <span>Resolved</span>
+            <span className="font-black text-emerald-600">{data.resolved}</span>
+          </div>
+        )}
+        {typeof data.inProgress === "number" && (
+          <div className="flex items-center justify-between gap-4">
+            <span>In progress</span>
+            <span className="font-black text-indigo-600">{data.inProgress}</span>
+          </div>
+        )}
+        {typeof data.pending === "number" && (
+          <div className="flex items-center justify-between gap-4">
+            <span>Pending</span>
+            <span className="font-black text-slate-600">{data.pending}</span>
+          </div>
+        )}
+        {typeof data.rejected === "number" && (
+          <div className="flex items-center justify-between gap-4">
+            <span>Rejected</span>
+            <span className="font-black text-rose-600">{data.rejected}</span>
+          </div>
+        )}
+        {typeof data.critical === "number" && (
+          <div className="flex items-center justify-between gap-4">
+            <span>Critical</span>
+            <span className="font-black text-red-600">{data.critical}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── Main Page ────────────────────────────────────────────────────────
 const PublicAnalyticsPage = () => {
   const navigate = useNavigate();
@@ -291,7 +360,6 @@ const PublicAnalyticsPage = () => {
   const [myComplaints, setMyComplaints] = useState([]);
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingMine, setLoadingMine] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [timeFilter, setTimeFilter] = useState("all");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -305,10 +373,12 @@ const PublicAnalyticsPage = () => {
   const fetchStats = async (filter = "all") => {
     try {
       setLoadingStats(true);
-      const params = filter !== "all" ? { filter } : {};
+      const params =
+        filter !== "all"
+          ? { filter, includeRejected: "true" }
+          : { includeRejected: "true" };
       const res = await complaintAPI.getStats(params);
       if (res.data?.success) setStats(res.data.data);
-      setLastUpdated(new Date());
     } catch (err) {
       toast.error("Failed to load analytics");
     } finally {
@@ -341,120 +411,40 @@ const PublicAnalyticsPage = () => {
   const generatePersonalReportPDF = async (filterType) => {
     setIsGenerating(true);
     try {
-      const params = {};
+      const params = { type: filterType, filter: filterType };
       if (!isReviewerView) params.mine = "true";
-      if (filterType !== "all") params.filter = filterType;
-
-      const res = await complaintAPI.getAll(params);
-      const complaints = Array.isArray(res.data?.data) ? res.data.data : [];
-      if (complaints.length === 0) return toast.error("No complaints found.");
-
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      doc.setFontSize(22);
-      doc.setTextColor(13, 148, 136);
-
-      const reportTitle = isReviewerView
-        ? user?.role === "department_officer"
-          ? "Department Intelligence Report"
-          : "City-Wide Intelligence Report"
-        : "Somadhan Personal Activity Report";
-      doc.text(reportTitle, pageWidth / 2, 20, { align: "center" });
-
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      const subtitle = isReviewerView
-        ? `Generated by: ${user?.role === "department_officer" ? "Public Servant" : "Mayor"} ${user?.name}`
-        : `Citizen: ${user?.name}`;
-      doc.text(
-        `${subtitle} | Period: ${filterType.toUpperCase()}`,
-        pageWidth / 2,
-        28,
-        { align: "center" },
-      );
-
-      const resCount = complaints.filter((c) => c.status === "resolved").length;
-      const ipCount = complaints.filter(
-        (c) => c.status === "in-progress",
-      ).length;
-
-      autoTable(doc, {
-        startY: 40,
-        head: [["Metric", "Value"]],
-        body: [
-          ["Total Submitted", complaints.length],
-          ["Successfully Resolved", resCount],
-          ["Currently In-Progress", ipCount],
-          [
-            "Resolution Rate",
-            `${complaints.length > 0 ? Math.round((resCount / complaints.length) * 100) : 0}%`,
-          ],
-        ],
-        theme: "striped",
-        headStyles: { fillColor: [13, 148, 136] },
-      });
-
-      const rows = complaints.map((c) => [
-        c.ticketId || "N/A",
-        c.title || "Untitled complaint",
-        c.category || "Uncategorized",
-        (c.status || "pending").toUpperCase(),
-        c.createdAt ? new Date(c.createdAt).toLocaleDateString() : "N/A",
-      ]);
-      autoTable(doc, {
-        startY: doc.lastAutoTable.finalY + 15,
-        head: [["Ticket ID", "Title", "Category", "Status", "Date"]],
-        body: rows,
-        theme: "grid",
-        headStyles: { fillColor: [13, 148, 136] },
-        styles: { fontSize: 8 },
-      });
-
-      const exportPrefix = isReviewerView ? "Somadhan_Official_Report" : "My_Somadhan_Report";
-      doc.save(`${exportPrefix}_${filterType}.pdf`);
-      toast.success("Report downloaded!");
+      
+      const r = await reportAPI.downloadSummaryReport(params);
+      
+      const url = URL.createObjectURL(r.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Somadhan_Report_${filterType}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      toast.success("Report downloaded successfully!");
     } catch (err) {
       console.error("Failed to generate analytics PDF:", err);
-      toast.error("PDF Error");
+      toast.error("Failed to generate PDF Report");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const generateCasePDF = (complaint) => {
+  const generateCasePDF = async (complaint) => {
     setIsGenerating(true);
     try {
-      const doc = new jsPDF();
-      doc.setFontSize(18);
-      doc.setTextColor(13, 148, 136);
-      doc.text("Official Complaint Record", 14, 20);
-
-      autoTable(doc, {
-        startY: 30,
-        head: [["Field", "Details"]],
-        body: [
-          ["Citizen Name", user?.name || "N/A"],
-          ["Ticket ID", complaint.ticketId],
-          ["Title", complaint.title],
-          ["Category", complaint.category],
-          ["Status", complaint.status.toUpperCase()],
-          ["Priority", complaint.priority],
-          ["Date Filed", new Date(complaint.createdAt).toLocaleString()],
-        ],
-        theme: "plain",
-        columnStyles: { 0: { fontStyle: "bold", width: 40 } },
-      });
-
-      doc.setFontSize(12);
-      doc.text("Description:", 14, doc.lastAutoTable.finalY + 10);
-      doc.setFontSize(10);
-      const splitDesc = doc.splitTextToSize(complaint.description, 180);
-      doc.text(splitDesc, 14, doc.lastAutoTable.finalY + 16);
-
-      doc.save(`Case_${complaint.ticketId}.pdf`);
-      toast.success("Case Record Saved!");
+      const r = await reportAPI.downloadComplaintReport(complaint._id);
+      const url = URL.createObjectURL(r.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Case_${complaint.ticketId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Case Record Downloaded!");
     } catch (err) {
-      toast.error("Download Failed");
+      toast.error("Failed to download PDF report");
     } finally {
       setIsGenerating(false);
     }
@@ -465,36 +455,81 @@ const PublicAnalyticsPage = () => {
       ? Math.round((stats.resolved / stats.total) * 100)
       : 0;
   const pendingCountTotal = stats
-    ? stats.total - stats.resolved - stats.inProgress
+    ? Math.max(
+        0,
+        stats.total - stats.resolved - stats.inProgress - (stats.rejected || 0),
+      )
     : 0;
+  const rejectedCount = stats?.rejected || 0;
+  const rejectionRate =
+    stats && stats.total > 0
+      ? Math.round((rejectedCount / stats.total) * 100)
+      : 0;
 
   // Data for Charts
   const deptData = stats?.departments
-    ? Object.entries(stats.departments).map(([key, d]) => ({
-        name: DEPT_CONFIG[key]?.label || key,
-        total: d.total,
-        resolved: d.resolved,
-        critical: d.critical,
-        fill: DEPT_CONFIG[key]?.chart || "#94a3b8",
-      }))
+    ? Object.entries(stats.departments)
+        .map(([key, d]) => ({
+          key,
+          name: DEPT_CONFIG[key]?.label || key,
+          shortName: (DEPT_CONFIG[key]?.label || key)
+            .replace(" Department", "")
+            .replace(" Dept", ""),
+          total: d.total || 0,
+          resolved: d.resolved || 0,
+          critical: d.critical || 0,
+          pending: d.pending || 0,
+          inProgress: d.inProgress || 0,
+          rejected: d.rejected || 0,
+          fill: DEPT_CONFIG[key]?.chart || "#94a3b8",
+        }))
+        .sort((a, b) => b.total - a.total || b.critical - a.critical)
     : [];
+  const chartDeptData = deptData;
+  const activeDeptData = deptData.filter((dept) => dept.total > 0);
+  const topDepartment = activeDeptData[0];
+  const criticalPressureDepartment = [...activeDeptData].sort(
+    (a, b) => b.critical - a.critical || b.total - a.total,
+  )[0];
+  const chartHeight = Math.max(420, chartDeptData.length * 40);
 
-  const priorityData = stats
+  const statusMixData = stats
     ? [
         {
-          name: "Critical",
-          value: stats.critical,
-          fill: PRIORITY_COLORS.Critical,
+          key: "resolved",
+          name: "Resolved",
+          value: stats.resolved || 0,
+          fill: STATUS_MIX_CONFIG.resolved.color,
         },
-        { name: "High", value: stats.high ?? 0, fill: PRIORITY_COLORS.High },
-        { name: "Medium", value: stats.medium ?? 0, fill: PRIORITY_COLORS.Medium },
-        { name: "Low", value: stats.low ?? 0, fill: PRIORITY_COLORS.Low },
+        {
+          key: "in-progress",
+          name: "In Progress",
+          value: stats.inProgress || 0,
+          fill: STATUS_MIX_CONFIG["in-progress"].color,
+        },
+        {
+          key: "pending",
+          name: "Pending",
+          value: pendingCountTotal,
+          fill: STATUS_MIX_CONFIG.pending.color,
+        },
+        {
+          key: "rejected",
+          name: "Rejected",
+          value: rejectedCount,
+          fill: STATUS_MIX_CONFIG.rejected.color,
+        },
       ]
+        .filter((item) => item.value > 0)
     : [];
+  const criticalShare =
+    stats && stats.total > 0
+      ? Math.round(((stats.critical || 0) / stats.total) * 100)
+      : 0;
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 py-6 space-y-8">
+      <div className="w-full px-0 py-6 space-y-8 sm:px-1">
         {/* ── Page Header ── */}
         <div className="rounded-[2rem] border border-slate-200/70 bg-gradient-to-br from-slate-950 via-slate-900 to-teal-900 px-6 py-4 text-white shadow-[0_24px_60px_-28px_rgba(15,23,42,0.55)] sm:px-8 sm:py-5">
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-12 xl:items-start">
@@ -678,9 +713,9 @@ const PublicAnalyticsPage = () => {
         )}
 
         {/* ── Stat Cards ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 xl:grid-cols-5 gap-6">
           {loadingStats ? (
-            Array(4)
+            Array(5)
               .fill(0)
               .map((_, i) => <SkeletonCard key={i} />)
           ) : (
@@ -716,6 +751,14 @@ const PublicAnalyticsPage = () => {
                 color="text-red-600"
                 bg="bg-red-50"
                 subtitle="Immediate priority"
+              />
+              <StatCard
+                icon={ZapOff}
+                label="Rejected"
+                value={rejectedCount}
+                color="text-rose-600"
+                bg="bg-rose-50"
+                subtitle={`${rejectionRate}% review filtered`}
               />
             </>
           )}
@@ -782,6 +825,12 @@ const PublicAnalyticsPage = () => {
                   {pendingCountTotal} Pending
                 </span>
               </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-rose-500" />
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                  {rejectedCount} Rejected
+                </span>
+              </div>
             </div>
             <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">
               {stats?.total} Records Analyzed
@@ -790,79 +839,194 @@ const PublicAnalyticsPage = () => {
         </motion.div>
 
         {/* ── Charts Section ── */}
+        {!loadingStats && (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-[2rem] border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-cyan-50 p-6 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-teal-600">
+                Highest Workload
+              </p>
+              <h3 className="mt-3 text-2xl font-black text-slate-900">
+                {topDepartment?.name || "No active cases"}
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                {topDepartment
+                  ? `${topDepartment.total} total complaints in the selected period.`
+                  : "No department workload detected for this filter."}
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-6 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-600">
+                Open Backlog
+              </p>
+              <h3 className="mt-3 text-3xl font-black text-slate-900">
+                {pendingCountTotal + (stats?.inProgress || 0)}
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Pending and in-progress cases still waiting for closure.
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] border border-rose-100 bg-gradient-to-br from-rose-50 via-white to-pink-50 p-6 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-rose-600">
+                Critical Pressure
+              </p>
+              <h3 className="mt-3 text-3xl font-black text-slate-900">
+                {criticalShare}%
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                {criticalPressureDepartment?.name
+                  ? `${criticalPressureDepartment.name} currently carries the highest critical load.`
+                  : "No critical complaints recorded in the selected period."}
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
+                Review Signal
+              </p>
+              <h3 className="mt-3 text-3xl font-black text-slate-900">
+                {rejectedCount}
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Rejected complaints are included here so oversight reflects the full decision trail.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
-            <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-8 uppercase tracking-wider text-sm">
-              <Target size={18} className="text-teal-500" />
-              Departmental Load Distribution
-            </h3>
-            <div className="h-72 w-full">
+          <div className="lg:col-span-2 h-full bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="font-bold text-gray-900 flex items-center gap-2 uppercase tracking-wider text-sm">
+                  <Target size={18} className="text-teal-500" />
+                  Department Workload and Outcomes
+                </h3>
+              </div>
+              <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+                  Total
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-teal-500" />
+                  Resolved
+                </span>
+              </div>
+            </div>
+            <div className="w-full flex-1" style={{ minHeight: `${chartHeight}px` }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={deptData}>
+                <BarChart
+                  data={chartDeptData}
+                  layout="vertical"
+                  margin={{ top: 8, right: 12, left: 12, bottom: 8 }}
+                  barCategoryGap={12}
+                >
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    vertical={false}
+                    horizontal={false}
                     stroke="#f1f5f9"
                   />
                   <XAxis
-                    dataKey="name"
+                    type="number"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 10, fontWeight: "bold" }}
+                    tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 700 }}
+                    allowDecimals={false}
                   />
                   <YAxis
+                    type="category"
+                    dataKey="shortName"
+                    width={118}
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 10 }}
+                    tick={{ fontSize: 11, fill: "#334155", fontWeight: 700 }}
                   />
                   <Tooltip
                     cursor={{ fill: "#f8fafc" }}
-                    contentStyle={{
-                      borderRadius: "12px",
-                      border: "none",
-                      boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
-                    }}
+                    content={<AnalyticsTooltip />}
                   />
-                  <Bar dataKey="total" radius={[6, 6, 0, 0]} barSize={40} />
+                  <Bar
+                    dataKey="total"
+                    fill="#cbd5e1"
+                    radius={[0, 8, 8, 0]}
+                    barSize={20}
+                  />
+                  <Bar
+                    dataKey="resolved"
+                    fill="#14b8a6"
+                    radius={[0, 8, 8, 0]}
+                    barSize={20}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
-            <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-8 uppercase tracking-wider text-sm">
+          <div className="h-full bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col">
+            <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-6 uppercase tracking-wider text-sm">
               <PieChartIcon size={18} className="text-teal-500" />
-              Priority Spectrum
+              Case Status Mix
             </h3>
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={priorityData}
+                    data={statusMixData}
                     innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
+                    outerRadius={86}
+                    paddingAngle={3}
                     dataKey="value"
+                    stroke="none"
                   >
-                    {priorityData.map((entry, i) => (
-                      <Cell key={i} fill={entry.fill} />
+                    {statusMixData.map((entry, i) => (
+                      <Cell key={entry.key || i} fill={entry.fill} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<AnalyticsTooltip />} />
+                  <text
+                    x="50%"
+                    y="46%"
+                    textAnchor="middle"
+                    className="fill-slate-400 text-[11px] font-black uppercase tracking-[0.18em]"
+                  >
+                    Total
+                  </text>
+                  <text
+                    x="50%"
+                    y="56%"
+                    textAnchor="middle"
+                    className="fill-slate-900 text-[26px] font-black"
+                  >
+                    {stats?.total || 0}
+                  </text>
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex flex-wrap gap-4 mt-4 justify-center">
-              {priorityData.map((p) => (
-                <div key={p.name} className="flex items-center gap-1.5">
+            <div className="mt-4 space-y-3">
+              {statusMixData.map((item) => {
+                const mixTheme = STATUS_MIX_CONFIG[item.key];
+
+                return (
                   <div
-                    className="w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: p.fill }}
-                  />
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                    {p.name}
-                  </span>
-                </div>
-              ))}
+                    key={item.key}
+                    className={`flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3 ${mixTheme?.bg || "bg-slate-50"}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: item.fill }}
+                      />
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{item.name}</p>
+                      </div>
+                    </div>
+                    <span className={`text-xl font-black ${mixTheme?.text || "text-slate-700"}`}>
+                      {item.value}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -870,7 +1034,9 @@ const PublicAnalyticsPage = () => {
         {/* ── Detailed Department Metrics ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {stats?.departments &&
-            Object.entries(stats.departments).map(([key, dept]) => {
+            Object.entries(stats.departments)
+              .sort(([, a], [, b]) => (b.total || 0) - (a.total || 0))
+              .map(([key, dept]) => {
               const cfg = DEPT_CONFIG[key] || {
                 label: key,
                 icon: Activity,
@@ -882,31 +1048,46 @@ const PublicAnalyticsPage = () => {
                 dept.total > 0
                   ? Math.round((dept.resolved / dept.total) * 100)
                   : 0;
+              const rejectedDept = dept.rejected || 0;
+              const pendingDept = dept.pending || 0;
+              const openDept = pendingDept + (dept.inProgress || 0);
               return (
                 <motion.div
                   key={key}
                   whileHover={{ y: -4 }}
                   className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 transition-all"
                 >
-                  <div className="flex items-center gap-3 mb-5">
-                    <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center ${cfg.bg}`}
-                    >
-                      <cfg.icon size={24} className={cfg.color} />
+                  <div className="flex items-start justify-between gap-4 mb-5">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center ${cfg.bg}`}
+                      >
+                        <cfg.icon size={24} className={cfg.color} />
+                      </div>
+                      <div>
+                        <p className="font-black text-gray-900 leading-tight">
+                          {cfg.label}
+                        </p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                          {dept.total} Total Cases
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-black text-gray-900 leading-tight">
-                        {cfg.label}
-                      </p>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                        {dept.total} Total Cases
+                    <div className="text-right">
+                      <p className={`text-2xl font-black ${cfg.color}`}>{rate}%</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                        Resolved
                       </p>
                     </div>
                   </div>
                   <div className="space-y-3">
                     <div className="flex justify-between text-xs font-bold">
                       <span className="text-gray-500">Resolution</span>
-                      <span className={cfg.color}>{rate}%</span>
+                      <span className={cfg.color}>
+                        {dept.total > 0
+                          ? `${dept.resolved} of ${dept.total} cases closed`
+                          : "No submitted cases yet"}
+                      </span>
                     </div>
                     <div className="w-full h-1.5 bg-gray-50 rounded-full overflow-hidden border border-gray-100">
                       <motion.div
@@ -916,7 +1097,7 @@ const PublicAnalyticsPage = () => {
                         className={`h-full ${cfg.bar}`}
                       />
                     </div>
-                    <div className="flex justify-between pt-2">
+                    <div className="grid grid-cols-4 gap-3 pt-2">
                       <div className="text-center">
                         <p className="text-sm font-black text-gray-900">
                           {dept.resolved}
@@ -927,10 +1108,18 @@ const PublicAnalyticsPage = () => {
                       </div>
                       <div className="text-center">
                         <p className="text-sm font-black text-blue-600">
-                          {dept.inProgress}
+                          {openDept}
                         </p>
                         <p className="text-[8px] font-bold text-gray-400 uppercase">
-                          Active
+                          Open
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm font-black text-slate-600">
+                          {rejectedDept}
+                        </p>
+                        <p className="text-[8px] font-bold text-gray-400 uppercase">
+                          Rejected
                         </p>
                       </div>
                       <div className="text-center">

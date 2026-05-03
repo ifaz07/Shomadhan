@@ -14,9 +14,8 @@ import { useAuth } from '../context/AuthContext';
 import { complaintAPI } from '../services/api';
 import MayorChatbot from '../components/MayorChatbot';
 import GoodCitizenStar from '../components/GoodCitizenStar';
-import { getDepartmentLabel, normalizeDepartmentValue } from '../constants/departments';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 // ─── Helpers ──────────────────────────────────
 const timeAgo = (date) => {
@@ -466,19 +465,12 @@ const MayorDashboard = () => {
     );
   }
 
-  const departmentStats = normalizeDepartmentStats(
-    stats?.departments?.length > 0 ? stats.departments : buildDepartmentStats(allComplaints)
-  );
   const headerStats = [
     { label: "Total Complaints", value: stats?.global?.total || 0, accent: "text-blue-200" },
     { label: "Critical", value: stats?.global?.critical || 0, accent: "text-red-200" },
     { label: "In Progress", value: stats?.global?.inProgress || 0, accent: "text-cyan-200" },
     { label: "Resolved", value: stats?.global?.resolved || 0, accent: "text-emerald-200" },
   ];
-  const topDepartment = departmentStats[0];
-  const averageEfficiency = departmentStats.length
-    ? Math.round(departmentStats.reduce((sum, dept) => sum + dept.rate, 0) / departmentStats.length)
-    : 0;
   const tabButtonClass = (key) => `rounded-full px-5 py-3 text-sm font-bold transition-all ${
     activeTab === key
       ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
@@ -532,7 +524,7 @@ const MayorDashboard = () => {
         onClose={closeConfirm}
         loading={actionLoading}
       />
-      <div className="mx-auto max-w-[1390px] space-y-6 px-0 sm:px-1">
+      <div className="w-full space-y-6 px-0 sm:px-1">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 18 }}
@@ -575,9 +567,6 @@ const MayorDashboard = () => {
             </button>
             <button onClick={() => setActiveTab('leaderboard')} className={tabButtonClass('leaderboard')}>
               <T en="Citizen Leaderboard" />
-            </button>
-            <button onClick={() => setActiveTab('efficiency')} className={tabButtonClass('efficiency')}>
-              <T en="City Efficiency" />
             </button>
             <button onClick={() => setActiveTab('ads')} className={tabButtonClass('ads')}>
               <T en="New Ad" />
@@ -714,84 +703,6 @@ const MayorDashboard = () => {
                   )}
                 </div>
               </div>
-          </section>
-        ) : activeTab === 'efficiency' ? (
-          <section className="space-y-5">
-            <div className="grid gap-4 lg:grid-cols-3">
-              <div className="rounded-[1.75rem] border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-cyan-50 p-5 shadow-sm">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-teal-600">
-                  <T en="Highest Coverage" />
-                </p>
-                <h3 className="mt-3 text-2xl font-black text-slate-900">{topDepartment?.label || 'N/A'}</h3>
-                <p className="mt-2 text-sm text-slate-600">
-                  <T en="Leading complaint volume currently tracked in the city-wide operations view." />
-                </p>
-              </div>
-              <div className="rounded-[1.75rem] border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-sky-50 p-5 shadow-sm">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-700">
-                  <T en="Average Resolution Rate" />
-                </p>
-                <h3 className="mt-3 text-3xl font-black text-slate-900">{averageEfficiency}%</h3>
-                <p className="mt-2 text-sm text-slate-600">
-                  <T en="Average share of resolved complaints across the listed city service groups." />
-                </p>
-              </div>
-              <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
-                  <T en="Departments Tracked" />
-                </p>
-                <h3 className="mt-3 text-3xl font-black text-slate-900">{departmentStats.length}</h3>
-                <p className="mt-2 text-sm text-slate-600">
-                  <T en="Normalized from both legacy complaint categories and current department assignments." />
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-[1.9rem] border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
-              <div className="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-black text-slate-900">
-                    <T en="City Efficiency Board" />
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    <T en="Department performance is based on resolved complaints compared with the total complaints assigned to each service group." />
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  <span className="font-black text-slate-900">{stats?.slaCompliance?.exceeded || 0}</span>{' '}
-                  <T en="active complaints have already crossed SLA." />
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-4 xl:grid-cols-2">
-                {departmentStats.map((dept) => (
-                  <div key={dept._id} className="rounded-[1.5rem] border border-slate-100 bg-slate-50/70 p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-black uppercase tracking-[0.18em] text-slate-500">{dept.label}</p>
-                        <p className="mt-2 text-3xl font-black text-slate-900">{dept.rate}%</p>
-                        <p className="mt-1 text-sm text-slate-500">
-                          {dept.resolved} <T en="resolved out of" /> {dept.total} <T en="complaints" />
-                        </p>
-                      </div>
-                      <div className="rounded-2xl border border-white bg-white px-4 py-3 text-right shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
-                          <T en="Open Cases" />
-                        </p>
-                        <p className="mt-2 text-xl font-black text-amber-600">{dept.open}</p>
-                      </div>
-                    </div>
-                    <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-white ring-1 ring-slate-100">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${dept.rate}%` }}
-                        className="h-full rounded-full bg-gradient-to-r from-teal-500 to-cyan-500"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </section>
         ) : (
           <section className="rounded-[1.9rem] border border-blue-100 bg-white p-5 shadow-sm sm:p-6">

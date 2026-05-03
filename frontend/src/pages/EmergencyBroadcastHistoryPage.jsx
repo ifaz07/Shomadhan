@@ -72,7 +72,7 @@ const EmergencyBroadcastHistoryPage = () => {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="w-full space-y-6 px-0 sm:px-1">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
@@ -147,6 +147,20 @@ const EmergencyBroadcastHistoryPage = () => {
                   </div>
 
                   <p className="mt-5 text-sm leading-7 text-slate-600 whitespace-pre-line">{item.message}</p>
+
+                  {/* Audio Player for Voice Alert */}
+                  {item.audioUrl && (
+                    <div className="mt-5 p-4 rounded-2xl bg-rose-50 border border-rose-100/50 shadow-sm">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Radio size={14} className="text-rose-600" />
+                        <span className="text-[10px] font-black text-rose-700 uppercase tracking-widest">Official Voice Alert</span>
+                      </div>
+                      <audio controls className="w-full h-9">
+                        <source src={resolveUrl(item.audioUrl)} type="audio/webm" />
+                        Your browser does not support the audio element.
+                      </audio>
+                    </div>
+                  )}
 
                   <div className="mt-5 grid gap-3 md:grid-cols-2">
                     <div className="rounded-2xl bg-slate-50 px-4 py-4">

@@ -20,6 +20,8 @@ const volunteerRoutes = require('./routes/volunteer.routes');
 const emergencyBroadcastRoutes = require('./routes/emergencyBroadcast.routes');
 const { errorHandler } = require('./middleware/error.middleware');
 const { initEscalationEngine } = require('./services/escalationService');
+const reportRoutes = require('./routes/report.routes');
+const aiRoutes = require('./routes/ai.routes');
 
 const app = express();
 
@@ -40,7 +42,9 @@ app.use('/uploads/volunteer', express.static(path.join(__dirname, 'uploads/volun
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: function(origin, callback) {
+      callback(null, true);
+    },
     credentials: true,
   })
 );
@@ -65,6 +69,8 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/mayor', mayorRoutes);
 app.use('/api/v1/volunteer-ads', volunteerRoutes);
 app.use('/api/v1/emergency-broadcasts', emergencyBroadcastRoutes);
+app.use('/api/v1/reports', reportRoutes);
+app.use('/api/v1/ai', aiRoutes);
 
 app.get('/api/v1/health', (req, res) => {
   res.json({ success: true, message: 'Somadhan API is running' });
