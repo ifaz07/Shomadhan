@@ -26,7 +26,11 @@ const { protect } = require("../middleware/auth.middleware");
 const verifyUpload = require("../middleware/verifyUpload.middleware");
 const avatarUpload = require("../middleware/avatarUpload.middleware");
 
-const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+const clientUrl =
+  process.env.CLIENT_URL ||
+  (process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:5173");
 
 const authAttemptLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

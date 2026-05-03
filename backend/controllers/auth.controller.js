@@ -3,6 +3,12 @@ const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const User = require("../models/User.model");
 
+const clientUrl =
+  process.env.CLIENT_URL ||
+  (process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:5173");
+
 const hasCurrentMonthlyBadge = (user, date = new Date()) => {
   const month = date.getMonth() + 1;
   const year = date.getFullYear();
@@ -335,7 +341,7 @@ const oauthCallback = (req, res) => {
 
   // Redirect to completion page - let frontend decide verification flow
   res.redirect(
-    `${process.env.CLIENT_URL}/auth/oauth-completion?token=${token}&isNew=${isNewOAuthUser}`,
+    `${clientUrl}/auth/oauth-completion?token=${token}&isNew=${isNewOAuthUser}`,
   );
 };
 
@@ -376,7 +382,7 @@ const forgotPassword = async (req, res, next) => {
     user.resetPasswordExpire = Date.now() + 30 * 60 * 1000; // 30 minutes
     await user.save({ validateBeforeSave: false });
 
-    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+    const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
 
     const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
