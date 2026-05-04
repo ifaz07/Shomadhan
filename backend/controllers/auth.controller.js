@@ -1,8 +1,8 @@
 const { validationResult } = require("express-validator");
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
 const User = require("../models/User.model");
 const { getClientUrl } = require("../config/runtimeUrls");
+const { sendEmail } = require("../services/emailService");
 
 const clientUrl = getClientUrl();
 
@@ -392,19 +392,10 @@ const forgotPassword = async (req, res, next) => {
 
     const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
 
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: parseInt(process.env.EMAIL_PORT) || 587,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    await transporter.sendMail({
-      from: `"Somadhan" <${process.env.EMAIL_USER}>`,
+    await sendEmail({
       to: user.email,
       subject: "Password Reset - Somadhan",
+      fromName: "Somadhan",
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: auto; padding: 32px; border: 1px solid #e2e8f0; border-radius: 12px;">
           <h2 style="color: #0f172a; margin-bottom: 8px;">Reset your password</h2>

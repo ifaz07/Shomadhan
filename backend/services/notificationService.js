@@ -1,6 +1,6 @@
-const nodemailer = require('nodemailer');
 const User = require('../models/User.model');
 const Notification = require('../models/Notification.model');
+const { sendEmail } = require('./emailService');
 
 // Helper: Haversine distance in km
 const haversineKm = (lat1, lon1, lat2, lon2) => {
@@ -35,23 +35,14 @@ const sendNotification = async (userId, options) => {
     if (!user) return;
 
     // ─── 1. Send Email ───────────────────────────────────────────
-    if (user.email && process.env.EMAIL_USER && process.env.EMAIL_USER !== 'your_gmail@gmail.com') {
-      const transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-        port: process.env.EMAIL_PORT || 587,
-        secure: process.env.EMAIL_PORT == 465,
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
-
-      const mailOptions = {
-        from: `Shomadhan <${process.env.EMAIL_USER}>`,
-        to: user.email,
-        subject: options.subject || 'Shomadhan Update',
-        text: options.message,
-        html: `
+    if (user.email && process.env.RESEND_API_KEY) {
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: options.subject || 'Shomadhan Update',
+          fromName: "Shomadhan",
+          text: options.message,
+          html: `
           <div style="font-family: sans-serif; padding: 20px; color: #333; border: 1px solid #eee; border-radius: 10px;">
             <h2 style="color: #0d9488;">Shomadhan Updates</h2>
             <p style="font-size: 16px;">Hello ${user.name},</p>
@@ -61,13 +52,9 @@ const sendNotification = async (userId, options) => {
             </div>
           </div>
         `,
-      };
-
-      try {
-        await transporter.sendMail(mailOptions);
-        console.log(`Email successfully sent to ${user.email}`);
+        });
       } catch (mailError) {
-        console.error('Nodemailer Error:', mailError.message);
+        console.error('Resend Error:', mailError.message);
       }
     }
 

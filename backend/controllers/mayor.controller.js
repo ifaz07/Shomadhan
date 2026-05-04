@@ -2,7 +2,7 @@ const Complaint = require('../models/Complaint.model');
 const User = require('../models/User.model');
 const Groq = require('groq-sdk');
 const { sendNotification } = require('../services/notificationService');
-const nodemailer = require('nodemailer');
+const { sendEmail } = require('../services/emailService');
 
 const MONTHLY_BADGE_TYPE = 'good_citizen_monthly';
 
@@ -201,18 +201,10 @@ exports.getCitizensByPoints = async (req, res, next) => {
  */
 const sendWinnerEmail = async (user, badgeName) => {
   try {
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    const mailOptions = {
-      from: `"City Mayor" <${process.env.EMAIL_USER}>`,
+    await sendEmail({
       to: user.email,
       subject: 'Congratulations! You are the Good Citizen of the Month!',
+      fromName: "City Mayor",
       html: `
         <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
           <h2 style="color: #0d9488;">Hello ${user.name},</h2>
@@ -226,9 +218,7 @@ const sendWinnerEmail = async (user, badgeName) => {
           <p>Best regards,<br/>The Mayor's Office</p>
         </div>
       `,
-    };
-
-    await transporter.sendMail(mailOptions);
+    });
   } catch (error) {
     console.error('Email Error:', error);
   }
