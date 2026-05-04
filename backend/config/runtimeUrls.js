@@ -1,6 +1,17 @@
 const getDeploymentOrigin = () => {
-  if (!process.env.VERCEL_URL) return "";
-  return `https://${process.env.VERCEL_URL}`;
+  if (process.env.RENDER_EXTERNAL_URL) {
+    return process.env.RENDER_EXTERNAL_URL.trim();
+  }
+
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL.trim()}`;
+  }
+
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL.trim()}`;
+  }
+
+  return "";
 };
 
 const isLocalhostUrl = (value = "") => /localhost|127\.0\.0\.1/i.test(value);
@@ -9,27 +20,34 @@ const LOCAL_CLIENT_ORIGINS = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 ];
+const LOCAL_BACKEND_URL = "http://localhost:5000";
+
+const getConfiguredUrl = (value = "") => value.trim();
 
 const getClientUrl = () => {
-  const configured = process.env.CLIENT_URL || "";
+  const configured = getConfiguredUrl(process.env.CLIENT_URL || "");
   const deploymentOrigin = getDeploymentOrigin();
 
   if (deploymentOrigin && (!configured || isLocalhostUrl(configured))) {
-    return deploymentOrigin;
+    return configured && !isLocalhostUrl(configured)
+      ? configured
+      : deploymentOrigin;
   }
 
   return configured || "http://localhost:5173";
 };
 
 const getBackendUrl = () => {
-  const configured = process.env.BACKEND_URL || "";
+  const configured = getConfiguredUrl(process.env.BACKEND_URL || "");
   const deploymentOrigin = getDeploymentOrigin();
 
   if (deploymentOrigin && (!configured || isLocalhostUrl(configured))) {
-    return `${deploymentOrigin}/backend`;
+    return configured && !isLocalhostUrl(configured)
+      ? configured
+      : deploymentOrigin;
   }
 
-  return configured || "http://localhost:5000";
+  return configured || LOCAL_BACKEND_URL;
 };
 
 const getAllowedOrigins = () => {
