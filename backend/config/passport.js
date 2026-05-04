@@ -12,7 +12,6 @@ const hasFacebookOAuth =
   Boolean(process.env.FACEBOOK_APP_ID) &&
   Boolean(process.env.FACEBOOK_APP_SECRET);
 
-// ─── Serialize / Deserialize (needed for OAuth session dance) ─────────
 passport.serializeUser((user, done) => {
   done(null, user.id);
 });
@@ -26,7 +25,6 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-// ─── Google Strategy ──────────────────────────────────────────────────
 if (hasGoogleOAuth) {
   passport.use(
     new GoogleStrategy(
@@ -37,19 +35,16 @@ if (hasGoogleOAuth) {
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
-          // Check if user already exists by googleId
           let user = await User.findOne({ googleId: profile.id });
           let isNewUser = false;
 
           if (!user) {
-            // Check if email already registered (link accounts)
             user = await User.findOne({ email: profile.emails[0].value });
             if (user) {
               user.googleId = profile.id;
               if (!user.avatar) user.avatar = profile.photos?.[0]?.value || "";
               await user.save({ validateBeforeSave: false });
             } else {
-              // Create new user - mark as unverified
               isNewUser = true;
               user = await User.create({
                 googleId: profile.id,
@@ -57,12 +52,11 @@ if (hasGoogleOAuth) {
                 email: profile.emails[0].value,
                 avatar: profile.photos?.[0]?.value || "",
                 authProvider: "google",
-                isVerified: false, // New OAuth users must verify
+                isVerified: false,
               });
             }
           }
 
-          // Attach isNewUser flag to user object for callback
           user.isNewOAuthUser = isNewUser;
           return done(null, user);
         } catch (err) {
@@ -73,7 +67,6 @@ if (hasGoogleOAuth) {
   );
 }
 
-// ─── Facebook Strategy ────────────────────────────────────────────────
 if (hasFacebookOAuth) {
   passport.use(
     new FacebookStrategy(
@@ -85,14 +78,12 @@ if (hasFacebookOAuth) {
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
-          // Check if user already exists by facebookId
           let user = await User.findOne({ facebookId: profile.id });
           let isNewUser = false;
 
           if (!user) {
             const email = profile.emails?.[0]?.value;
             if (email) {
-              // Check if email already registered (link accounts)
               user = await User.findOne({ email });
               if (user) {
                 user.facebookId = profile.id;
@@ -102,7 +93,6 @@ if (hasFacebookOAuth) {
             }
 
             if (!user) {
-              // Create new user - mark as unverified
               isNewUser = true;
               user = await User.create({
                 facebookId: profile.id,
@@ -110,12 +100,11 @@ if (hasFacebookOAuth) {
                 email: email || `${profile.id}@facebook.placeholder`,
                 avatar: profile.photos?.[0]?.value || "",
                 authProvider: "facebook",
-                isVerified: false, // New OAuth users must verify
+                isVerified: false,
               });
             }
           }
 
-          // Attach isNewUser flag to user object for callback
           user.isNewOAuthUser = isNewUser;
           return done(null, user);
         } catch (err) {

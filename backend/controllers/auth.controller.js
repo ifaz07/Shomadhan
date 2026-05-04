@@ -20,14 +20,20 @@ const hasCurrentMonthlyBadge = (user, date = new Date()) => {
   });
 };
 
+const isProduction = process.env.NODE_ENV === "production";
+const resolvedSameSite =
+  process.env.COOKIE_SAME_SITE || (isProduction ? "none" : "lax");
+const resolvedSecureCookie =
+  process.env.COOKIE_SECURE === "true" || resolvedSameSite === "none" || isProduction;
+
 // Helper: send token as HTTP-only cookie + JSON response
 const sendTokenResponse = (user, statusCode, res) => {
   const token = user.generateToken();
 
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: resolvedSecureCookie,
+    sameSite: resolvedSameSite,
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   };
 
@@ -193,7 +199,12 @@ const login = async (req, res, next) => {
 const logout = async (req, res) => {
   res
     .status(200)
-    .cookie("token", "", { httpOnly: true, expires: new Date(0) })
+    .cookie("token", "", {
+      httpOnly: true,
+      expires: new Date(0),
+      secure: resolvedSecureCookie,
+      sameSite: resolvedSameSite,
+    })
     .json({
       success: true,
       message: "Logged out successfully",

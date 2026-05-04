@@ -1,16 +1,19 @@
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
 
-const getUploadDir = (folderName) => {
-  const baseDir =
-    process.env.VERCEL || process.env.NODE_ENV === "production"
-      ? path.join(os.tmpdir(), "shomadhan-uploads")
-      : path.join(__dirname, "..", "uploads");
+const getUploadBaseDir = () => {
+  const configuredDir = process.env.UPLOAD_ROOT_DIR?.trim();
+  if (configuredDir) {
+    return path.resolve(configuredDir);
+  }
 
-  const uploadDir = path.join(baseDir, folderName);
+  return path.join(__dirname, "..", "uploads");
+};
+
+const getUploadDir = (folderName) => {
+  const uploadDir = path.join(getUploadBaseDir(), folderName);
   fs.mkdirSync(uploadDir, { recursive: true });
   return uploadDir;
 };
 
-module.exports = { getUploadDir };
+module.exports = { getUploadBaseDir, getUploadDir };

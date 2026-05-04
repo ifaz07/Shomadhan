@@ -39,10 +39,15 @@ const formatBadgePeriodLabel = (badge = {}) => {
   return '';
 };
 
-// Initialize Groq client
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+const getGroqClient = () => {
+  if (!process.env.GROQ_API_KEY) {
+    return null;
+  }
+
+  return new Groq({
+    apiKey: process.env.GROQ_API_KEY,
+  });
+};
 
 /**
  * @desc    Generate an AI summary of complaints for a specific timeframe
@@ -51,6 +56,14 @@ const groq = new Groq({
  */
 exports.getChatBriefing = async (req, res, next) => {
   try {
+    const groq = getGroqClient();
+    if (!groq) {
+      return res.status(503).json({
+        success: false,
+        message: 'Mayor briefing AI is not configured. Set GROQ_API_KEY to enable this feature.',
+      });
+    }
+
     const { timeframe } = req.body;
     
     // 1. Calculate Date Math

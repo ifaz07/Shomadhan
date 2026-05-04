@@ -1,15 +1,14 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const passport = require('passport');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 require('./config/passport');
 
-const path = require('path');
 const authRoutes = require('./routes/auth.routes');
 const complaintRoutes = require('./routes/complaint.routes');
 const servantRoutes = require('./routes/servant.routes');
@@ -22,8 +21,13 @@ const { errorHandler } = require('./middleware/error.middleware');
 const { initEscalationEngine } = require('./services/escalationService');
 const reportRoutes = require('./routes/report.routes');
 const aiRoutes = require('./routes/ai.routes');
+const connectDB = require('./config/db');
+const { getAllowedOrigins } = require('./config/runtimeUrls');
+const { getUploadDir } = require('./utils/uploadPaths');
 
 const app = express();
+const allowedOrigins = getAllowedOrigins();
+const isProduction = process.env.NODE_ENV === 'production';
 
 app.use(
   helmet({
@@ -35,15 +39,19 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.use('/uploads/evidence', express.static(path.join(__dirname, 'uploads/evidence')));
-app.use('/uploads/verification', express.static(path.join(__dirname, 'uploads/verification')));
-app.use('/uploads/avatars', express.static(path.join(__dirname, 'uploads/avatars')));
-app.use('/uploads/volunteer', express.static(path.join(__dirname, 'uploads/volunteer')));
+app.use('/uploads/evidence', express.static(getUploadDir('evidence')));
+app.use('/uploads/verification', express.static(getUploadDir('verification')));
+app.use('/uploads/avatars', express.static(getUploadDir('avatars')));
+app.use('/uploads/volunteer', express.static(getUploadDir('volunteer')));
 
 app.use(
   cors({
     origin: function(origin, callback) {
-      callback(null, true);
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     credentials: true,
   })
@@ -51,10 +59,14 @@ app.use(
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || 'oauth-session-secret',
+    secret: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'dev-session-secret',
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 10 * 60 * 1000 },
+    cookie: {
+      maxAge: 10 * 60 * 1000,
+      sameSite: isProduction ? 'none' : 'lax',
+      secure: isProduction,
+    },
   })
 );
 
@@ -82,13 +94,13 @@ app.use((req, res) => {
 
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 
-mongoose
-  .connect(process.env.MONGODB_URI)
+connectDB()
   .then(() => {
-    console.log('MongoDB connected');
-    initEscalationEngine();
+    if (process.env.ENABLE_ESCALATION_CRON !== 'false') {
+      initEscalationEngine();
+    }
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

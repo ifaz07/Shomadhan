@@ -1,5 +1,5 @@
 const LOCAL_API_BASE = "http://localhost:5000/api/v1";
-const DEPLOYED_API_BASE = "/backend/api/v1";
+const DEPLOYED_API_BASE = "/api/v1";
 
 export const getApiBaseUrl = () => {
   const configured = import.meta.env.VITE_API_URL?.trim();

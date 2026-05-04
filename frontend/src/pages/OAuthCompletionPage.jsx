@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Upload, CheckCircle, AlertCircle } from "lucide-react";
+import { Upload, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { getDefaultDashboardRoute } from "../utils/roleRoutes";

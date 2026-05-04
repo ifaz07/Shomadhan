@@ -5,6 +5,11 @@ const getDeploymentOrigin = () => {
 
 const isLocalhostUrl = (value = "") => /localhost|127\.0\.0\.1/i.test(value);
 
+const LOCAL_CLIENT_ORIGINS = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+];
+
 const getClientUrl = () => {
   const configured = process.env.CLIENT_URL || "";
   const deploymentOrigin = getDeploymentOrigin();
@@ -24,7 +29,16 @@ const getBackendUrl = () => {
     return `${deploymentOrigin}/backend`;
   }
 
-  return configured || "http://localhost:5001";
+  return configured || "http://localhost:5000";
 };
 
-module.exports = { getClientUrl, getBackendUrl };
+const getAllowedOrigins = () => {
+  const configured = process.env.CLIENT_URL
+    ? process.env.CLIENT_URL.split(",").map((origin) => origin.trim()).filter(Boolean)
+    : [];
+  const deploymentOrigin = getDeploymentOrigin();
+
+  return [...new Set([...LOCAL_CLIENT_ORIGINS, ...configured, deploymentOrigin].filter(Boolean))];
+};
+
+module.exports = { getClientUrl, getBackendUrl, getAllowedOrigins };
