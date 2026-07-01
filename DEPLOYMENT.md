@@ -3,8 +3,7 @@
 ## Recommended setup
 
 - Deploy `frontend/` to Vercel
-- Deploy `backend/` to Render or Railway
-
+- Deploy `backend/` to Render 
 ## Frontend
 
 - Root directory: `frontend`
