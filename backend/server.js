@@ -22,7 +22,7 @@ const { initEscalationEngine } = require('./services/escalationService');
 const reportRoutes = require('./routes/report.routes');
 const aiRoutes = require('./routes/ai.routes');
 const connectDB = require('./config/db');
-const { getAllowedOrigins } = require('./config/runtimeUrls');
+const { getAllowedOrigins, isAllowedRuntimeOrigin } = require('./config/runtimeUrls');
 const { getUploadDir } = require('./utils/uploadPaths');
 
 const app = express();
@@ -47,7 +47,7 @@ app.use('/uploads/volunteer', express.static(getUploadDir('volunteer')));
 app.use(
   cors({
     origin: function(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin) || isAllowedRuntimeOrigin(origin)) {
         return callback(null, true);
       }
 

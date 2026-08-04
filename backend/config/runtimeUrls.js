@@ -15,6 +15,12 @@ const getDeploymentOrigin = () => {
 };
 
 const isLocalhostUrl = (value = "") => /localhost|127\.0\.0\.1/i.test(value);
+const isVercelPreviewOrigin = (value = "") => /^https?:\/\/([a-z0-9-]+\.)*vercel\.app$/i.test(value);
+const isNetlifyOrigin = (value = "") => /^https?:\/\/([a-z0-9-]+\.)*netlify\.app$/i.test(value);
+const isAllowedRuntimeOrigin = (value = "") => {
+  if (!value) return true;
+  return isLocalhostUrl(value) || isVercelPreviewOrigin(value) || isNetlifyOrigin(value);
+};
 
 const LOCAL_CLIENT_ORIGINS = [
   "http://localhost:5173",
@@ -56,7 +62,11 @@ const getAllowedOrigins = () => {
     : [];
   const deploymentOrigin = getDeploymentOrigin();
 
-  return [...new Set([...LOCAL_CLIENT_ORIGINS, ...configured, deploymentOrigin].filter(Boolean))];
+  return [...new Set([
+    ...LOCAL_CLIENT_ORIGINS,
+    ...configured,
+    deploymentOrigin
+  ].filter(Boolean))];
 };
 
-module.exports = { getClientUrl, getBackendUrl, getAllowedOrigins };
+module.exports = { getClientUrl, getBackendUrl, getAllowedOrigins, isAllowedRuntimeOrigin };
