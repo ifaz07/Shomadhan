@@ -31,8 +31,11 @@ exports.getPendingMayors = async (req, res, next) => {
   try {
     const pendingMayors = await User.find({
       role: 'mayor',
-      'verificationDoc.status': 'pending'
-    }).select('-password');
+      $or: [
+        { 'verificationDoc.status': 'pending' },
+        { isActive: false, 'verificationDoc.status': { $ne: 'approved' } }
+      ]
+    }).select('-password').sort('-createdAt');
 
     res.status(200).json({
       success: true,
@@ -53,8 +56,11 @@ exports.getPendingServants = async (req, res, next) => {
   try {
     const pendingServants = await User.find({
       role: 'department_officer',
-      'verificationDoc.status': 'pending'
-    }).select('-password');
+      $or: [
+        { 'verificationDoc.status': 'pending' },
+        { isActive: false, 'verificationDoc.status': { $ne: 'approved' } }
+      ]
+    }).select('-password').sort('-createdAt');
 
     res.status(200).json({
       success: true,
@@ -74,9 +80,9 @@ exports.getPendingServants = async (req, res, next) => {
 exports.getPendingVerifications = async (req, res, next) => {
   try {
     const pending = await User.find({
-      'verificationDoc.status': 'pending',
-      role: 'citizen'
-    }).select('-password');
+      role: 'citizen',
+      'verificationDoc.status': 'pending'
+    }).select('-password').sort('-createdAt');
 
     res.status(200).json({
       success: true,
@@ -95,27 +101,35 @@ exports.getPendingVerifications = async (req, res, next) => {
  */
 exports.approveMayor = async (req, res, next) => {
   try {
-    const { status } = req.body; 
+    const { status, rejectionReason } = req.body; 
     const user = await User.findById(req.params.id);
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    user.verificationDoc = user.verificationDoc || {};
+
     if (status === 'approved') {
       user.isActive = true;
       user.isVerified = true;
       user.verificationDoc.status = 'approved';
       user.verificationDoc.verifiedAt = new Date();
+      user.verificationDoc.rejectionReason = undefined;
     } else {
+      user.isActive = false;
+      user.isVerified = false;
       user.verificationDoc.status = 'rejected';
+      user.verificationDoc.verifiedAt = undefined;
+      user.verificationDoc.rejectionReason = rejectionReason || 'Mayor application could not be verified.';
     }
 
+    user.markModified('verificationDoc');
     await user.save();
 
     res.status(200).json({
       success: true,
-      message: `User ${status} successfully`,
+      message: `Mayor ${status} successfully`,
       data: user
     });
   } catch (error) {
@@ -130,12 +144,14 @@ exports.approveMayor = async (req, res, next) => {
  */
 exports.approveServant = async (req, res, next) => {
   try {
-    const { status } = req.body;
+    const { status, rejectionReason } = req.body;
     const user = await User.findById(req.params.id);
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
+
+    user.verificationDoc = user.verificationDoc || {};
 
     if (status === 'approved') {
       user.isActive = true;
@@ -148,7 +164,7 @@ exports.approveServant = async (req, res, next) => {
       user.isVerified = false;
       user.verificationDoc.status = 'rejected';
       user.verificationDoc.verifiedAt = undefined;
-      user.verificationDoc.rejectionReason = 'Public servant credentials could not be verified.';
+      user.verificationDoc.rejectionReason = rejectionReason || 'Public servant credentials could not be verified.';
     }
 
     user.markModified('verificationDoc');
@@ -184,6 +200,8 @@ exports.approveVerification = async (req, res, next) => {
         message: 'Status must be either approved or rejected',
       });
     }
+
+    user.verificationDoc = user.verificationDoc || {};
 
     if (status === 'approved') {
       user.isVerified = true;

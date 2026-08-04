@@ -21,18 +21,15 @@ import {
   Loader2,
   FileDown,
 } from "lucide-react";
-import axios from 'axios';
-import { toast } from 'react-hot-toast';
 import { useAuth } from "../../context/AuthContext";
-import { notificationAPI } from "../../services/api";
+import { notificationAPI, volunteerAPI } from "../../services/api";
 import { getDefaultDashboardRoute } from "../../utils/roleRoutes";
 import LanguageToggle from "../LanguageToggle";
 import T from "../T";
 import GoodCitizenStar from "../GoodCitizenStar";
 import VerifiedBadge, { VerifiedMark } from "../VerifiedBadge";
-import { getApiBaseUrl, getAssetBaseUrl } from "../../utils/apiBase";
+import { getAssetBaseUrl } from "../../utils/apiBase";
 
-const API_BASE = getApiBaseUrl();
 const resolveAvatar = (url) => {
   if (!url) return null;
   return url.startsWith('http') ? url : `${getAssetBaseUrl()}${url}`;
@@ -71,7 +68,7 @@ const Sidebar = ({ transparent = false }) => {
 
   const fetchActiveAds = async () => {
     try {
-      const { data } = await axios.get(`${API_BASE}/volunteer-ads/active`);
+      const { data } = await volunteerAPI.getActiveAds();
       if (data.success) {
         const now = new Date();
         now.setHours(0,0,0,0);

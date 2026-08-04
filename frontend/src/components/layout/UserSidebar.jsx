@@ -5,15 +5,13 @@ import {
   LayoutDashboard, User, LogOut, Menu, X, ChevronLeft,
   ShieldCheck, Bell, FileText, BarChart3, MessageSquare,
   PlusCircle, Map, Users, Check
-} from "lucide-react";
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { useAuth } from "../../context/AuthContext";
+import { volunteerAPI } from "../../services/api";
 import LanguageToggle from "../LanguageToggle";
 import T from "../T";
-import { getApiBaseUrl, getAssetBaseUrl } from "../../utils/apiBase";
+import { getAssetBaseUrl } from "../../utils/apiBase";
 
-const API_BASE = getApiBaseUrl();
 const resolveAvatar = (url) => {
   if (!url) return null;
   return url.startsWith('http') ? url : `${getAssetBaseUrl()}${url}`;
@@ -33,7 +31,7 @@ const UserSidebar = () => {
 
   const fetchActiveAds = async () => {
     try {
-      const { data } = await axios.get(`${API_BASE}/volunteer-ads/active`);
+      const { data } = await volunteerAPI.getActiveAds();
       if (data.success) {
         setVolunteerAds(data.data);
       }
@@ -45,7 +43,7 @@ const UserSidebar = () => {
   const handleRegister = async (adId) => {
     setRegistering(adId);
     try {
-      const { data } = await axios.post(`${API_BASE}/volunteer-ads/${adId}/register`, {}, { withCredentials: true });
+      const { data } = await volunteerAPI.register(adId);
       if (data.success) {
         toast.success('Registered successfully!');
         // Update local state

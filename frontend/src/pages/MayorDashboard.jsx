@@ -1,32 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FileText, AlertTriangle, Clock, CheckCircle2, 
+import {
+  FileText, AlertTriangle, Clock, CheckCircle2,
   Users, Megaphone, Calendar, MapPin, Tag, ThumbsUp,
   Target, Loader2, Upload, Plus, ChevronRight, X, User
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import T from '../components/T';
 import { useAuth } from '../context/AuthContext';
-import { complaintAPI } from '../services/api';
+import { complaintAPI, mayorAPI, volunteerAPI } from '../services/api';
 import MayorChatbot from '../components/MayorChatbot';
 import GoodCitizenStar from '../components/GoodCitizenStar';
-import { getApiBaseUrl, getAssetBaseUrl } from '../utils/apiBase';
-
-const API_BASE = getApiBaseUrl();
+import { getAssetBaseUrl } from '../utils/apiBase';
 
 // ─── Helpers ──────────────────────────────────
 const timeAgo = (date) => {
   if (!date) return '';
   const diff = Date.now() - new Date(date).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1)  return 'just now';
+  if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;
-  if (mins < 1440) return `${Math.floor(mins/60)}h ago`;
-  return `${Math.floor(mins/1440)}d ago`;
+  if (mins < 1440) return `${Math.floor(mins / 60)}h ago`;
+  return `${Math.floor(mins / 1440)}d ago`;
 };
 
 const resolveAvatar = (url) => {
@@ -69,10 +66,10 @@ const COMPLAINT_FILTERS = [
 ];
 
 const STATUS_CONFIG = {
-  pending:       { badge: 'bg-amber-100 text-amber-700', label: 'Pending' },
-  'in-progress': { badge: 'bg-blue-100 text-blue-700',   label: 'In Progress' },
-  resolved:      { badge: 'bg-emerald-100 text-emerald-700', label: 'Resolved' },
-  rejected:      { badge: 'bg-red-100 text-red-700',     label: 'Rejected' },
+  pending: { badge: 'bg-amber-100 text-amber-700', label: 'Pending' },
+  'in-progress': { badge: 'bg-blue-100 text-blue-700', label: 'In Progress' },
+  resolved: { badge: 'bg-emerald-100 text-emerald-700', label: 'Resolved' },
+  rejected: { badge: 'bg-red-100 text-red-700', label: 'Rejected' },
 };
 
 const PRIORITY_CONFIG = {
@@ -145,11 +142,10 @@ const StatCard = ({ icon: Icon, label, value, color, bg, delay, onClick, isActiv
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay }}
     onClick={onClick}
-    className={`bg-white rounded-2xl p-5 border transition-all duration-200 cursor-pointer group ${
-      isActive 
-        ? `ring-2 ring-offset-2 ${color.replace('text-', 'ring-')} border-transparent shadow-md scale-[1.02]` 
+    className={`bg-white rounded-2xl p-5 border transition-all duration-200 cursor-pointer group ${isActive
+        ? `ring-2 ring-offset-2 ${color.replace('text-', 'ring-')} border-transparent shadow-md scale-[1.02]`
         : 'border-gray-100 shadow-sm hover:shadow-md hover:border-teal-100'
-    }`}
+      }`}
   >
     <div className="flex items-center justify-between">
       <div>
@@ -212,9 +208,8 @@ const ComplaintCard = ({ complaint, index, onClick }) => {
               </div>
               <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all ${
-                    sla.isOverdue ? 'bg-red-500' : sla.daysLeft <= 1 ? 'bg-red-500' : sla.daysLeft <= 3 ? 'bg-orange-500' : 'bg-gray-800'
-                  }`}
+                  className={`h-full rounded-full transition-all ${sla.isOverdue ? 'bg-red-500' : sla.daysLeft <= 1 ? 'bg-red-500' : sla.daysLeft <= 3 ? 'bg-orange-500' : 'bg-gray-800'
+                    }`}
                   style={{ width: `${sla.progress}%` }}
                 />
               </div>
@@ -318,12 +313,12 @@ const MayorDashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   const [allComplaints, setAllComplaints] = useState([]);
   const [complaints, setComplaints] = useState([]);
   const [listLoading, setListLoading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState('total'); 
-  const [activeTab, setActiveTab] = useState('complaints'); 
+  const [activeFilter, setActiveFilter] = useState('total');
+  const [activeTab, setActiveTab] = useState('complaints');
   const [citizenPoints, setCitizenPoints] = useState([]);
   const [rewardLoading, setRewardLoading] = useState(false);
   const [confirmState, setConfirmState] = useState({
@@ -335,7 +330,7 @@ const MayorDashboard = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [adForm, setAdForm] = useState({
-    title: '', description: '', poster: null, 
+    title: '', description: '', poster: null,
     dateOfEvent: '', requiredVolunteers: 10, contactDetails: ''
   });
 
@@ -352,7 +347,7 @@ const MayorDashboard = () => {
   const fetchCitizenPoints = async () => {
     setRewardLoading(true);
     try {
-      const { data } = await axios.get(`${API_BASE}/mayor/citizens-points`, { withCredentials: true });
+      const { data } = await mayorAPI.getCitizensPoints();
       if (data.success) setCitizenPoints(data.data);
     } catch (error) {
       toast.error('Failed to load points');
@@ -364,7 +359,7 @@ const MayorDashboard = () => {
   const handleAnnounceWinner = async () => {
     setActionLoading(true);
     try {
-      const { data } = await axios.post(`${API_BASE}/mayor/announce-winner`, {}, { withCredentials: true });
+      const { data } = await mayorAPI.announceWinner();
       if (data.success) {
         toast.success(data.message);
       } else {
@@ -383,7 +378,7 @@ const MayorDashboard = () => {
   const handleRemoveBadge = async (id) => {
     setActionLoading(true);
     try {
-      const { data } = await axios.post(`${API_BASE}/mayor/remove-badge/${id}`, {}, { withCredentials: true });
+      const { data } = await mayorAPI.removeBadge(id);
       if (data.success) {
         toast.success(data.message);
         await fetchCitizenPoints();
@@ -398,7 +393,7 @@ const MayorDashboard = () => {
 
   const fetchStats = async () => {
     try {
-      const { data } = await axios.get(`${API_BASE}/mayor/dashboard-stats`, { withCredentials: true });
+      const { data } = await mayorAPI.getDashboardStats();
       if (data.success) setStats(data.data);
     } catch (error) {
       toast.error('Failed to load stats');
@@ -442,9 +437,7 @@ const MayorDashboard = () => {
     try {
       const formData = new FormData();
       Object.keys(adForm).forEach(key => formData.append(key, adForm[key]));
-      const { data } = await axios.post(`${API_BASE}/volunteer-ads`, formData, { 
-        withCredentials: true, headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const { data } = await volunteerAPI.create(formData);
       if (data.success) {
         toast.success('Advertisement Published!');
         setAdForm({ title: '', description: '', poster: null, dateOfEvent: '', requiredVolunteers: 10, contactDetails: '' });
@@ -472,11 +465,10 @@ const MayorDashboard = () => {
     { label: "In Progress", value: stats?.global?.inProgress || 0, accent: "text-cyan-200" },
     { label: "Resolved", value: stats?.global?.resolved || 0, accent: "text-emerald-200" },
   ];
-  const tabButtonClass = (key) => `rounded-full px-5 py-3 text-sm font-bold transition-all ${
-    activeTab === key
+  const tabButtonClass = (key) => `rounded-full px-5 py-3 text-sm font-bold transition-all ${activeTab === key
       ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20'
       : 'text-slate-500 hover:bg-white hover:text-slate-900'
-  }`;
+    }`;
   const currentAwardMonthKey = getCurrentAwardMonthKey();
   const currentAwardPeriodLabel = getCurrentAwardPeriodLabel();
   const activeFilterLabel =
@@ -533,31 +525,31 @@ const MayorDashboard = () => {
           className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-teal-800 via-slate-800 to-blue-900 px-6 py-7 text-white shadow-xl sm:px-8 sm:py-8"
         >
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 xl:items-end">
-          <div className="xl:col-span-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-teal-100">
-              <Target size={12} className="text-teal-300" />
-              <T en="Executive Oversight" />
+            <div className="xl:col-span-8">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-teal-100">
+                <Target size={12} className="text-teal-300" />
+                <T en="Executive Oversight" />
+              </div>
+              <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
+                <T en="Welcome back" />{user?.name ? `, ${user.name.split(' ')[0]}` : ''}
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
+                <T en="Monitor city-wide complaint flow, identify critical service delays, and coordinate public action from one dashboard." />
+              </p>
             </div>
-            <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
-              <T en="Welcome back" />{user?.name ? `, ${user.name.split(' ')[0]}` : ''}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
-              <T en="Monitor city-wide complaint flow, identify critical service delays, and coordinate public action from one dashboard." />
-            </p>
-          </div>
-          <div className="xl:col-span-4">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
-              {headerStats.map((item) => (
-                <div key={item.label} className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
-                    <T en={item.label} />
-                  </p>
-                  <p className={`mt-2 text-2xl font-black ${item.accent}`}>{item.value}</p>
-                </div>
-              ))}
+            <div className="xl:col-span-4">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
+                {headerStats.map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
+                      <T en={item.label} />
+                    </p>
+                    <p className={`mt-2 text-2xl font-black ${item.accent}`}>{item.value}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
         </motion.div>
 
         {/* Tab Navigation */}
@@ -577,133 +569,132 @@ const MayorDashboard = () => {
 
         {activeTab === 'complaints' ? (
           <section className="space-y-4">
-              <div className="flex items-center justify-between px-1 lg:px-2">
-                <h2 className="text-lg font-bold text-gray-900">{activeFilterLabel}</h2>
-                <span className="text-[10px] font-black text-gray-400 uppercase">{complaints.length} Items</span>
-              </div>
-              <div className="flex flex-wrap gap-2 px-1 lg:px-2">
-                {COMPLAINT_FILTERS.map((filter) => (
-                  <button
-                    key={filter.key}
-                    onClick={() => fetchComplaints(filter.key)}
-                    disabled={listLoading && activeFilter === filter.key}
-                    className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.16em] transition-all ${
-                      activeFilter === filter.key
-                        ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/10'
-                        : 'border border-slate-200 bg-white text-slate-500 hover:border-teal-200 hover:text-teal-700'
+            <div className="flex items-center justify-between px-1 lg:px-2">
+              <h2 className="text-lg font-bold text-gray-900">{activeFilterLabel}</h2>
+              <span className="text-[10px] font-black text-gray-400 uppercase">{complaints.length} Items</span>
+            </div>
+            <div className="flex flex-wrap gap-2 px-1 lg:px-2">
+              {COMPLAINT_FILTERS.map((filter) => (
+                <button
+                  key={filter.key}
+                  onClick={() => fetchComplaints(filter.key)}
+                  disabled={listLoading && activeFilter === filter.key}
+                  className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.16em] transition-all ${activeFilter === filter.key
+                      ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/10'
+                      : 'border border-slate-200 bg-white text-slate-500 hover:border-teal-200 hover:text-teal-700'
                     } disabled:cursor-not-allowed disabled:opacity-60`}
-                  >
-                    <T en={filter.label} />
-                  </button>
-                ))}
+                >
+                  <T en={filter.label} />
+                </button>
+              ))}
+            </div>
+            <div className="rounded-[1.75rem] border border-gray-100 bg-white p-3 shadow-sm sm:p-4">
+              <div className="space-y-3 max-h-[780px] overflow-y-auto pr-1 custom-scrollbar">
+                {listLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 size={22} className="animate-spin text-teal-500" />
+                  </div>
+                ) : complaints.length > 0 ? (
+                  complaints.map((c, i) => (
+                    <ComplaintCard
+                      key={c._id}
+                      complaint={c}
+                      index={i}
+                      onClick={(id) => navigate(`/complaints/${id}`)}
+                    />
+                  ))
+                ) : (
+                  <div className="py-12 text-center text-sm font-medium text-slate-400">
+                    No complaints matched this filter.
+                  </div>
+                )}
               </div>
-              <div className="rounded-[1.75rem] border border-gray-100 bg-white p-3 shadow-sm sm:p-4">
-                <div className="space-y-3 max-h-[780px] overflow-y-auto pr-1 custom-scrollbar">
-                  {listLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 size={22} className="animate-spin text-teal-500" />
-                    </div>
-                  ) : complaints.length > 0 ? (
-                    complaints.map((c, i) => (
-                      <ComplaintCard
-                        key={c._id}
-                        complaint={c}
-                        index={i}
-                        onClick={(id) => navigate(`/complaints/${id}`)}
-                      />
-                    ))
-                  ) : (
-                    <div className="py-12 text-center text-sm font-medium text-slate-400">
-                      No complaints matched this filter.
-                    </div>
-                  )}
-                </div>
-              </div>
+            </div>
           </section>
         ) : activeTab === 'leaderboard' ? (
           <section className="space-y-5">
-              <div className="bg-teal-50 p-6 rounded-[1.75rem] border border-teal-100 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-teal-900"><T en="Citizen Recognition" /></h2>
-                  <p className="text-sm text-teal-700">
-                    {currentWinner
-                      ? `${currentAwardPeriodLabel} winner already declared: ${currentWinner.name}.`
-                      : 'Reward the top active citizen for this month.'}
-                  </p>
-                </div>
-                <button
-                  onClick={openAnnounceConfirm}
-                  disabled={announceLocked}
-                  className="bg-teal-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:bg-teal-700 transition-all flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-teal-600"
-                >
-                  <Plus size={18} /> <T en="Announce Monthly Winner" />
-                </button>
+            <div className="bg-teal-50 p-6 rounded-[1.75rem] border border-teal-100 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-teal-900"><T en="Citizen Recognition" /></h2>
+                <p className="text-sm text-teal-700">
+                  {currentWinner
+                    ? `${currentAwardPeriodLabel} winner already declared: ${currentWinner.name}.`
+                    : 'Reward the top active citizen for this month.'}
+                </p>
               </div>
-              <div className="overflow-hidden rounded-[1.75rem] border border-gray-100 bg-white shadow-sm">
-                <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  <span className="col-span-4"><T en="Citizen Name" /></span>
-                  <span className="col-span-2"><T en="Points" /></span>
-                  <span className="col-span-2"><T en="Badges" /></span>
-                  <span className="col-span-4"><T en="Award History" /></span>
-                </div>
-                <div className="max-h-[760px] overflow-y-auto divide-y divide-gray-50 custom-scrollbar">
-                  {rewardLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto text-teal-500" /></div> : (
-                    citizenPoints.map(citizen => (
-                      <div key={citizen._id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50 transition-colors">
-                        <div className="col-span-4 flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">{citizen.avatar ? <img src={resolveAvatar(citizen.avatar)} className="w-full h-full object-cover" /> : <User size={18} className="text-gray-400" />}</div>
-                          <div className="min-w-0"><p className="font-bold flex items-center gap-1.5 truncate">{citizen.name} {citizen.isGoodCitizen && <GoodCitizenStar size={12} />}</p><p className="text-[10px] text-gray-400 font-mono truncate">{citizen.email}</p></div>
-                        </div>
-                        <div className="col-span-2 text-sm font-black text-teal-600">{citizen.points}</div>
-                        <div className="col-span-2">
-                          <div className="inline-flex flex-col rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2">
-                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-500">Total Awards</span>
-                            <span className="mt-1 text-sm font-black text-amber-800">{citizen.badgeCount || 0}</span>
-                          </div>
-                        </div>
-                        <div className="col-span-4 flex flex-col gap-3 pr-2">
-                          {citizen.isGoodCitizen ? (
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap"><T en="Current Winner" /></span>
-                              <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">
-                                {citizen.latestAward?.label || currentAwardPeriodLabel}
-                              </span>
-                              <button 
-                                onClick={() => openUndoConfirm(citizen)}
-                                className="text-[10px] font-bold text-red-500 hover:text-red-700 flex items-center gap-1 whitespace-nowrap"
-                              >
-                                <X size={12} /> <T en="Undo This Month" />
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest"><T en="Citizen" /></span>
-                          )}
-                          {citizen.awardHistory?.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {citizen.awardHistory.slice(0, 4).map((award) => (
-                                <span
-                                  key={`${citizen._id}-${award.monthKey || award.awardedAt}`}
-                                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-bold text-slate-600"
-                                >
-                                  <Calendar size={11} className="text-slate-400" />
-                                  {formatAwardHistoryLabel(award)}
-                                </span>
-                              ))}
-                              {citizen.awardHistory.length > 4 && (
-                                <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-bold text-slate-400">
-                                  +{citizen.awardHistory.length - 4} more
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">No awards yet</span>
-                          )}
+              <button
+                onClick={openAnnounceConfirm}
+                disabled={announceLocked}
+                className="bg-teal-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:bg-teal-700 transition-all flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-teal-600"
+              >
+                <Plus size={18} /> <T en="Announce Monthly Winner" />
+              </button>
+            </div>
+            <div className="overflow-hidden rounded-[1.75rem] border border-gray-100 bg-white shadow-sm">
+              <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                <span className="col-span-4"><T en="Citizen Name" /></span>
+                <span className="col-span-2"><T en="Points" /></span>
+                <span className="col-span-2"><T en="Badges" /></span>
+                <span className="col-span-4"><T en="Award History" /></span>
+              </div>
+              <div className="max-h-[760px] overflow-y-auto divide-y divide-gray-50 custom-scrollbar">
+                {rewardLoading ? <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto text-teal-500" /></div> : (
+                  citizenPoints.map(citizen => (
+                    <div key={citizen._id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50 transition-colors">
+                      <div className="col-span-4 flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">{citizen.avatar ? <img src={resolveAvatar(citizen.avatar)} className="w-full h-full object-cover" /> : <User size={18} className="text-gray-400" />}</div>
+                        <div className="min-w-0"><p className="font-bold flex items-center gap-1.5 truncate">{citizen.name} {citizen.isGoodCitizen && <GoodCitizenStar size={12} />}</p><p className="text-[10px] text-gray-400 font-mono truncate">{citizen.email}</p></div>
+                      </div>
+                      <div className="col-span-2 text-sm font-black text-teal-600">{citizen.points}</div>
+                      <div className="col-span-2">
+                        <div className="inline-flex flex-col rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2">
+                          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-500">Total Awards</span>
+                          <span className="mt-1 text-sm font-black text-amber-800">{citizen.badgeCount || 0}</span>
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
+                      <div className="col-span-4 flex flex-col gap-3 pr-2">
+                        {citizen.isGoodCitizen ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap"><T en="Current Winner" /></span>
+                            <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">
+                              {citizen.latestAward?.label || currentAwardPeriodLabel}
+                            </span>
+                            <button
+                              onClick={() => openUndoConfirm(citizen)}
+                              className="text-[10px] font-bold text-red-500 hover:text-red-700 flex items-center gap-1 whitespace-nowrap"
+                            >
+                              <X size={12} /> <T en="Undo This Month" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest"><T en="Citizen" /></span>
+                        )}
+                        {citizen.awardHistory?.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {citizen.awardHistory.slice(0, 4).map((award) => (
+                              <span
+                                key={`${citizen._id}-${award.monthKey || award.awardedAt}`}
+                                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-bold text-slate-600"
+                              >
+                                <Calendar size={11} className="text-slate-400" />
+                                {formatAwardHistoryLabel(award)}
+                              </span>
+                            ))}
+                            {citizen.awardHistory.length > 4 && (
+                              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-bold text-slate-400">
+                                +{citizen.awardHistory.length - 4} more
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">No awards yet</span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
+            </div>
           </section>
         ) : (
           <section className="rounded-[1.9rem] border border-blue-100 bg-white p-5 shadow-sm sm:p-6">

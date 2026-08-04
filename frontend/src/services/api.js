@@ -137,4 +137,37 @@ export const reportAPI = {
     api.get('/reports/summary', { params, responseType: 'blob' }),
 };
 
+// ─── Admin API calls ──────────────────────────────────────────────────
+export const adminAPI = {
+  getUsersByRole: (role) => api.get("/admin/users", { params: { role } }),
+  getPendingMayors: () => api.get("/admin/pending-mayors"),
+  getPendingServants: () => api.get("/admin/pending-servants"),
+  getPendingVerifications: () => api.get("/admin/pending-verifications"),
+  approveMayor: (id, status, rejectionReason) =>
+    api.put(`/admin/approve-mayor/${id}`, { status, rejectionReason }),
+  approveServant: (id, status, rejectionReason) =>
+    api.put(`/admin/approve-servant/${id}`, { status, rejectionReason }),
+  approveVerification: (id, status, rejectionReason) =>
+    api.put(`/admin/approve-verification/${id}`, { status, rejectionReason }),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
+};
+
+// ─── Volunteer API calls ──────────────────────────────────────────────
+export const volunteerAPI = {
+  getActiveAds: () => api.get("/volunteer-ads/active"),
+  register: (adId) => api.post(`/volunteer-ads/${adId}/register`),
+  create: (formData) =>
+    api.post("/volunteer-ads", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+};
+
+// ─── Mayor API calls ──────────────────────────────────────────────────
+export const mayorAPI = {
+  getCitizensPoints: () => api.get("/mayor/citizens-points"),
+  announceWinner: () => api.post("/mayor/announce-winner"),
+  removeBadge: (id) => api.post(`/mayor/remove-badge/${id}`),
+  getDashboardStats: () => api.get("/mayor/dashboard-stats"),
+};
+
 export default api;

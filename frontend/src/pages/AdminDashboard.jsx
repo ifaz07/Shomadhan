@@ -14,12 +14,10 @@ import {
   ExternalLink,
   Eye,
 } from 'lucide-react';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import DashboardLayout from '../components/layout/DashboardLayout';
-import { getApiBaseUrl, getAssetBaseUrl } from '../utils/apiBase';
-
-const API_BASE = getApiBaseUrl();
+import { adminAPI } from '../services/api';
+import { getAssetBaseUrl } from '../utils/apiBase';
 
 const resolveFileUrl = (url) => {
   if (!url) return null;
@@ -99,43 +97,59 @@ const AdminDashboard = () => {
     setLoading(true);
     try {
       const currentRole = tabs.find((t) => t.id === activeTab).role;
-      const [res, citizensRes, servantsRes, mayorsRes] = await Promise.all([
-        axios.get(`${API_BASE}/admin/users?role=${currentRole}`, { withCredentials: true }),
-        axios.get(`${API_BASE}/admin/users?role=citizen`, { withCredentials: true }),
-        axios.get(`${API_BASE}/admin/users?role=department_officer`, { withCredentials: true }),
-        axios.get(`${API_BASE}/admin/users?role=mayor`, { withCredentials: true }),
+      const [resResult, citizensResult, servantsResult, mayorsResult] = await Promise.allSettled([
+        adminAPI.getUsersByRole(currentRole),
+        adminAPI.getUsersByRole('citizen'),
+        adminAPI.getUsersByRole('department_officer'),
+        adminAPI.getUsersByRole('mayor'),
       ]);
-      if (res.data.success) {
-        setUsers(res.data.data);
+
+      if (resResult.status === 'fulfilled' && resResult.value.data.success) {
+        setUsers(resResult.value.data.data);
+      } else if (resResult.status === 'rejected') {
+        const err = resResult.reason;
+        console.error('Failed to fetch current tab users:', err);
+        if (!err.response) {
+          toast.error('Network Error: Cannot connect to backend API server at http://localhost:5000');
+        } else {
+          toast.error(err.response.data?.message || `Error ${err.response.status}: Failed to fetch user data`);
+        }
       }
 
       setMemberCounts({
-        citizens: citizensRes.data?.data?.length || 0,
-        servants: servantsRes.data?.data?.length || 0,
-        mayors: mayorsRes.data?.data?.length || 0,
+        citizens: citizensResult.status === 'fulfilled' ? citizensResult.value.data?.data?.length || 0 : 0,
+        servants: servantsResult.status === 'fulfilled' ? servantsResult.value.data?.data?.length || 0 : 0,
+        mayors: mayorsResult.status === 'fulfilled' ? mayorsResult.value.data?.data?.length || 0 : 0,
       });
 
       if (activeTab === 'mayors') {
-        const pendingRes = await axios.get(`${API_BASE}/admin/pending-mayors`, { withCredentials: true });
-        if (pendingRes.data.success) {
-          setPendingMayors(pendingRes.data.data);
+        try {
+          const pendingRes = await adminAPI.getPendingMayors();
+          if (pendingRes.data.success) setPendingMayors(pendingRes.data.data);
+        } catch (err) {
+          console.error('Failed to fetch pending mayors:', err);
         }
       }
 
       if (activeTab === 'servants') {
-        const pendingServantRes = await axios.get(`${API_BASE}/admin/pending-servants`, { withCredentials: true });
-        if (pendingServantRes.data.success) {
-          setPendingServants(pendingServantRes.data.data);
+        try {
+          const pendingServantRes = await adminAPI.getPendingServants();
+          if (pendingServantRes.data.success) setPendingServants(pendingServantRes.data.data);
+        } catch (err) {
+          console.error('Failed to fetch pending servants:', err);
         }
       }
 
       if (activeTab === 'citizens') {
-        const pendingVerRes = await axios.get(`${API_BASE}/admin/pending-verifications`, { withCredentials: true });
-        if (pendingVerRes.data.success) {
-          setPendingVerifications(pendingVerRes.data.data);
+        try {
+          const pendingVerRes = await adminAPI.getPendingVerifications();
+          if (pendingVerRes.data.success) setPendingVerifications(pendingVerRes.data.data);
+        } catch (err) {
+          console.error('Failed to fetch pending verifications:', err);
         }
       }
     } catch (error) {
+      console.error('Admin fetchData unexpected error:', error);
       toast.error('Failed to fetch user data');
     } finally {
       setLoading(false);
@@ -146,7 +160,7 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to remove this user? This action is permanent.')) return;
 
     try {
-      const res = await axios.delete(`${API_BASE}/admin/users/${userId}`, { withCredentials: true });
+      const res = await adminAPI.deleteUser(userId);
       if (res.data.success) {
         toast.success('User removed successfully');
         setUsers(users.filter((u) => u._id !== userId));
@@ -167,13 +181,10 @@ const AdminDashboard = () => {
 
     try {
       setVerificationActionLoading(true);
-      const res = await axios.put(
-        `${API_BASE}/admin/approve-verification/${userId}`,
-        {
-          status,
-          rejectionReason: status === 'rejected' ? rejectionReason.trim() : undefined,
-        },
-        { withCredentials: true }
+      const res = await adminAPI.approveVerification(
+        userId,
+        status,
+        status === 'rejected' ? rejectionReason.trim() : undefined
       );
 
       if (res.data.success) {
@@ -197,18 +208,12 @@ const AdminDashboard = () => {
 
     try {
       setVerificationActionLoading(true);
-      const endpoint =
-        type === 'servant'
-          ? `${API_BASE}/admin/approve-servant/${userId}`
-          : `${API_BASE}/admin/approve-mayor/${userId}`;
+      const apiCall = type === 'servant' ? adminAPI.approveServant : adminAPI.approveMayor;
 
-      const res = await axios.put(
-        endpoint,
-        {
-          status,
-          rejectionReason: rejectionReason.trim() || undefined,
-        },
-        { withCredentials: true }
+      const res = await apiCall(
+        userId,
+        status,
+        rejectionReason.trim() || undefined
       );
 
       if (res.data.success) {
