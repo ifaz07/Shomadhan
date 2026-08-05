@@ -519,15 +519,15 @@ const ProfilePage = () => {
         >
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Account Center</p>
-              <h1 className="mt-1.5 text-3xl font-black tracking-tight text-slate-900">Profile</h1>
+              <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400"><T en="Account Center" /></p>
+              <h1 className="mt-1.5 text-3xl font-black tracking-tight text-slate-900"><T en="Profile" /></h1>
               <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-                Personal details, security settings, verification, and civic reputation all stay here.
+                <T en="Personal details, security settings, verification, and civic reputation all stay here." />
               </p>
             </div>
             {hasRewards && user?.points !== undefined && (
               <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 shadow-sm">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-600">Total Points</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-600"><T en="Total Points" /></p>
                 <p className="mt-1 text-2xl font-black text-amber-900">{user.points}</p>
               </div>
             )}
@@ -624,7 +624,7 @@ const ProfilePage = () => {
                           disabled={avatarLoading || deleteLoading}
                           className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-900 transition hover:bg-slate-100 disabled:opacity-50"
                         >
-                          {displayAvatar ? "Change photo" : "Upload photo"}
+                          {displayAvatar ? <T en="Change photo" /> : <T en="Upload photo" />}
                         </button>
                         {displayAvatar && (
                           <button
@@ -633,7 +633,7 @@ const ProfilePage = () => {
                             className="inline-flex items-center gap-1 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
                           >
                             {deleteLoading ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={10} />}
-                            Remove
+                            <T en="Remove" />
                           </button>
                         )}
                       </div>
@@ -664,8 +664,8 @@ const ProfilePage = () => {
 
               <div className="p-6 sm:p-8">
                 <div className="mb-6 border-b border-slate-100 pb-4">
-                  <h3 className="text-lg font-bold text-slate-900">Profile Details</h3>
-                  <p className="mt-1 text-sm text-slate-500">Update the details people and the platform rely on.</p>
+                  <h3 className="text-lg font-bold text-slate-900"><T en="Profile Details" /></h3>
+                  <p className="mt-1 text-sm text-slate-500"><T en="Update the details people and the platform rely on." /></p>
                 </div>
 
                 <div className="space-y-4">
@@ -695,7 +695,7 @@ const ProfilePage = () => {
                               className="inline-flex items-center gap-1 rounded-xl border border-teal-100 bg-teal-50 px-3 py-2 text-xs font-bold text-teal-700 transition hover:bg-teal-100"
                             >
                               <Pencil size={11} />
-                              {user?.phone ? "Edit" : "Add"}
+                              {user?.phone ? <T en="Edit" /> : <T en="Add" />}
                             </button>
                           )}
                         </div>
@@ -773,7 +773,7 @@ const ProfilePage = () => {
                               className="inline-flex items-center gap-1 rounded-xl border border-teal-100 bg-teal-50 px-3 py-2 text-xs font-bold text-teal-700 transition hover:bg-teal-100"
                             >
                               <Pencil size={11} />
-                              {user?.presentAddress?.address ? "Edit" : "Add"}
+                              {user?.presentAddress?.address ? <T en="Edit" /> : <T en="Add" />}
                             </button>
                           )}
                         </div>
@@ -843,7 +843,7 @@ const ProfilePage = () => {
                           </div>
                         ) : (
                           <p className={`text-sm font-semibold leading-relaxed ${user?.presentAddress?.address ? "text-slate-900" : "text-slate-400 italic"}`}>
-                            {user?.presentAddress?.address || "Not set"}
+                            {user?.presentAddress?.address || <T en="Not set" />}
                           </p>
                         )}
                       </div>
@@ -856,7 +856,7 @@ const ProfilePage = () => {
                         <p className="text-xs font-semibold uppercase tracking-wider text-blue-600 mb-1">
                           <T en="Official Details" />
                         </p>
-                        <p className="text-sm text-blue-800/75">Your employment and department credentials shown on file.</p>
+                        <p className="text-sm text-blue-800/75"><T en="Your employment and department credentials shown on file." /></p>
                       </div>
                       <div className="grid gap-4 lg:grid-cols-2">
                         <div className="rounded-2xl border border-white/80 bg-white/80 p-4"><InfoRow icon={Building2} label={<T en="Department" />} value={user?.department?.replace("_", " ")} /></div>

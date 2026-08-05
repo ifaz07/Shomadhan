@@ -1,55 +1,49 @@
 import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { bnQuickTranslations } from '../translations';
 
 export const LanguageContext = createContext(null);
 
-// ─── Translation request queue ────────────────────────────────────────
-// MyMemory free tier allows ~1 req/sec. This queue serialises requests
-// with a small delay to avoid 429 rate-limit errors.
-const queue = [];
-let running = false;
+const LOCAL_BN_TRANSLATIONS = bnQuickTranslations || {};
+const inFlightRequests = new Map();
 
-const enqueue = (fn) =>
-  new Promise((resolve) => {
-    queue.push({ fn, resolve });
-    if (!running) drain();
-  });
-
-const drain = async () => {
-  running = true;
-  while (queue.length) {
-    const { fn, resolve } = queue.shift();
-    try {
-      resolve(await fn());
-    } catch {
-      resolve(null);
-    }
-    // 120 ms gap between requests keeps us well under the rate limit
-    if (queue.length) await new Promise((r) => setTimeout(r, 120));
-  }
-  running = false;
+const localBanglaTranslate = (text, from = 'en', to = 'bn') => {
+  if (!text || from !== 'en' || to !== 'bn') return null;
+  return LOCAL_BN_TRANSLATIONS[text] || null;
 };
 
 // ─── Persistent localStorage cache ───────────────────────────────────
-const LS_KEY = 'somadhan_trans_cache';
+const LS_KEY = 'shomadhan_trans_cache';
+const LEGACY_LS_KEY = 'somadhan_trans_cache';
 const loadCache = () => {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); }
-  catch { return {}; }
+  try {
+    const current = localStorage.getItem(LS_KEY);
+    if (current) return JSON.parse(current);
+    const legacy = localStorage.getItem(LEGACY_LS_KEY);
+    if (legacy) return JSON.parse(legacy);
+    return {};
+  } catch { return {}; }
 };
 const saveCache = (cache) => {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(cache)); } catch {}
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(cache));
+    localStorage.removeItem(LEGACY_LS_KEY);
+  } catch {}
 };
 
 export const LanguageProvider = ({ children }) => {
-  const [language, setLanguage] = useState(
-    () => localStorage.getItem('somadhan_lang') || 'en'
-  );
+  const [language, setLanguage] = useState(() => {
+    const current = localStorage.getItem('shomadhan_lang');
+    if (current) return current;
+    return localStorage.getItem('somadhan_lang') || 'en';
+  });
   // In-memory cache backed by localStorage
   const cache = useRef(loadCache());
 
   const toggleLanguage = () => {
     setLanguage((prev) => {
       const next = prev === 'en' ? 'bn' : 'en';
-      localStorage.setItem('somadhan_lang', next);
+      localStorage.setItem('shomadhan_lang', next);
+      localStorage.removeItem('somadhan_lang');
       return next;
     });
   };
@@ -61,21 +55,37 @@ export const LanguageProvider = ({ children }) => {
     const cacheKey = `${text}|${from}|${to}`;
     if (cache.current[cacheKey]) return cache.current[cacheKey];
 
-    const result = await enqueue(async () => {
-      const res = await fetch(
-        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${from}|${to}`
-      );
-      const data = await res.json();
-      if (data.responseStatus === 200 && data.responseData?.translatedText) {
-        return data.responseData.translatedText;
-      }
-      return text;
-    });
+    const localTranslation = localBanglaTranslate(text, from, to);
+    if (localTranslation) {
+      cache.current[cacheKey] = localTranslation;
+      saveCache(cache.current);
+      return localTranslation;
+    }
 
-    const translated = result || text;
-    cache.current[cacheKey] = translated;
-    saveCache(cache.current);
-    return translated;
+    if (inFlightRequests.has(cacheKey)) {
+      return inFlightRequests.get(cacheKey);
+    }
+
+    const request = fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${from}|${to}`
+    )
+      .then(async (res) => {
+        const data = await res.json();
+        const translated = data.responseStatus === 200 && data.responseData?.translatedText
+          ? data.responseData.translatedText
+          : text;
+
+        cache.current[cacheKey] = translated;
+        saveCache(cache.current);
+        return translated;
+      })
+      .catch(() => text)
+      .finally(() => {
+        inFlightRequests.delete(cacheKey);
+      });
+
+    inFlightRequests.set(cacheKey, request);
+    return request;
   }, []);
 
   return (

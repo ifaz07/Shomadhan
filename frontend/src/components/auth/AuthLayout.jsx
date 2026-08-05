@@ -24,7 +24,7 @@ const BrandingPanel = () => (
       <h1 className="text-4xl font-extrabold text-white mb-3 font-bengali">
         সমাধান
       </h1>
-      <p className="text-lg text-teal-300 font-semibold mb-2">Somadhan</p>
+      <p className="text-lg text-teal-300 font-semibold mb-2">Shomadhan</p>
       <p className="text-white/50 text-sm leading-relaxed mb-10">
         <T en="Smart Civic Issue Tracking & Resolution System. Report issues, track progress, and build a better city — together." />
       </p>
@@ -73,7 +73,7 @@ const AuthLayout = ({ children }) => {
         >
           <div className="text-center mb-8">
              <img src="/assets/auth-logo.png" alt="Logo" className="w-24 h-24 mx-auto mb-4 drop-shadow-xl [clip-path:circle(50%)]" />
-             <h1 className="text-3xl font-black text-white tracking-tight">Somadhan</h1>
+             <h1 className="text-3xl font-black text-white tracking-tight">Shomadhan</h1>
              <div className="h-1 w-12 bg-[#a1824a] mx-auto mt-2 rounded-full" />
           </div>
           <div className="bg-white rounded-3xl p-8 shadow-2xl border border-white/10">

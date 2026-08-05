@@ -125,7 +125,7 @@ const ServantSidebar = () => {
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="overflow-hidden whitespace-nowrap"
             >
-                <h1 className="text-lg font-black text-[#0d3b4b]">Somadhan</h1>
+                <h1 className="text-lg font-black text-[#0d3b4b]">Shomadhan</h1>
                 <p className="text-[10px] text-[#a1824a] font-bold tracking-widest uppercase -mt-1">
                   City Govt
                 </p>

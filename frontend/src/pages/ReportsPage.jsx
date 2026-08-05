@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import DashboardLayout from '../components/layout/DashboardLayout';
+import T from '../components/T';
 import { complaintAPI, reportAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getDepartmentLabel, normalizeDepartmentValue } from '../constants/departments';
@@ -356,13 +357,12 @@ const ReportsPage = () => {
               <FileDown size={20} className="text-[#a1824a]" />
             </div>
             <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-teal-200">
-              Report Centre
+              <T en="Report Centre" />
             </span>
           </div>
-          <h1 className="text-3xl font-black tracking-tight mb-2"> City Operations </h1>
+          <h1 className="text-3xl font-black tracking-tight mb-2"><T en="City Operations" /></h1>
           <p className="text-sm text-slate-300 max-w-xl">
-            Generate downloadable PDF reports - individual complaint case files or aggregated
-            city-wide summaries with charts, SLA data, and executive metrics.
+            <T en="Generate downloadable PDF reports - individual complaint case files or aggregated city-wide summaries with charts, SLA data, and executive metrics." />
           </p>
         </motion.div>
 
@@ -370,18 +370,18 @@ const ReportsPage = () => {
           {isMayor && (
             <button onClick={() => setActiveTab('efficiency')} className={tabCls('efficiency')}>
               <span className="flex items-center gap-2">
-                <TrendingUp size={15} /> City Efficiency
+                <TrendingUp size={15} /> <T en="City Efficiency" />
               </span>
             </button>
           )}
           <button onClick={() => setActiveTab('summary')} className={tabCls('summary')}>
             <span className="flex items-center gap-2">
-              <BarChart3 size={15} /> Summary Reports
+              <BarChart3 size={15} /> <T en="Summary Reports" />
             </span>
           </button>
           <button onClick={() => setActiveTab('individual')} className={tabCls('individual')}>
             <span className="flex items-center gap-2">
-              <FileText size={15} /> Individual Case Report
+              <FileText size={15} /> <T en="Individual Case Report" />
             </span>
           </button>
         </div>
@@ -404,29 +404,29 @@ const ReportsPage = () => {
                   <div className="grid gap-4 lg:grid-cols-3">
                     <div className="rounded-[1.75rem] border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-cyan-50 p-5 shadow-sm">
                       <p className="text-[10px] font-black uppercase tracking-[0.24em] text-teal-600">
-                        Highest Coverage
+                        <T en="Highest Coverage" />
                       </p>
                       <h3 className="mt-3 text-2xl font-black text-slate-900">{topDepartment?.label || 'N/A'}</h3>
                       <p className="mt-2 text-sm text-slate-600">
-                        Leading complaint volume currently tracked in the city-wide operations view.
+                        <T en="Leading complaint volume currently tracked in the city-wide operations view." />
                       </p>
                     </div>
                     <div className="rounded-[1.75rem] border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-sky-50 p-5 shadow-sm">
                       <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-700">
-                        Average Resolution Rate
+                        <T en="Average Resolution Rate" />
                       </p>
                       <h3 className="mt-3 text-3xl font-black text-slate-900">{averageEfficiency}%</h3>
                       <p className="mt-2 text-sm text-slate-600">
-                        Average share of resolved complaints across the listed city service groups.
+                        <T en="Average share of resolved complaints across the listed city service groups." />
                       </p>
                     </div>
                     <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
                       <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
-                        Departments Tracked
+                        <T en="Departments Tracked" />
                       </p>
                       <h3 className="mt-3 text-3xl font-black text-slate-900">{efficiencyDepartmentStats.length}</h3>
                       <p className="mt-2 text-sm text-slate-600">
-                        Normalized from both legacy complaint categories and current department assignments.
+                        <T en="Normalized from both legacy complaint categories and current department assignments." />
                       </p>
                     </div>
                   </div>
@@ -434,14 +434,14 @@ const ReportsPage = () => {
                   <div className="rounded-[1.9rem] border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
                     <div className="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
                       <div>
-                        <h2 className="text-lg font-black text-slate-900">City Efficiency Board</h2>
+                        <h2 className="text-lg font-black text-slate-900"><T en="City Efficiency Board" /></h2>
                         <p className="mt-1 text-sm text-slate-500">
-                          Department performance is based on resolved complaints compared with the total complaints assigned to each service group.
+                          <T en="Department performance is based on resolved complaints compared with the total complaints assigned to each service group." />
                         </p>
                       </div>
                       <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                         <span className="font-black text-slate-900">{efficiencyStats?.slaCompliance?.exceeded || 0}</span>{' '}
-                        active complaints have already crossed SLA.
+                        <T en="active complaints have already crossed SLA." />
                       </div>
                     </div>
 
@@ -458,7 +458,7 @@ const ReportsPage = () => {
                             </div>
                             <div className="rounded-2xl border border-white bg-white px-4 py-3 text-right shadow-sm">
                               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
-                                Open Cases
+                                <T en="Open Cases" />
                               </p>
                               <p className="mt-2 text-xl font-black text-amber-600">{dept.open}</p>
                             </div>
@@ -489,11 +489,11 @@ const ReportsPage = () => {
             >
               <div className="bg-white rounded-[1.75rem] border border-slate-100 shadow-sm p-6">
                 <h2 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2">
-                  <Calendar size={18} className="text-[#a1824a]" /> Report Configuration
+                  <Calendar size={18} className="text-[#a1824a]" /> <T en="Report Configuration" />
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Report Type</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5"><T en="Report Type" /></label>
                     <div className="flex rounded-xl overflow-hidden border border-slate-200">
                       {['monthly', 'yearly'].map((t) => (
                         <button
@@ -509,7 +509,7 @@ const ReportsPage = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Year</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5"><T en="Year" /></label>
                     <select
                       value={selYear}
                       onChange={(e) => setSelYear(+e.target.value)}
@@ -522,7 +522,7 @@ const ReportsPage = () => {
                   </div>
                   {summaryType === 'monthly' && (
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Month</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5"><T en="Month" /></label>
                       <select
                         value={selMonth}
                         onChange={(e) => setSelMonth(+e.target.value)}
@@ -542,11 +542,11 @@ const ReportsPage = () => {
                 >
                   {summaryDownloading ? (
                     <>
-                      <Loader2 size={17} className="animate-spin" /> Generating PDF...
+                      <Loader2 size={17} className="animate-spin" /> <T en="Generating PDF..." />
                     </>
                   ) : (
                     <>
-                      <Download size={17} /> Download {summaryType === 'monthly' ? months[selMonth - 1] : selYear} Report
+                      <Download size={17} /> <T en="Download" /> {summaryType === 'monthly' ? <T en={months[selMonth - 1]} /> : selYear} <T en="Report" />
                     </>
                   )}
                 </button>
@@ -555,7 +555,7 @@ const ReportsPage = () => {
               <div className="bg-white rounded-[1.75rem] border border-slate-100 shadow-sm p-6">
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                    <Sparkles size={18} className="text-[#a1824a]" /> Live Data Preview
+                    <Sparkles size={18} className="text-[#a1824a]" /> <T en="Live Data Preview" />
                   </h2>
                   {previewLoading && <Loader2 size={18} className="animate-spin text-[#0d3b4b]" />}
                 </div>
@@ -567,15 +567,15 @@ const ReportsPage = () => {
                 ) : (
                   <>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                      <StatCard icon={FileText} label="Total" value={total} color="text-[#0d3b4b]" bg="bg-slate-50" delay={0} />
-                      <StatCard icon={CheckCircle2} label="Resolved" value={resolved} color="text-emerald-600" bg="bg-emerald-50" delay={0.05} />
-                      <StatCard icon={AlertTriangle} label="Critical" value={critical} color="text-red-600" bg="bg-red-50" delay={0.1} />
-                      <StatCard icon={Clock} label="In Progress" value={inProgress} color="text-blue-600" bg="bg-blue-50" delay={0.15} />
+                      <StatCard icon={FileText} label={<T en="Total" />} value={total} color="text-[#0d3b4b]" bg="bg-slate-50" delay={0} />
+                      <StatCard icon={CheckCircle2} label={<T en="Resolved" />} value={resolved} color="text-emerald-600" bg="bg-emerald-50" delay={0.05} />
+                      <StatCard icon={AlertTriangle} label={<T en="Critical" />} value={critical} color="text-red-600" bg="bg-red-50" delay={0.1} />
+                      <StatCard icon={Clock} label={<T en="In Progress" />} value={inProgress} color="text-blue-600" bg="bg-blue-50" delay={0.15} />
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       <div className="bg-slate-50 rounded-2xl p-5">
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Performance Gauges</p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4"><T en="Performance Gauges" /></p>
                         <div className="flex gap-6 justify-center flex-wrap">
                           <GaugeRing pct={resRate} label="Resolution Rate" color="#10b981" />
                           <GaugeRing pct={total > 0 ? Math.round((critical / total) * 100) : 0} label="Critical Rate" color="#ef4444" />
@@ -583,7 +583,7 @@ const ReportsPage = () => {
                         </div>
                       </div>
                       <div className="bg-slate-50 rounded-2xl p-5">
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Department Breakdown</p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1"><T en="Department Breakdown" /></p>
                         {deptData.length > 0 ? (
                           <BarChart data={deptData} max={Math.max(...deptData.map((d) => d.value))} />
                         ) : (
@@ -594,7 +594,7 @@ const ReportsPage = () => {
 
                     <div className="mt-5 bg-[#0d3b4b]/5 rounded-2xl p-4">
                       <p className="text-xs font-bold text-[#0d3b4b] uppercase tracking-wider mb-2">
-                        This PDF will include:
+                        <T en="This PDF will include:" />
                       </p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                         {[
@@ -624,7 +624,7 @@ const ReportsPage = () => {
             >
               <div className="bg-white rounded-[1.75rem] border border-slate-100 shadow-sm p-6">
                 <h2 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2">
-                  <Search size={18} className="text-[#a1824a]" /> Select Complaint
+                  <Search size={18} className="text-[#a1824a]" /> <T en="Select Complaint" />
                 </h2>
 
                 <div ref={dropRef} className="relative">
@@ -780,8 +780,8 @@ const ReportsPage = () => {
                 {!selectedComplaint && (
                   <div className="mt-6 text-center py-10 border-2 border-dashed border-slate-200 rounded-2xl">
                     <FileDown size={32} className="mx-auto text-slate-300 mb-3" />
-                    <p className="text-sm font-bold text-slate-400">Search and select a complaint above</p>
-                    <p className="text-xs text-slate-300 mt-1">A detailed PDF with full case history will be generated</p>
+                    <p className="text-sm font-bold text-slate-400"><T en="Search and select a complaint above" /></p>
+                    <p className="text-xs text-slate-300 mt-1"><T en="A detailed PDF with full case history will be generated" /></p>
                   </div>
                 )}
               </div>

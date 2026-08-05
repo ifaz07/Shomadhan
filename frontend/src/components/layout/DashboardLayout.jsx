@@ -17,7 +17,7 @@ const DashboardLayout = ({
           </div>
           <footer className="mt-12 pb-4 text-center opacity-20 pointer-events-none select-none">
             <p className="text-[10px] font-black tracking-[0.4em] uppercase text-slate-500">
-              Government of Bangladesh • Somadhan Official Portal
+              Government of Bangladesh • Shomadhan Official Portal
             </p>
           </footer>
         </div>

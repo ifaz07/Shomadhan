@@ -83,7 +83,7 @@ const UserSidebar = () => {
             {!isCollapsed && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                 <h1 className="text-lg font-bold text-gray-900 font-bengali">সমাধান</h1>
-                <p className="text-[10px] text-gray-400 -mt-0.5">Somadhan</p>
+                <p className="text-[10px] text-gray-400 -mt-0.5">Shomadhan</p>
               </motion.div>
             )}
           </div>

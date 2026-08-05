@@ -74,7 +74,7 @@ const LoginPage = () => {
           <span className="text-2xl font-bold text-white font-bengali">স</span>
         </motion.div>
         <h1 className="text-2xl font-bold text-white font-bengali">সমাধান</h1>
-        <p className="text-white/40 text-sm mt-1">Somadhan</p>
+        <p className="text-white/40 text-sm mt-1">Shomadhan</p>
       </div>
 
       {/* ─── Card ──────────────────────────────────────────────────── */}
@@ -226,7 +226,7 @@ const LoginPage = () => {
 
         <div className="mt-7 border-t border-slate-100 pt-5 text-center">
           <p className="text-sm text-slate-500">
-            <T en="New to Somadhan?" />
+            <T en="New to Shomadhan?" />
           </p>
           <Link
             to="/signup"
@@ -238,7 +238,7 @@ const LoginPage = () => {
       </div>
 
       <p className="text-center text-xs text-white/30 mt-6">
-        © 2026 সমাধান (Somadhan). All rights reserved.
+        © 2026 সমাধান (Shomadhan). All rights reserved.
       </p>
     </AuthLayout>
   );

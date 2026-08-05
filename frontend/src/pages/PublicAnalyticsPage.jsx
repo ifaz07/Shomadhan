@@ -420,7 +420,7 @@ const PublicAnalyticsPage = () => {
       const url = URL.createObjectURL(r.data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Somadhan_Report_${filterType}.pdf`;
+      a.download = `Shomadhan_Report_${filterType}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       

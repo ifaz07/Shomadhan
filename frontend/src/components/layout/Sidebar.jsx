@@ -225,7 +225,7 @@ const Sidebar = ({ transparent = false }) => {
               className="overflow-hidden whitespace-nowrap"
             >
                 <div className="flex items-center gap-1.5">
-                   <h1 className="text-lg font-black text-[#0d3b4b]">Somadhan</h1>
+                   <h1 className="text-lg font-black text-[#0d3b4b]">Shomadhan</h1>
                    {user?.isGoodCitizen && <GoodCitizenStar size={14} />}
                 </div>
                 <p className="text-[10px] text-[#a1824a] font-bold tracking-widest uppercase -mt-1">City Govt</p>

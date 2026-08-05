@@ -328,7 +328,7 @@ const UnifiedAuthPage = () => {
             {/* Floating smaller logo for visual focus */}
             <motion.img 
               src="/assets/auth-logo.png" 
-              alt="Somadhan Logo" 
+              alt="Shomadhan Logo" 
               className="welcome-logo-small"
               initial={{ y: -30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -572,7 +572,7 @@ const UnifiedAuthPage = () => {
             <div className="auth-overlay-container">
               <div className="auth-overlay">
               <div className="auth-overlay-panel auth-overlay-left">
-                <img src="/assets/auth-logo.png" alt="Somadhan Logo" className="auth-logo-img" />
+                <img src="/assets/auth-logo.png" alt="Shomadhan Logo" className="auth-logo-img" />
                 <h1 className="text-4xl font-black mb-4 text-[#a1824a]"><T en="Welcome Back!" /></h1>
                 <p className="text-sm font-medium mb-8 text-blue-100 max-w-[280px]">
                   <T en="To keep connected with us please login with your personal info" />
@@ -582,7 +582,7 @@ const UnifiedAuthPage = () => {
                 </button>
               </div>
               <div className="auth-overlay-panel auth-overlay-right">
-                <img src="/assets/auth-logo.png" alt="Somadhan Logo" className="auth-logo-img" />
+                <img src="/assets/auth-logo.png" alt="Shomadhan Logo" className="auth-logo-img" />
                 <h1 className="text-4xl font-black mb-4 text-[#a1824a]"><T en="Hello, Citizen!" /></h1>
                 <p className="text-sm font-medium mb-8 text-blue-100 max-w-[280px]">
                   <T en="Enter your personal details and start your journey with us" />
