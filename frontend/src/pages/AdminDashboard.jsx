@@ -22,7 +22,22 @@ import { getAssetBaseUrl } from '../utils/apiBase';
 
 const resolveFileUrl = (url) => {
   if (!url) return null;
-  return url.startsWith('http') ? url : `${getAssetBaseUrl()}${url}`;
+
+  // Current Cloudinary uploads are absolute URLs. Earlier local uploads were
+  // persisted as a Windows filesystem path (for example
+  // `C:\\...\\uploads\\verification\\document.jpg`), so normalize those records
+  // to the public upload route before displaying them.
+  if (/^https?:\/\//i.test(url)) return url;
+
+  const normalizedPath = url.replace(/\\/g, '/');
+  const uploadPathIndex = normalizedPath.toLowerCase().indexOf('/uploads/');
+  const publicPath = uploadPathIndex >= 0
+    ? normalizedPath.slice(uploadPathIndex)
+    : normalizedPath.startsWith('/')
+      ? normalizedPath
+      : `/${normalizedPath}`;
+
+  return `${getAssetBaseUrl()}${publicPath}`;
 };
 
 const formatDepartment = (value) => {
@@ -83,6 +98,7 @@ const AdminDashboard = () => {
   const [reviewType, setReviewType] = useState(null);
   const [verificationActionLoading, setVerificationActionLoading] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [documentPreviewFailed, setDocumentPreviewFailed] = useState(false);
 
   const tabs = [
     { id: 'citizens', label: 'Citizens', icon: Users, role: 'citizen' },
@@ -250,6 +266,7 @@ const AdminDashboard = () => {
     setReviewItem(item);
     setReviewType(type);
     setRejectionReason('');
+    setDocumentPreviewFailed(false);
   };
 
   const closeReviewModal = () => {
@@ -570,8 +587,25 @@ const AdminDashboard = () => {
                             Open document in new tab
                           </a>
                         </div>
+                      ) : documentPreviewFailed || !fileUrl ? (
+                        <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-xl bg-slate-50 px-6 py-10 text-center">
+                          <Eye size={28} className="text-slate-400" />
+                          <p className="text-sm font-semibold text-slate-700">Document preview is unavailable</p>
+                          <p className="text-xs text-slate-500">The uploaded file could not be loaded from its saved location.</p>
+                          {fileUrl && (
+                            <a href={fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-semibold text-teal-600 hover:text-teal-700">
+                              <ExternalLink size={16} />
+                              Try opening document
+                            </a>
+                          )}
+                        </div>
                       ) : (
-                        <img src={fileUrl} alt="Document" className="w-full h-auto rounded-xl" />
+                        <img
+                          src={fileUrl}
+                          alt="Document"
+                          onError={() => setDocumentPreviewFailed(true)}
+                          className="w-full h-auto rounded-xl"
+                        />
                       )}
                     </div>
                   </div>

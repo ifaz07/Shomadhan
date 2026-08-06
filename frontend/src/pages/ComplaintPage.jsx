@@ -560,7 +560,7 @@ const ComplaintPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="w-full max-w-[1440px] mx-auto py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
+      <div className="w-full min-w-0 py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
         <motion.header
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
