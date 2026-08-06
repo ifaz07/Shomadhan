@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
 import toast from 'react-hot-toast';
+import { normalizeRole } from '../utils/roleRoutes';
 
 const AuthContext = createContext(null);
 
@@ -27,7 +28,7 @@ export const AuthProvider = ({ children }) => {
   const fetchUser = async () => {
     try {
       const { data } = await authAPI.getMe();
-      const nextUser = data.data.user;
+      const nextUser = data.data.user ? { ...data.data.user, role: normalizeRole(data.data.user.role) } : data.data.user;
       setUser(nextUser);
       return nextUser;
     } catch {
@@ -43,14 +44,14 @@ export const AuthProvider = ({ children }) => {
     const { data } = await authAPI.login(credentials);
     localStorage.setItem('token', data.data.token);
     localStorage.setItem('loginTime', new Date().toISOString());
-    setUser(data.data.user);
+    setUser(data.data.user ? { ...data.data.user, role: normalizeRole(data.data.user.role) } : data.data.user);
     toast.success('Welcome back!');
     return data;
   };
 
   const register = async (userData) => {
     const { data } = await authAPI.register(userData);
-    const nextUser = data.data.user;
+    const nextUser = data.data.user ? { ...data.data.user, role: normalizeRole(data.data.user.role) } : data.data.user;
     const shouldPersistSession = Boolean(data.data.token) && nextUser?.isActive !== false;
 
     if (shouldPersistSession) {

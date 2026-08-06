@@ -26,10 +26,19 @@ router.get('/heatmap', getHeatmapData);
 router.get('/nearby', protect, getNearbyComplaints);
 router.get('/feedback/all', protect, getAllFeedback);
 
+const uploadOptionalAudio = (req, res, next) => {
+  upload.single('audio')(req, res, (err) => {
+    if (err) {
+      console.warn('[Analyze Audio Upload Warning]:', err.message);
+    }
+    next();
+  });
+};
+
 // ── Protected routes ──────────────────────────────────────────────────────
 router.get('/stats', protect, getPublicStats);
-router.post('/analyze', protect, analyzeComplaint);
-router.post('/', protect, upload.array('evidence', 5), createComplaint);
+router.post('/analyze', protect, uploadOptionalAudio, analyzeComplaint);
+router.post('/', protect, upload.fields([{ name: 'evidence', maxCount: 5 }, { name: 'voiceDescription', maxCount: 1 }]), createComplaint);
 router.get('/', protect, getComplaints);
 router.post('/:id/vote', protect, voteComplaint);
 router.get('/:id', protect, getComplaint);

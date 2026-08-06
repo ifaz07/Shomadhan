@@ -17,12 +17,14 @@ const SmartInputWrapper = ({ children, onValueChange, value, onAudioRecorded }) 
   const recognitionRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunks = useRef([]);
-  const lastBaseValue = useRef("");
+  const baseValueRef = useRef("");
+  const sessionTranscriptRef = useRef("");
 
   // Sync value to ref
   useEffect(() => {
     if (!isRecording) {
-      lastBaseValue.current = value || "";
+      baseValueRef.current = value || "";
+      sessionTranscriptRef.current = "";
     }
   }, [value, isRecording]);
 
@@ -79,15 +81,39 @@ const SmartInputWrapper = ({ children, onValueChange, value, onAudioRecorded }) 
       };
 
       recognition.onresult = (event) => {
-        let sessionTranscript = "";
+        let interimTranscript = "";
+        let finalTranscript = "";
+
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-          sessionTranscript += event.results[i][0].transcript;
+          const result = event.results[i];
+          const transcript = result[0].transcript.trim();
+          if (!transcript) continue;
+
+          if (result.isFinal) {
+            finalTranscript = finalTranscript ? `${finalTranscript} ${transcript}` : transcript;
+          } else {
+            interimTranscript = interimTranscript ? `${interimTranscript} ${transcript}` : transcript;
+          }
         }
-        
-        const finalValue = lastBaseValue.current 
-          ? `${lastBaseValue.current.trim()} ${sessionTranscript.trim()}`
-          : sessionTranscript.trim();
-        
+
+        if (finalTranscript) {
+          sessionTranscriptRef.current = sessionTranscriptRef.current
+            ? `${sessionTranscriptRef.current} ${finalTranscript}`.trim()
+            : finalTranscript;
+        }
+
+        const combinedTranscript = [sessionTranscriptRef.current, interimTranscript]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+
+        const baseValue = (baseValueRef.current || "").trim();
+        const finalValue = combinedTranscript
+          ? baseValue
+            ? `${baseValue} ${combinedTranscript}`.trim()
+            : combinedTranscript
+          : baseValue;
+
         onValueChange(finalValue);
       };
 

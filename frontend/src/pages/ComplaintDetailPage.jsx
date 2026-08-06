@@ -289,6 +289,8 @@ const ComplaintDetailPage = () => {
   const timeline = complaint.history || [];
   const hasMap = complaint.latitude && complaint.longitude;
   const submitterAvatar = resolveAvatar(complaint.submittedBy?.avatar);
+  const voiceDescriptionItem = complaint.voiceDescription || evidence.find((item) => isVoiceDescription(item)) || null;
+  const attachmentItems = evidence.filter((item) => !isVoiceDescription(item));
 
   return (
     <DashboardLayout>
@@ -382,20 +384,6 @@ const ComplaintDetailPage = () => {
                   <p className="text-sm text-gray-700 leading-relaxed">
                     <T en={complaint.description} />
                   </p>
-                  
-                  {/* Inline Audio Player for Voice Description */}
-                  {evidence.filter(isVoiceDescription).map((url, i) => (
-                    <div key={`voice-${i}`} className="p-3 bg-teal-50 border border-teal-100 rounded-xl">
-                      <p className="text-[10px] font-bold text-teal-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <Activity size={10} />
-                        Voice Description Recording
-                      </p>
-                      <VoiceMessagePlayer 
-                        src={resolveUrl(url)} 
-                        className="!max-w-full !bg-white/80 backdrop-blur-sm shadow-none"
-                      />
-                    </div>
-                  ))}
                 </div>
               </div>
             )}
@@ -490,13 +478,25 @@ const ComplaintDetailPage = () => {
             )}
 
             {/* Attachments */}
-            {evidence.filter(url => !isVoiceDescription(url)).length > 0 && (
+            {(voiceDescriptionItem || attachmentItems.length > 0) && (
               <div>
                 <p className="text-sm font-semibold text-gray-700 mb-2">
-                  <T en="Attachments" /> ({evidence.filter(url => !isVoiceDescription(url)).length})
+                  <T en="Attachments" /> ({(voiceDescriptionItem ? 1 : 0) + attachmentItems.length})
                 </p>
                 <div className="flex gap-3 flex-wrap">
-                  {evidence.filter(url => !isVoiceDescription(url)).map((url, i) =>
+                  {voiceDescriptionItem && (
+                    <div className="min-w-[240px] max-w-[320px] rounded-xl border border-teal-100 bg-teal-50/70 p-3">
+                      <p className="text-[10px] font-bold text-teal-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Mic size={10} />
+                        Voice Description Attachment
+                      </p>
+                      <VoiceMessagePlayer
+                        src={resolveUrl(voiceDescriptionItem)}
+                        className="!max-w-full !bg-white/80 backdrop-blur-sm shadow-none"
+                      />
+                    </div>
+                  )}
+                  {attachmentItems.map((url, i) =>
                     isVideo(url) ? (
                       <a
                         key={i}

@@ -68,8 +68,17 @@ export const complaintAPI = {
     api.post("/complaints", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
-  analyze: (title, description) =>
-    api.post("/complaints/analyze", { title, description }),
+  analyze: (dataOrTitle, description) => {
+    if (dataOrTitle instanceof FormData) {
+      return api.post("/complaints/analyze", dataOrTitle, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    }
+    if (typeof dataOrTitle === "object" && dataOrTitle !== null) {
+      return api.post("/complaints/analyze", dataOrTitle);
+    }
+    return api.post("/complaints/analyze", { title: dataOrTitle, description });
+  },
   getAll: (params = {}) => api.get("/complaints", { params }),
   getStats: (params = {}) => api.get("/complaints/stats", { params }),
   getOne: (id) => api.get(`/complaints/${id}`),

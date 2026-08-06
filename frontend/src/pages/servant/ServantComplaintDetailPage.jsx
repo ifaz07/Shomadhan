@@ -141,6 +141,11 @@ const isAudio = (item) => {
   return type === "audio" || /\.(mp3|wav|webm|ogg|m4a)$/i.test(url || "");
 };
 
+const isVoiceDescription = (item) => {
+  const url = getEvidenceUrl(item);
+  return isAudio(item) && url.toLowerCase().endsWith(".webm");
+};
+
 const resolveUrl = (item) => {
   const url = getEvidenceUrl(item);
   if (!url) return "";
@@ -197,6 +202,9 @@ const ServantComplaintDetailPage = () => {
   const hasActiveDeadline = Boolean(
     complaint?.slaDeadline && new Date(complaint.slaDeadline).getTime() > Date.now()
   );
+  const evidenceItems = complaint?.evidence || [];
+  const voiceDescriptionItem = complaint?.voiceDescription || evidenceItems.find((item) => isVoiceDescription(item)) || null;
+  const attachmentItems = evidenceItems.filter((item) => !isVoiceDescription(item));
 
   // ── Status update ──────────────────────────────────────────────
   const handleStatusSave = async () => {
@@ -283,7 +291,6 @@ const ServantComplaintDetailPage = () => {
   const sCfg     = STATUS_CONFIG[complaint.status]     || STATUS_CONFIG.pending;
   const sla      = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
   const headerBorder = isResolved ? "border-gray-200" : pCfg.border;
-  const evidence = complaint.evidence  || [];
   const timeline = complaint.history   || [];
   const hasMap   = complaint.latitude && complaint.longitude;
   const deptName = CATEGORY_TO_DEPT[complaint.category] || "General Administration";
@@ -364,13 +371,13 @@ const ServantComplaintDetailPage = () => {
                   </p>
                   
                   {/* Voice Note Player (if audio exists) */}
-                  {evidence.some(isAudio) && (
+                  {evidenceItems.some(isAudio) && (
                     <div className="mb-5 p-4 rounded-2xl bg-blue-50 border border-blue-100">
                       <div className="flex items-center gap-2 mb-2">
                         <Clock size={14} className="text-blue-600" />
                         <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">Citizen Voice Recording</span>
                       </div>
-                      {evidence.filter(isAudio).map((url, i) => (
+                      {evidenceItems.filter(isAudio).map((url, i) => (
                         <audio key={i} controls className="w-full h-8">
                           <source src={resolveUrl(url)} type="audio/webm" />
                           Your browser does not support the audio element.
@@ -500,13 +507,26 @@ const ServantComplaintDetailPage = () => {
             </div>
 
             {/* Attachments */}
-            {evidence.length > 0 && (
+            {(voiceDescriptionItem || attachmentItems.length > 0) && (
               <div className="px-6 pb-5">
                 <p className="text-sm font-semibold text-gray-700 mb-2">
-                  <T en="Attachments" /> ({evidence.length})
+                  <T en="Attachments" /> ({(voiceDescriptionItem ? 1 : 0) + attachmentItems.length})
                 </p>
                 <div className="flex gap-3 flex-wrap">
-                  {evidence.map((item, i) => {
+                  {voiceDescriptionItem && (
+                    <div className="min-w-[240px] max-w-[320px] rounded-xl border border-teal-100 bg-teal-50/70 p-3">
+                      <p className="text-[10px] font-bold text-teal-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Mic size={10} />
+                        Voice Description Attachment
+                      </p>
+                      <div className="w-full">
+                        <audio controls className="w-full h-10">
+                          <source src={resolveUrl(voiceDescriptionItem)} />
+                        </audio>
+                      </div>
+                    </div>
+                  )}
+                  {attachmentItems.map((item, i) => {
                     const url = item?.url || item;
                     return isVideo(url) ? (
                       <a

@@ -3,6 +3,7 @@ const User = require("../models/User.model");
 const mongoose = require("mongoose");
 const crypto = require("crypto");
 const { classifyComplaint } = require("../services/nlpService");
+const { transcribeAudio } = require("../services/transcriptionService");
 const {
   checkForDuplicates,
   analyzePrankPotential,
@@ -62,6 +63,7 @@ const createComplaint = async (req, res, next) => {
       latitude,
       longitude,
       emergencyFlag,
+      descriptionType,
     } = req.body;
 
     // Check if user is verified
@@ -74,24 +76,49 @@ const createComplaint = async (req, res, next) => {
     }
 
     let evidence = [];
-    if (req.files && req.files.length > 0) {
-      evidence = req.files.map((file) => {
+    if (req.files && req.files.evidence) {
+      evidence = req.files.evidence.map((file) => {
         let type = "image";
         if (file.mimetype.startsWith("video/")) type = "video";
         if (file.mimetype.startsWith("audio/")) type = "audio";
         return { url: `/uploads/evidence/${file.filename}`, type };
       });
     }
-
+    
     const isAnon = isAnonymous === "true" || isAnonymous === true;
     const emergency = emergencyFlag === "true" || emergencyFlag === true;
     const lat = latitude ? Number(latitude) : null;
     const lng = longitude ? Number(longitude) : null;
 
+    // ── STT Audio Transcription (If Voice Evidence Uploaded) ─────────
+    let audioTranscript = "";
+    let voiceDescriptionFile = null;
+
+    if (req.files && req.files.voiceDescription && req.files.voiceDescription.length > 0) {
+      voiceDescriptionFile = req.files.voiceDescription[0];
+    }
+    
+    const audioFileForTranscription = voiceDescriptionFile || (req.files && req.files.evidence && req.files.evidence.find((f) => f.mimetype.startsWith("audio/")));
+
+    if (audioFileForTranscription) {
+      try {
+        audioTranscript = await transcribeAudio(audioFileForTranscription);
+      } catch (sttErr) {
+        console.warn("[STT Audio Check] Skipped:", sttErr.message);
+      }
+    }
+
+    const trimmedDesc = (description || "").trim();
+    const isPlaceholder = !trimmedDesc || trimmedDesc === "Voice message description" || trimmedDesc === "Voice message attached" || trimmedDesc.endsWith("(Voice message attached)");
+    const rawDesc = isPlaceholder ? "" : trimmedDesc;
+    const descriptionSource = rawDesc ? "text" : audioTranscript ? "voice" : "none";
+    const effectiveDescription = [rawDesc, audioTranscript].filter(Boolean).join(" ");
+    const analysisDescription = descriptionSource === "voice" && !rawDesc ? "" : effectiveDescription || description;
+
     // ── AI Prank Detection ───────────────────────────────────────────
     let aiStatus = { is_prank: false, confidence_score: 0 };
     try {
-      aiStatus = await analyzePrankPotential(title, description);
+      aiStatus = await analyzePrankPotential(title, effectiveDescription || description);
     } catch (aiErr) {
       console.warn("[AI Prank Check] Skipped:", aiErr.message);
     }
@@ -127,6 +154,7 @@ const createComplaint = async (req, res, next) => {
       location,
       latitude: lat,
       longitude: lng,
+      descriptionType: descriptionType || 'text',
       // Keep the private owner link even for anonymous complaints so the
       // citizen can still track and rate their own case after closure.
       user: req.user?._id,
@@ -140,6 +168,16 @@ const createComplaint = async (req, res, next) => {
       current_authority_level: 1,
       last_escalated_at: new Date(),
     };
+    
+    if (voiceDescriptionFile) {
+      complaintData.voiceDescription = {
+        url: `/uploads/evidence/${voiceDescriptionFile.filename}`,
+      };
+    }
+
+    if (descriptionSource === "voice" && !rawDesc) {
+      complaintData.description = `${title} - Voice-only complaint submitted. Department suggestion will rely on title only.`;
+    }
 
     if (finalStatus === "rejected") {
       complaintData.history = [
@@ -156,7 +194,7 @@ const createComplaint = async (req, res, next) => {
     try {
       const spam = await checkForDuplicates(
         title,
-        description,
+        effectiveDescription || description,
         lat,
         lng,
         location,
@@ -183,13 +221,16 @@ const createComplaint = async (req, res, next) => {
     // ── NLP classification ────────────────────────────────────────────
     let nlpAnalysis = null;
     try {
-      const nlp = await classifyComplaint(title, description);
+      const nlp = await classifyComplaint(title, analysisDescription);
       nlpAnalysis = {
         suggestedCategory: nlp.category,
         suggestedDepartment: nlp.department,
         keywords: nlp.keywords,
         confidence: nlp.confidence,
         source: nlp.source,
+        needsManualReview: nlp.needsManualReview,
+        manualReviewMessage: nlp.manualReviewMessage,
+        evidence: nlp.evidence,
         analyzedAt: new Date(),
       };
     } catch (nlpErr) {
@@ -222,20 +263,49 @@ const createComplaint = async (req, res, next) => {
   }
 };
 
-// @desc    Analyze complaint text with NLP (preview before submission)
+// @desc    Analyze complaint text & voice message with NLP (preview before submission)
 // @route   POST /api/v1/complaints/analyze
 // @access  Private
 const analyzeComplaint = async (req, res, next) => {
   try {
-    const { title, description } = req.body;
-    if (!title || !description) {
+    const { title, description, speechTranscript } = req.body || {};
+    const hasTextDetails = Boolean((description || "").trim());
+    let transcribedText = "";
+
+    // If an audio file was uploaded in req.file, transcribe it immediately
+    if (req.file) {
+      transcribedText = await transcribeAudio(req.file);
+    }
+
+    const safeTitle = (title || "").trim();
+    const safeDesc = (description || "").trim();
+    const safeTranscript = (speechTranscript || "").trim();
+
+    // Ignore placeholder string if sent from legacy clients
+    const realDesc = safeDesc === "Voice message description" ? "" : safeDesc;
+    const voiceWords = (transcribedText || safeTranscript).trim();
+
+    // Combine all textual sources (Title + Written Description + Transcribed Audio)
+    const combinedDescription = [realDesc, voiceWords].filter(Boolean).join(" ");
+
+    if (!safeTitle && !combinedDescription) {
       return res.status(400).json({
         success: false,
-        message: "Both title and description are required for analysis",
+        message: "Please enter a title, description, or record a voice message to find the department.",
       });
     }
-    const result = await classifyComplaint(title, description);
-    res.status(200).json({ success: true, data: result });
+
+    const shouldUseTitleOnly = !hasTextDetails && Boolean(safeTitle);
+    const result = await classifyComplaint(safeTitle, shouldUseTitleOnly ? "" : combinedDescription);
+    res.status(200).json({
+      success: true,
+      data: {
+        ...result,
+        transcribedText: voiceWords || null,
+        usedTextForAnalysis: hasTextDetails,
+        analysisMode: shouldUseTitleOnly ? "title-only" : hasTextDetails ? "text-and-title" : "title-only",
+      },
+    });
   } catch (error) {
     next(error);
   }
