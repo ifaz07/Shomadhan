@@ -1,15 +1,15 @@
 const multer = require('multer');
-const path = require('path');
-const { getUploadDir } = require('../utils/uploadPaths');
+const { randomUUID } = require('crypto');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('../config/cloudinary');
 
-// Storage configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, getUploadDir('evidence'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
+// Handles complaint photos, videos, and audio, plus emergency audio.
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'shomadhan/evidence',
+    resource_type: 'auto',
+    public_id: (req, file) => `${file.fieldname}-${req.user.id}-${randomUUID()}`,
   },
 });
 

@@ -13,7 +13,7 @@ exports.createVolunteerAd = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please upload a poster image' });
     }
 
-    const posterUrl = `/uploads/volunteer/${req.file.filename}`;
+    const posterUrl = req.file.path;
 
     const ad = await VolunteerAd.create({
       title,

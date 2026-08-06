@@ -276,6 +276,13 @@ const changePassword = async (req, res, next) => {
 // ─── PUT /api/v1/auth/verify ──────────────────────────────────────────
 const verifyAccount = async (req, res, next) => {
   try {
+    if (req.user.role === "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Administrator accounts do not require identity verification.",
+      });
+    }
+
     const { docType, documentNumber } = req.body;
 
     if (!docType || !documentNumber) {
@@ -316,7 +323,7 @@ const verifyAccount = async (req, res, next) => {
     user.verificationDoc = {
       docType,
       documentNumber,
-      fileUrl: `/uploads/verification/${req.file.filename}`,
+      fileUrl: req.file.path,
       status: "pending",
       submittedAt: new Date(),
       verifiedAt: undefined,
@@ -510,7 +517,7 @@ const updateAvatar = async (req, res, next) => {
         .json({ success: false, message: "No image file provided." });
     }
 
-    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    const avatarUrl = req.file.path;
     await User.findByIdAndUpdate(req.user.id, { avatar: avatarUrl });
 
     res.json({
@@ -567,6 +574,13 @@ const updateAddress = async (req, res, next) => {
 // Endpoint for new OAuth users to complete verification
 const verifyOAuthAccount = async (req, res, next) => {
   try {
+    if (req.user.role === "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Administrator accounts do not require identity verification.",
+      });
+    }
+
     const { docType, documentNumber, phone } = req.body;
 
     if (!docType || !documentNumber) {
@@ -626,7 +640,7 @@ const verifyOAuthAccount = async (req, res, next) => {
     user.verificationDoc = {
       docType,
       documentNumber,
-      fileUrl: `/uploads/verification/${req.file.filename}`,
+      fileUrl: req.file.path,
       status: "pending",
       submittedAt: new Date(),
       verifiedAt: undefined,

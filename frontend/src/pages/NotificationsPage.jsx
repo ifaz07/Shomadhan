@@ -144,7 +144,7 @@ const NotificationsPage = () => {
           },
         ]
       : []),
-    ...(!isServant
+    ...(!isServant && user?.role !== "admin"
       ? [
           {
             ...getVerificationNotification(),

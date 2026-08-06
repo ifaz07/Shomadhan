@@ -623,7 +623,7 @@ const ComplaintPage = () => {
           initial="hidden"
           animate="visible"
           onSubmit={handleSubmit}
-          className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start"
+          className="grid min-w-0 grid-cols-1 items-start gap-6 xl:grid-cols-12"
         >
           {/* â”€â”€â”€ Basic Info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           <div className="xl:col-span-12 bg-white rounded-[2rem] shadow-[0_22px_50px_-30px_rgba(15,23,42,0.28)] border border-white/80 ring-1 ring-slate-100 p-6 md:p-8 space-y-6">
@@ -1287,11 +1287,11 @@ const ComplaintPage = () => {
           </AnimatePresence>
 
           {/* â”€â”€â”€ Submit Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-          <motion.div variants={itemVariants} className="xl:col-span-12 pt-2">
+          <motion.div variants={itemVariants} className="min-w-0 pt-2 xl:col-span-12">
             <button
               type="submit"
               disabled={isSubmitBlocked}
-              className={`w-full py-4 rounded-[1.6rem] flex items-center justify-center gap-2 text-white font-bold text-lg shadow-[0_22px_45px_-20px_rgba(13,148,136,0.45)] transition-all ${
+              className={`flex w-full min-w-0 items-center justify-center gap-2 rounded-[1.6rem] py-4 text-lg font-bold text-white shadow-[0_22px_45px_-20px_rgba(13,148,136,0.45)] transition-all ${
                 isSubmitBlocked
                   ? "bg-gray-400 cursor-not-allowed"
                   : "bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-600 hover:scale-[1.01] active:scale-[0.99]"

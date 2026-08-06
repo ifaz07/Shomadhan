@@ -1,15 +1,15 @@
 const multer = require('multer');
-const path = require('path');
-const { getUploadDir } = require('../utils/uploadPaths');
+const { randomUUID } = require('crypto');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('../config/cloudinary');
 
-// Storage configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, getUploadDir('verification'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, `verify-${req.user.id}-${uniqueSuffix}${path.extname(file.originalname)}`);
+// Verification files must outlive backend restarts and redeployments.
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'shomadhan/verification',
+    resource_type: 'auto',
+    public_id: (req) => `verification-${req.user.id}-${randomUUID()}`,
   },
 });
 

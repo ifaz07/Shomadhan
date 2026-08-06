@@ -1,15 +1,14 @@
 const multer = require('multer');
-const path = require('path');
-const { getUploadDir } = require('../utils/uploadPaths');
+const { randomUUID } = require('crypto');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('../config/cloudinary');
 
-// Storage configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, getUploadDir('volunteer'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, `volunteer-${uniqueSuffix}${path.extname(file.originalname)}`);
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'shomadhan/volunteer',
+    resource_type: 'image',
+    public_id: () => `volunteer-${randomUUID()}`,
   },
 });
 

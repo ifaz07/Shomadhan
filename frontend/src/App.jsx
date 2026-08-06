@@ -54,6 +54,18 @@ const NonServantRoute = ({ children }) => {
   return children;
 };
 
+const VerificationRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === "admin") {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+  if (user.role === "department_officer") {
+    return <Navigate to="/servant/dashboard" replace />;
+  }
+  return children;
+};
+
 const ServantRoute = ({ children }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -181,9 +193,9 @@ function App() {
         <Route
           path="/verify"
           element={
-            <NonServantRoute>
+            <VerificationRoute>
               <VerificationPage />
-            </NonServantRoute>
+            </VerificationRoute>
           }
         />
         <Route
@@ -406,4 +418,3 @@ function App() {
 }
 
 export default App;
-

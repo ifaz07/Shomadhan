@@ -121,7 +121,7 @@ const createEmergencyBroadcast = async (req, res, next) => {
       targetRoles: resolvedTargetRoles,
       recipientsCount: recipients.length,
       recipients: recipients.map((recipient) => recipient._id),
-      audioUrl: req.file ? `/uploads/evidence/${req.file.filename}` : null,
+      audioUrl: req.file ? req.file.path : null,
     });
 
     const disasterLabel = DISASTER_LABELS[disasterType] || DISASTER_LABELS.other;

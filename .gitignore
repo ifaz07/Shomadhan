@@ -1,14 +1,27 @@
 # Dependencies
 node_modules/
 
-# Environment variables (NEVER commit these)
+# Environment variables and deployment secrets (NEVER commit these)
 .env
-.env.local
-.env.production
- 
+.env.*
+!.env.example
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Hosting tool state
+.vercel/
+
 # Build outputs
 dist/
 build/
+
+# Local user uploads (avatars, verification documents, complaint media, etc.)
+uploads/
+backend/uploads/
 
 # Logs
 *.log
@@ -17,4 +30,3 @@ npm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
- 

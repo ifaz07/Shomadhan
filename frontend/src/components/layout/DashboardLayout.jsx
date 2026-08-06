@@ -10,7 +10,7 @@ const DashboardLayout = ({
     <div className={`flex h-screen relative overflow-hidden ${bgClass}`}>
       {showShapes && <FloatingShapes />}
       <Sidebar transparent={showShapes} />
-      <main className="flex-1 lg:ml-0 relative z-10 overflow-y-auto">
+      <main className="relative z-10 min-w-0 flex-1 overflow-y-auto lg:ml-0">
         <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 min-h-full flex flex-col">
           <div className="flex-1">
             {children}

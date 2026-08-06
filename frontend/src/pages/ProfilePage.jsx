@@ -259,7 +259,7 @@ const ProfilePage = () => {
               : "Open",
       detail: user?.verificationDoc?.docType || "Identity status",
     },
-  ];
+  ].filter((stat) => stat.label !== "Verification" || user?.role !== "admin");
 
   const setAddress = useCallback((addr) => {
     setAddressData((prev) => ({ ...prev, address: addr }));

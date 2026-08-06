@@ -1,12 +1,18 @@
 const multer = require('multer');
-const path   = require('path');
-const { getUploadDir } = require('../utils/uploadPaths');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('../config/cloudinary');
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, getUploadDir('avatars')),
-  // Always overwrite the same filename per user so old files don't pile up
-  filename: (req, file, cb) => {
-    cb(null, `avatar-${req.user.id}${path.extname(file.originalname).toLowerCase()}`);
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'shomadhan/avatars',
+    resource_type: 'image',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    transformation: [{ width: 512, height: 512, crop: 'limit' }],
+    // One durable Cloudinary asset per user; replacing a photo overwrites it.
+    public_id: (req) => `avatar-${req.user.id}`,
+    overwrite: true,
+    invalidate: true,
   },
 });
 

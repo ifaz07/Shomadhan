@@ -79,7 +79,7 @@ const createComplaint = async (req, res, next) => {
         let type = "image";
         if (file.mimetype.startsWith("video/")) type = "video";
         if (file.mimetype.startsWith("audio/")) type = "audio";
-        return { url: `/uploads/evidence/${file.filename}`, type };
+        return { url: file.path, type };
       });
     }
 
