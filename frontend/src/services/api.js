@@ -82,6 +82,7 @@ export const complaintAPI = {
   getAll: (params = {}) => api.get("/complaints", { params }),
   getStats: (params = {}) => api.get("/complaints/stats", { params }),
   getOne: (id) => api.get(`/complaints/${id}`),
+  update: (id, data) => api.put(`/complaints/${id}`, data),
 
   // Upvote / un-vote toggle
   vote: (id) => api.post(`/complaints/${id}/vote`),

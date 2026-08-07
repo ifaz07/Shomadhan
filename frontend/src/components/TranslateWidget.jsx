@@ -58,7 +58,7 @@ const TranslateWidget = ({ text, fromLang, toLang }) => {
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            className="mt-2 p-3 rounded-xl bg-teal-50 border border-teal-200 relative"
+            className="mt-2 flex justify-end p-3 rounded-xl bg-teal-50 border border-teal-200 relative"
           >
             <button
               type="button"

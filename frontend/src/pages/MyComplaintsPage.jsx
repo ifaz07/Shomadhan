@@ -14,13 +14,22 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
+  Edit3,
+  Trash2,
+  Save,
+  Loader2,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { complaintAPI } from "../services/api";
 import DashboardLayout from "../components/layout/DashboardLayout";
+import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import T from "../components/T";
 import VoiceMessagePlayer from "../components/VoiceMessagePlayer";
-import { getDepartmentLabel } from "../constants/departments";
+import {
+  DEPARTMENT_OPTIONS,
+  getDepartmentLabel,
+} from "../constants/departments";
 import { getAssetBaseUrl } from "../utils/apiBase";
 
 // ─── Config ───────────────────────────────────────────────────────────
@@ -66,6 +75,8 @@ const STEPS = [
   { key: "resolved", label: "Resolved" },
 ];
 
+const EDIT_WINDOW_MS = 2 * 60 * 1000;
+
 const getStepIndex = (status) => {
   if (status === "rejected") return 1;
   if (status === "pending") return 0;
@@ -109,6 +120,20 @@ const getSlaInfo = (createdAt, slaDeadline) => {
   );
   const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
   return { progress, daysLeft };
+};
+
+const getEditWindowInfo = (createdAt, now = Date.now()) => {
+  const created = new Date(createdAt).getTime();
+  if (!Number.isFinite(created)) {
+    return { canEdit: false, secondsLeft: 0 };
+  }
+
+  const secondsLeft = Math.max(
+    0,
+    Math.ceil((created + EDIT_WINDOW_MS - now) / 1000),
+  );
+
+  return { canEdit: secondsLeft > 0, secondsLeft };
 };
 
 const getEvidenceUrl = (item) => {
@@ -224,7 +249,7 @@ const StatCard = ({ icon: Icon, label, value, color, bg, delay }) => (
 );
 
 // ─── Complaint Card ───────────────────────────────────────────────────
-const ComplaintCard = ({ complaint, index, onView }) => {
+const ComplaintCard = ({ complaint, index, onView, onEdit, onDelete, now }) => {
   const [expanded, setExpanded] = useState(false);
 
   const pCfg = PRIORITY_CONFIG[complaint.priority] || PRIORITY_CONFIG.Low;
@@ -236,6 +261,7 @@ const ComplaintCard = ({ complaint, index, onView }) => {
   const deptLabel = getDepartmentLabel(
     complaint.department || complaint.category,
   );
+  const { canEdit, secondsLeft } = getEditWindowInfo(complaint.createdAt, now);
 
   return (
     <motion.div
@@ -395,6 +421,25 @@ const ComplaintCard = ({ complaint, index, onView }) => {
                 {expanded ? <T en="Hide" /> : <T en="History" />}
               </button>
             )}
+            {canEdit && (
+              <button
+                onClick={() => onEdit(complaint)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100 transition-colors"
+                title={`Edit available for ${secondsLeft}s`}
+              >
+                <Edit3 size={12} />
+                <T en="Edit" />
+                <span className="text-[10px] text-blue-500">{secondsLeft}s</span>
+              </button>
+            )}
+            <button
+              onClick={() => onDelete(complaint)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 text-xs font-semibold rounded-lg hover:bg-red-100 transition-colors"
+              title="Delete complaint"
+            >
+              <Trash2 size={12} />
+              <T en="Delete" />
+            </button>
             <button
               onClick={() => onView(complaint._id)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 text-white text-xs font-medium rounded-lg hover:bg-teal-700 transition-colors"
@@ -444,6 +489,232 @@ const ComplaintCard = ({ complaint, index, onView }) => {
 };
 
 // ─── Empty State ──────────────────────────────────────────────────────
+const EditComplaintModal = ({
+  complaint,
+  isOpen,
+  onClose,
+  onSave,
+  loading,
+  now,
+}) => {
+  const [formData, setFormData] = useState({
+    fullname: "",
+    title: "",
+    category: "",
+    description: "",
+    location: "",
+    emergencyFlag: false,
+  });
+
+  useEffect(() => {
+    if (!complaint) return;
+    setFormData({
+      fullname: complaint.fullname || "",
+      title: complaint.title || "",
+      category: complaint.category || "",
+      description: complaint.description || "",
+      location: complaint.location || "",
+      emergencyFlag: Boolean(complaint.emergencyFlag),
+    });
+  }, [complaint]);
+
+  if (!isOpen || !complaint) return null;
+
+  const { canEdit, secondsLeft } = getEditWindowInfo(complaint.createdAt, now);
+
+  const handleChange = (event) => {
+    const { name, value, type, checked } = event.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (!canEdit) {
+      toast.error("Edit window expired");
+      return;
+    }
+    if (!formData.fullname.trim()) return toast.error("Please enter your real name");
+    if (!formData.title.trim()) return toast.error("Please enter a complaint title");
+    if (!formData.description.trim()) {
+      return toast.error("Please enter complaint details");
+    }
+    if (!formData.category) return toast.error("Please select a department");
+    if (!formData.location.trim()) {
+      return toast.error("Please provide a complaint location");
+    }
+    onSave(formData);
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[1000] bg-slate-900/45 backdrop-blur-sm flex items-center justify-center p-4"
+        onClick={(event) => {
+          if (event.target === event.currentTarget && !loading) onClose();
+        }}
+      >
+        <motion.form
+          initial={{ opacity: 0, y: 16, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 16, scale: 0.97 }}
+          onSubmit={handleSubmit}
+          className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-[2rem] shadow-2xl border border-gray-100"
+        >
+          <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">
+                <T en="Edit Complaint" />
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                {canEdit ? (
+                  <>
+                    <T en="Time left" />: {secondsLeft}s
+                  </>
+                ) : (
+                  <T en="The 2 minute edit window has expired." />
+                )}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="px-6 py-5 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                  <T en="Full Name" />
+                </span>
+                <input
+                  name="fullname"
+                  value={formData.fullname}
+                  onChange={handleChange}
+                  disabled={!canEdit || loading}
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-teal-400 focus:outline-none disabled:bg-gray-50"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                  <T en="Department" />
+                </span>
+                <select
+                  name="category"
+                  value={formData.category}
+                  onChange={handleChange}
+                  disabled={!canEdit || loading}
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-teal-400 focus:outline-none disabled:bg-gray-50"
+                >
+                  <option value="">Select department</option>
+                  {DEPARTMENT_OPTIONS.map((dept) => (
+                    <option key={dept.value} value={dept.value}>
+                      {dept.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                <T en="Title" />
+              </span>
+              <input
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                disabled={!canEdit || loading}
+                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-teal-400 focus:outline-none disabled:bg-gray-50"
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                <T en="Description" />
+              </span>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                disabled={!canEdit || loading}
+                rows={5}
+                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-teal-400 focus:outline-none disabled:bg-gray-50"
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                <T en="Location" />
+              </span>
+              <input
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                disabled={!canEdit || loading}
+                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-teal-400 focus:outline-none disabled:bg-gray-50"
+              />
+            </label>
+
+            <label className="flex items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+              <span>
+                <span className="block text-sm font-bold text-gray-800">
+                  <T en="Emergency Priority" />
+                </span>
+                <span className="block text-xs text-gray-500">
+                  <T en="Mark this complaint as urgent if the situation requires immediate attention." />
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                name="emergencyFlag"
+                checked={formData.emergencyFlag}
+                onChange={handleChange}
+                disabled={!canEdit || loading}
+                className="h-5 w-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50"
+              />
+            </label>
+          </div>
+
+          <div className="px-6 py-5 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="sm:flex-1 py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold hover:bg-white transition-all disabled:opacity-50"
+            >
+              <T en="Cancel" />
+            </button>
+            <button
+              type="submit"
+              disabled={!canEdit || loading}
+              className="sm:flex-1 py-3 rounded-2xl bg-teal-600 text-white font-semibold transition-all hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                <Save size={18} />
+              )}
+              <T en="Save Changes" />
+            </button>
+          </div>
+        </motion.form>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 const EmptyState = ({ tab, onSubmit }) => (
   <motion.div
     initial={{ opacity: 0, y: 10 }}
@@ -493,6 +764,11 @@ const MyComplaintsPage = () => {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("All");
+  const [now, setNow] = useState(Date.now());
+  const [editingComplaint, setEditingComplaint] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchComplaints = () => {
     setLoading(true);
@@ -509,6 +785,52 @@ const MyComplaintsPage = () => {
   useEffect(() => {
     fetchComplaints();
   }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleSaveEdit = async (data) => {
+    if (!editingComplaint?._id) return;
+    setSavingEdit(true);
+    try {
+      const response = await complaintAPI.update(editingComplaint._id, data);
+      const updated = response.data.data;
+      setComplaints((prev) =>
+        prev.map((complaint) =>
+          complaint._id === updated._id ? { ...complaint, ...updated } : complaint,
+        ),
+      );
+      setEditingComplaint(null);
+      toast.success("Complaint updated successfully");
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to update complaint",
+      );
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeleteComplaint = async () => {
+    if (!deleteTarget?._id) return;
+    setDeleting(true);
+    try {
+      await complaintAPI.delete(deleteTarget._id);
+      setComplaints((prev) =>
+        prev.filter((complaint) => complaint._id !== deleteTarget._id),
+      );
+      setDeleteTarget(null);
+      toast.success("Complaint deleted successfully");
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to delete complaint",
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const total = complaints.length;
   const pending = complaints.filter((c) => c.status === "pending").length;
@@ -716,6 +1038,9 @@ const MyComplaintsPage = () => {
               key={c._id}
               complaint={c}
               index={i}
+              now={now}
+              onEdit={setEditingComplaint}
+              onDelete={setDeleteTarget}
               onView={(id) =>
                 navigate(`/complaints/${id}`, {
                   state: { from: "/my-complaints", label: "My Complaints" },
@@ -725,6 +1050,22 @@ const MyComplaintsPage = () => {
           ))}
         </div>
       )}
+
+      <EditComplaintModal
+        complaint={editingComplaint}
+        isOpen={Boolean(editingComplaint)}
+        onClose={() => !savingEdit && setEditingComplaint(null)}
+        onSave={handleSaveEdit}
+        loading={savingEdit}
+        now={now}
+      />
+
+      <DeleteConfirmationModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        onConfirm={handleDeleteComplaint}
+        loading={deleting}
+      />
     </DashboardLayout>
   );
 };

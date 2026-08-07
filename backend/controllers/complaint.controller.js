@@ -55,6 +55,7 @@ const haversineKm = (lat1, lon1, lat2, lon2) => {
 const createComplaint = async (req, res, next) => {
   try {
     const {
+      fullname,
       title,
       description,
       category,
@@ -146,6 +147,7 @@ const createComplaint = async (req, res, next) => {
 
     const complaintData = {
       ticketId: generateTicketId(),
+      fullname,
       title,
       description,
       category: normalizedCategory,
@@ -193,6 +195,7 @@ const createComplaint = async (req, res, next) => {
     // ── Spam / duplicate detection ─────────────────────────────────────
     try {
       const spam = await checkForDuplicates(
+        fullname,
         title,
         effectiveDescription || description,
         lat,
@@ -245,7 +248,7 @@ const createComplaint = async (req, res, next) => {
     if (complaint.user) {
       await sendNotification(complaint.user, {
         subject: "Complaint Received: " + complaint.ticketId,
-        message: `Your complaint "${complaint.title}" has been received and is currently pending review. Ticket ID: ${complaint.ticketId}`,
+        message: `"${complaint.fullname}" complaint "${complaint.title}" has been received and is currently pending review. Ticket ID: ${complaint.ticketId}`,
         type: "info",
         relatedTicket: complaint._id,
       });
@@ -530,7 +533,9 @@ const getNearbyComplaints = async (req, res, next) => {
   }
 };
 
-// @desc    Edit a complaint (only within 4 minutes of creation)
+const CITIZEN_EDIT_WINDOW_MS = 2 * 60 * 1000;
+
+// @desc    Edit a complaint (only within 2 minutes of creation)
 // @route   PUT /api/v1/complaints/:id
 // @access  Private
 const updateComplaint = async (req, res, next) => {
@@ -548,15 +553,16 @@ const updateComplaint = async (req, res, next) => {
       });
     }
     const timeDiff = Date.now() - new Date(complaint.createdAt).getTime();
-    if (timeDiff > 4 * 60 * 1000) {
+    if (timeDiff > CITIZEN_EDIT_WINDOW_MS) {
       return res.status(403).json({
         success: false,
         message:
-          "Edit window expired. Complaints can only be edited within 4 minutes of submission.",
+          "Edit window expired. Complaints can only be edited within 2 minutes of submission.",
       });
     }
 
     const {
+      fullname,
       title,
       description,
       category,
@@ -565,28 +571,55 @@ const updateComplaint = async (req, res, next) => {
       longitude,
       emergencyFlag,
     } = req.body;
-    const emergency = emergencyFlag === "true" || emergencyFlag === true;
-    const normalizedCategory = normalizeDepartmentKey(category);
+    const updates = {};
+    if (fullname !== undefined) updates.fullname = fullname;
+    if (title !== undefined) updates.title = title;
+    if (description !== undefined) updates.description = description;
+    if (location !== undefined) updates.location = location;
+    if (latitude !== undefined) {
+      updates.latitude = latitude === "" ? null : Number(latitude);
+    }
+    if (longitude !== undefined) {
+      updates.longitude = longitude === "" ? null : Number(longitude);
+    }
+
+    if (category !== undefined) {
+      const normalizedCategory = normalizeDepartmentKey(category);
+      if (!normalizedCategory) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select a valid department for this complaint.",
+        });
+      }
+      updates.category = normalizedCategory;
+    }
+
+    if (emergencyFlag !== undefined) {
+      updates.emergencyFlag =
+        emergencyFlag === "true" || emergencyFlag === true;
+    }
+
+    const priorityCategory = updates.category || complaint.category;
+    const priorityEmergency =
+      updates.emergencyFlag !== undefined
+        ? updates.emergencyFlag
+        : complaint.emergencyFlag;
+    const priorityLocation =
+      updates.location !== undefined
+        ? updates.location
+        : complaint.location || "";
 
     const newPriority = calculatePriority({
-      category: normalizedCategory || complaint.category,
-      emergencyFlag: emergency,
+      category: priorityCategory,
+      emergencyFlag: priorityEmergency,
       voteCount: complaint.voteCount,
-      location: location || complaint.location || "",
+      location: priorityLocation,
     });
+    updates.priority = newPriority;
 
     complaint = await Complaint.findByIdAndUpdate(
       req.params.id,
-      {
-        title,
-        description,
-        category: normalizedCategory || complaint.category,
-        location,
-        latitude,
-        longitude,
-        emergencyFlag: emergency,
-        priority: newPriority,
-      },
+      updates,
       { new: true, runValidators: true },
     );
 
@@ -614,14 +647,6 @@ const deleteComplaint = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: "Not authorized to delete this complaint",
-      });
-    }
-
-    // Only pending complaints can be deleted by the user
-    if (req.user.role !== "admin" && complaint.status !== "pending") {
-      return res.status(400).json({
-        success: false,
-        message: "Only pending complaints can be deleted",
       });
     }
 
