@@ -69,6 +69,22 @@ const sendNotification = async (userId, options) => {
 };
 
 /**
+ * Send an in-app notification to every active admin.
+ */
+const sendAdminNotification = async (options) => {
+  try {
+    const admins = await User.find({ role: "admin", isActive: { $ne: false } })
+      .select("_id");
+
+    await Promise.all(
+      admins.map((admin) => sendNotification(admin._id, options)),
+    );
+  } catch (error) {
+    console.error("Error sending admin notification:", error);
+  }
+};
+
+/**
  * Broadcast an emergency alert to all users within 5km radius of the incident.
  */
 const sendEmergencyAlertToNearbyUsers = async (complaint) => {
@@ -112,6 +128,7 @@ const sendEmergencyAlertToNearbyUsers = async (complaint) => {
 
 module.exports = {
   sendNotification,
+  sendAdminNotification,
   sendEmergencyAlertToNearbyUsers,
   haversineKm,
 };
