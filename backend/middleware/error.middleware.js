@@ -1,5 +1,6 @@
 // ─── Centralized Error Handler ────────────────────────────────────────
 const errorHandler = (err, req, res, next) => {
+  console.error('[Central Error Handler]:', err);
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Internal Server Error';
 

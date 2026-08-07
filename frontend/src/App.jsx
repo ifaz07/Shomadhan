@@ -28,7 +28,7 @@ import ServantProfilePage from "./pages/servant/ServantProfilePage";
 import ServantHeatmapPage from "./pages/servant/ServantHeatmapPage";
 import ServantComplaintDetailPage from "./pages/servant/ServantComplaintDetailPage";
 import { useAuth } from "./context/AuthContext";
-import { getDefaultDashboardRoute } from "./utils/roleRoutes";
+import { getDefaultDashboardRoute, normalizeRole } from "./utils/roleRoutes";
 
 const AuthenticatedRoute = ({ children }) => {
   const { user } = useAuth();
@@ -39,7 +39,7 @@ const AuthenticatedRoute = ({ children }) => {
 const CitizenRoute = ({ children }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== "citizen") {
+  if (normalizeRole(user.role) !== "citizen") {
     return <Navigate to={getDefaultDashboardRoute(user.role)} replace />;
   }
   return children;
@@ -48,7 +48,7 @@ const CitizenRoute = ({ children }) => {
 const NonServantRoute = ({ children }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role === "department_officer") {
+  if (normalizeRole(user.role) === "department_officer") {
     return <Navigate to="/servant/dashboard" replace />;
   }
   return children;
@@ -69,7 +69,7 @@ const VerificationRoute = ({ children }) => {
 const ServantRoute = ({ children }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== "department_officer") {
+  if (normalizeRole(user.role) !== "department_officer") {
     return <Navigate to={getDefaultDashboardRoute(user.role)} replace />;
   }
   if (!user.isActive) {
@@ -81,7 +81,7 @@ const ServantRoute = ({ children }) => {
 const MayorRoute = ({ children }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== "mayor") {
+  if (normalizeRole(user.role) !== "mayor") {
     return <Navigate to={getDefaultDashboardRoute(user.role)} replace />;
   }
   if (!user.isActive) {
@@ -93,7 +93,7 @@ const MayorRoute = ({ children }) => {
 const AdminRoute = ({ children }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== "admin") {
+  if (normalizeRole(user.role) !== "admin") {
     return <Navigate to={getDefaultDashboardRoute(user.role)} replace />;
   }
   return children;

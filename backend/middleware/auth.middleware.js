@@ -1,6 +1,14 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User.model');
 
+const normalizeRole = (role) => {
+  const normalized = String(role || "").toLowerCase().trim();
+  if (["department_officer", "department-officer", "public_servant", "public-servant", "servant", "officer"].includes(normalized)) {
+    return "department_officer";
+  }
+  return normalized;
+};
+
 // ─── Protect routes — verify JWT ─────────────────────────────────────
 const protect = async (req, res, next) => {
   try {
@@ -43,7 +51,8 @@ const protect = async (req, res, next) => {
 // ─── Role-Based Access Control ───────────────────────────────────────
 const authorize = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    const normalizedRole = normalizeRole(req.user.role);
+    if (!roles.includes(normalizedRole)) {
       return res.status(403).json({
         success: false,
         message: `Role '${req.user.role}' is not authorized for this action.`,

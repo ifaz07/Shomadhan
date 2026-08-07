@@ -47,6 +47,15 @@ const complaintSchema = new mongoose.Schema(
       required: [true, "Description is required"],
       trim: true,
     },
+    descriptionType: {
+      type: String,
+      enum: ['text', 'voice'],
+      default: 'text',
+    },
+    voiceDescription: {
+      url: { type: String },
+      publicId: { type: String },
+    },
     category: {
       type: String,
       required: [true, "Category is required"],

@@ -13,7 +13,6 @@ const storage = new CloudinaryStorage({
   },
 });
 
-// File filter
 const fileFilter = (req, file, cb) => {
   const allowedMimeTypes = [
     'image/jpeg', 'image/png', 'image/webp',
@@ -21,7 +20,12 @@ const fileFilter = (req, file, cb) => {
     'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm'
   ];
 
-  if (allowedMimeTypes.includes(file.mimetype)) {
+  if (
+    allowedMimeTypes.includes(file.mimetype) ||
+    file.mimetype?.startsWith('image/') ||
+    file.mimetype?.startsWith('video/') ||
+    file.mimetype?.startsWith('audio/')
+  ) {
     cb(null, true);
   } else {
     cb(new Error('Invalid file type. Only images, videos, and audio are allowed.'), false);
