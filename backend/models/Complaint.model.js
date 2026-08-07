@@ -37,11 +37,6 @@ const complaintSchema = new mongoose.Schema(
       unique: true,
       required: true,
     },
-    fullname: {
-      type: String,
-      required: [true, "fullname is required"],
-      trim: true,
-    },
     title: {
       type: String,
       required: [true, "Title is required"],

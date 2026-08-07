@@ -498,7 +498,6 @@ const EditComplaintModal = ({
   now,
 }) => {
   const [formData, setFormData] = useState({
-    fullname: "",
     title: "",
     category: "",
     description: "",
@@ -509,7 +508,6 @@ const EditComplaintModal = ({
   useEffect(() => {
     if (!complaint) return;
     setFormData({
-      fullname: complaint.fullname || "",
       title: complaint.title || "",
       category: complaint.category || "",
       description: complaint.description || "",
@@ -536,7 +534,6 @@ const EditComplaintModal = ({
       toast.error("Edit window expired");
       return;
     }
-    if (!formData.fullname.trim()) return toast.error("Please enter your real name");
     if (!formData.title.trim()) return toast.error("Please enter a complaint title");
     if (!formData.description.trim()) {
       return toast.error("Please enter complaint details");
@@ -593,19 +590,6 @@ const EditComplaintModal = ({
 
           <div className="px-6 py-5 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                  <T en="Full Name" />
-                </span>
-                <input
-                  name="fullname"
-                  value={formData.fullname}
-                  onChange={handleChange}
-                  disabled={!canEdit || loading}
-                  className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-teal-400 focus:outline-none disabled:bg-gray-50"
-                />
-              </label>
-
               <label className="block">
                 <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
                   <T en="Department" />

@@ -286,10 +286,17 @@ const ComplaintDetailPage = () => {
   const sla = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
   const isResolved = complaint.status === "resolved";
   const headerBorder = isResolved ? "border-gray-200" : pCfg.border;
-  const evidence = complaint.evidence || [];
+  const evidence = Array.isArray(complaint.evidence) ? complaint.evidence : [];
+  const voiceDescriptionItem =
+    complaint.voiceDescription?.url || evidence.find(isVoiceDescription) || null;
+  const attachmentItems = evidence.filter((item) => {
+    const url = getEvidenceUrl(item);
+    return url && url !== getEvidenceUrl(voiceDescriptionItem);
+  });
   const timeline = complaint.history || [];
   const hasMap = complaint.latitude && complaint.longitude;
   const submitterAvatar = resolveAvatar(complaint.submittedBy?.avatar);
+  const departmentLabel = getDepartmentLabel(complaint.category);
 
   return (
     <DashboardLayout>
@@ -736,4 +743,3 @@ const ComplaintDetailPage = () => {
 };
 
 export default ComplaintDetailPage;
-

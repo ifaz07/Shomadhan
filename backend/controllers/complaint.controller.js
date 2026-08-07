@@ -55,7 +55,6 @@ const haversineKm = (lat1, lon1, lat2, lon2) => {
 const createComplaint = async (req, res, next) => {
   try {
     const {
-      fullname,
       title,
       description,
       category,
@@ -147,7 +146,6 @@ const createComplaint = async (req, res, next) => {
 
     const complaintData = {
       ticketId: generateTicketId(),
-      fullname,
       title,
       description,
       category: normalizedCategory,
@@ -195,7 +193,6 @@ const createComplaint = async (req, res, next) => {
     // ── Spam / duplicate detection ─────────────────────────────────────
     try {
       const spam = await checkForDuplicates(
-        fullname,
         title,
         effectiveDescription || description,
         lat,
@@ -248,7 +245,7 @@ const createComplaint = async (req, res, next) => {
     if (complaint.user) {
       await sendNotification(complaint.user, {
         subject: "Complaint Received: " + complaint.ticketId,
-        message: `"${complaint.fullname}" complaint "${complaint.title}" has been received and is currently pending review. Ticket ID: ${complaint.ticketId}`,
+        message: `Your complaint "${complaint.title}" has been received and is currently pending review. Ticket ID: ${complaint.ticketId}`,
         type: "info",
         relatedTicket: complaint._id,
       });
@@ -364,7 +361,18 @@ const voteComplaint = async (req, res, next) => {
       location: complaint.location || "",
     });
 
-    await complaint.save();
+    // Update only vote-related fields. Saving the full document would re-run
+    // validation on legacy complaints that may not have newer required fields.
+    await Complaint.updateOne(
+      { _id: complaint._id },
+      {
+        $set: {
+          votes: complaint.votes,
+          voteCount: complaint.voteCount,
+          priority: complaint.priority,
+        },
+      },
+    );
 
     res.status(200).json({
       success: true,
@@ -562,7 +570,6 @@ const updateComplaint = async (req, res, next) => {
     }
 
     const {
-      fullname,
       title,
       description,
       category,
@@ -572,7 +579,6 @@ const updateComplaint = async (req, res, next) => {
       emergencyFlag,
     } = req.body;
     const updates = {};
-    if (fullname !== undefined) updates.fullname = fullname;
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
     if (location !== undefined) updates.location = location;
