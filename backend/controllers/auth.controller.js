@@ -3,8 +3,24 @@ const crypto = require("crypto");
 const User = require("../models/User.model");
 const { getClientUrl } = require("../config/runtimeUrls");
 const { sendEmail } = require("../services/emailService");
+const { sendAdminNotification } = require("../services/notificationService");
 
 const clientUrl = getClientUrl();
+
+const notifyAdminsOfReviewRequest = async (user, reviewType) => {
+  const typeLabel =
+    reviewType === "department_officer"
+      ? "Public servant approval"
+      : reviewType === "mayor"
+        ? "Mayor approval"
+        : "Citizen verification";
+
+  await sendAdminNotification({
+    subject: `New ${typeLabel} Request`,
+    message: `${user.name} submitted a ${typeLabel.toLowerCase()} request and is waiting for admin review.`,
+    type: "warning",
+  });
+};
 
 const hasCurrentMonthlyBadge = (user, date = new Date()) => {
   const month = date.getMonth() + 1;
@@ -142,6 +158,10 @@ const register = async (req, res, next) => {
     // Note: 'admin' role cannot be self-assigned via signup
 
     const user = await User.create(userData);
+
+    if (user.role === "department_officer" || user.role === "mayor") {
+      await notifyAdminsOfReviewRequest(user, user.role);
+    }
 
     sendTokenResponse(user, 201, res);
   } catch (error) {
@@ -333,6 +353,8 @@ const verifyAccount = async (req, res, next) => {
     // Ensure Mongoose detects the object change
     user.markModified("verificationDoc");
     await user.save();
+
+    await notifyAdminsOfReviewRequest(user, "citizen");
 
     res.json({
       success: true,
@@ -649,6 +671,8 @@ const verifyOAuthAccount = async (req, res, next) => {
 
     user.markModified("verificationDoc");
     await user.save();
+
+    await notifyAdminsOfReviewRequest(user, "citizen");
 
     res.json({
       success: true,
