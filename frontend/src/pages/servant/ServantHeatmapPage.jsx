@@ -231,7 +231,7 @@ const ServantHeatmapPage = () => {
               <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-teal-100">
                 <Map size={12} className="text-teal-300" />
                 <T en="City Oversight View" />
-              </div>
+              </div>             
               <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
                 <T en="Complaint Heatmap" />
               </h1>

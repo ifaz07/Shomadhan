@@ -19,6 +19,7 @@ const DashboardLayout = ({
             <p className="text-[10px] font-black tracking-[0.4em] uppercase text-slate-500">
               Government of Bangladesh • Shomadhan Official Portal
             </p>
+            
           </footer>
         </div>
       </main>

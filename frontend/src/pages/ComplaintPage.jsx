@@ -96,6 +96,7 @@ const ComplaintPage = () => {
   const mediaRecorderRef = useRef(null);
   const timerRef = useRef(null);
   const [formData, setFormData] = useState({
+    fullname: "",
     title: "",
     category: "",
     description: "",
@@ -157,6 +158,7 @@ const ComplaintPage = () => {
       fetchNearbyComplaints(
         mapPosition[0],
         mapPosition[1],
+        formData.fullname, 
         formData.category,
         formData.title,
         formData.description,
@@ -165,7 +167,7 @@ const ComplaintPage = () => {
     }, 350);
 
     return () => clearTimeout(timer);
-  }, [mapPosition, formData.category, formData.title, formData.description, formData.location, fetchNearbyComplaints]);
+  }, [mapPosition,formData.fullname, formData.category, formData.title, formData.description, formData.location, fetchNearbyComplaints]);
 
   useEffect(() => {
     return () => {
@@ -460,6 +462,7 @@ const ComplaintPage = () => {
 
     setIsSubmitting(true);
     const data = new FormData();
+    data.append('fullname', formData.fullname);
     data.append('title', formData.title);
     data.append('category', formData.category);
     
@@ -494,6 +497,7 @@ const ComplaintPage = () => {
         setShowSubmitConfirm(false);
         toast.success("Complaint submitted successfully!");
         setFormData({
+          fullname:"",
           title: "",
           category: "",
           description: "",
@@ -522,6 +526,7 @@ const ComplaintPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.fullname.trim()) return toast.error('Please enter your real name');
     if (!formData.title.trim()) return toast.error('Please enter a complaint title');
     if (!formData.description.trim() && !audioBlob) return toast.error('Please enter complaint details or record a voice message');
     if (!formData.category) return toast.error('Please select a department');
@@ -642,6 +647,32 @@ const ComplaintPage = () => {
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <motion.div variants={itemVariants} className="space-y-2">
+                <label className="text-sm font-semibold text-blue-700 flex items-center gap-2">
+                  <T en="Full Name" />
+                </label>
+                <SmartInputWrapper
+                  value={formData.title}
+                  onValueChange={(val) =>
+                    setFormData((prev) => ({ ...prev, fullname: val }))
+                  }
+                  context="Full name please"
+                >
+                  <input
+                    required
+                    type="text"
+                    name="fullname"
+                    value={formData.fullname}
+                    onChange={handleInputChange}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      preventEnterSubmit(e);
+                    }}
+                    placeholder="yo bro write your full name"
+                    className="w-full px-4 py-3 rounded-xl border border-red-200 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-none"
+                  />
+                </SmartInputWrapper>
+              </motion.div>
               <motion.div variants={itemVariants} className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                   <T en="Complaint Title" />

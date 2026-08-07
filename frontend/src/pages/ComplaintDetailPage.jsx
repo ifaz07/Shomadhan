@@ -30,6 +30,7 @@ import VoiceMessagePlayer from "../components/VoiceMessagePlayer";
 import VerifiedBadge from "../components/VerifiedBadge";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import { getAssetBaseUrl } from "../utils/apiBase";
+import { getDepartmentLabel } from "../constants/departments";
 
 // Fix Leaflet default icon
 const defaultIcon = L.icon({
@@ -289,6 +290,9 @@ const ComplaintDetailPage = () => {
   const timeline = complaint.history || [];
   const hasMap = complaint.latitude && complaint.longitude;
   const submitterAvatar = resolveAvatar(complaint.submittedBy?.avatar);
+  const departmentLabel = getDepartmentLabel(
+    complaint.department || complaint.category,
+  );
 
   return (
     <DashboardLayout>
@@ -439,9 +443,7 @@ const ComplaintDetailPage = () => {
                   <Building2 size={13} className="text-gray-400" />
                   <T
                     en={
-                      DEPT_LABEL[complaint.department] ||
-                      complaint.department ||
-                      "â€”"
+                      departmentLabel || "N/A"
                     }
                   />
                 </p>
@@ -739,3 +741,4 @@ const ComplaintDetailPage = () => {
 };
 
 export default ComplaintDetailPage;
+
