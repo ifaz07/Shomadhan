@@ -29,15 +29,17 @@ const resolveAvatar = (url) => {
 };
 
 const DEPT_DISPLAY = {
-  public_works: "Public Works",
+  civil_works: "Civil Works",
+  public_works: "Civil Works",
   water_authority: "Water Authority",
-  electricity: "Electricity",
-  sanitation: "Sanitation",
-  public_safety: "Public Safety",
+  electricity: "Electricity Department",
+  sanitation: "Sanitation Department",
   animal_control: "Animal Control",
-  environment: "Environment",
-  health: "Health",
-  transport: "Transport",
+  environment: "Environment Department",
+  health: "Health Department",
+  transport: "Transport Department",
+  police: "Police Department",
+  fire_service: "Fire Service",
   other: "General Administration",
 };
 

@@ -243,12 +243,22 @@ const createComplaint = async (req, res, next) => {
 
     // Trigger Notification
     if (complaint.user) {
-      await sendNotification(complaint.user, {
-        subject: "Complaint Received: " + complaint.ticketId,
-        message: `Your complaint "${complaint.title}" has been received and is currently pending review. Ticket ID: ${complaint.ticketId}`,
-        type: "info",
-        relatedTicket: complaint._id,
-      });
+      if (finalStatus === "rejected") {
+        // Prank rejection notification
+        await sendNotification(complaint.user, {
+          subject: "Complaint Rejected: " + complaint.ticketId,
+          message: `Your complaint "${complaint.title}" was automatically rejected by our AI system as it appears to be a prank or non-civic issue (Confidence: ${(aiStatus.confidence_score * 100).toFixed(1)}%). If you believe this is an error, please resubmit with a clearer and more detailed description. Ticket ID: ${complaint.ticketId}`,
+          type: "warning",
+          relatedTicket: complaint._id,
+        });
+      } else {
+        await sendNotification(complaint.user, {
+          subject: "Complaint Received: " + complaint.ticketId,
+          message: `Your complaint "${complaint.title}" has been received and is currently pending review. Ticket ID: ${complaint.ticketId}`,
+          type: "info",
+          relatedTicket: complaint._id,
+        });
+      }
     }
 
     // ─── Emergency Broadcast ───────────────────────────────────────

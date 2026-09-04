@@ -21,16 +21,17 @@ import ServantLayout from "../../components/layout/ServantLayout";
 import T from "../../components/T";
 
 const DEPT_DISPLAY = {
-  public_works: "Public Works",
+  civil_works: "Civil Works",
+  public_works: "Civil Works",
   water_authority: "Water Authority",
-  electricity: "Electricity Dept",
-  sanitation: "Sanitation Dept",
-  public_safety: "Public Safety Dept",
+  electricity: "Electricity Department",
+  sanitation: "Sanitation Department",
   animal_control: "Animal Control",
-  environment: "Environment Dept",
-  health: "Health Dept",
-  transport: "Transport Dept",
+  environment: "Environment Department",
+  health: "Health Department",
+  transport: "Transport Department",
   police: "Police Department",
+  fire_service: "Fire Service",
 };
 
 const PRIORITY_CONFIG = {
@@ -49,15 +50,17 @@ const CATEGORY_LABEL = {
   Environment: "Environment",
   "Law Enforcement": "Law Enforcement",
   Other: "Other",
-  public_works: "Public Works",
+  civil_works: "Civil Works",
+  public_works: "Civil Works",
   water_authority: "Water Authority",
-  sanitation: "Sanitation Dept",
-  public_safety: "Public Safety Dept",
+  electricity: "Electricity Department",
+  sanitation: "Sanitation Department",
   animal_control: "Animal Control",
-  health: "Health Dept",
-  transport: "Transport Dept",
-  environment: "Environment Dept",
+  health: "Health Department",
+  transport: "Transport Department",
+  environment: "Environment Department",
   police: "Police Department",
+  fire_service: "Fire Service",
 };
 
 const timeAgo = (date) => {
