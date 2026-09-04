@@ -344,9 +344,14 @@ const ComplaintDetailPage = () => {
               </div>
 
               {isMayor ? (
-                <span className="text-base font-bold leading-none text-gray-800">
-                  {voteCount}
-                </span>
+                <div className="flex flex-col items-center gap-1 px-3 py-2">
+                  <span className="text-base font-bold leading-none text-gray-800">
+                    {voteCount}
+                  </span>
+                  <span className="text-[11px] text-gray-400 leading-none">
+                    public support
+                  </span>
+                </div>
               ) : (
                 <button
                   onClick={handleVote}
@@ -481,7 +486,7 @@ const ComplaintDetailPage = () => {
                   </>
                 ) : (
                   <p className="text-xs text-gray-400 italic">
-                    No resolution deadline assigned yet â€” department review
+                    No resolution deadline assigned yet - {departmentLabel} review
                     pending
                   </p>
                 )}

@@ -28,6 +28,20 @@ const getCurrentAwardPeriod = (date = new Date()) => ({
   awardYear: date.getFullYear(),
 });
 
+const isAutoEscalationHistory = (item = {}) =>
+  item.message?.includes("System auto-escalated this ticket") ||
+  item.action === "SLA breached: Auto-escalated";
+
+const removeDuplicateAutoEscalationHistory = (history = []) => {
+  let hasAutoEscalation = false;
+  return history.filter((item) => {
+    if (!isAutoEscalationHistory(item)) return true;
+    if (hasAutoEscalation) return false;
+    hasAutoEscalation = true;
+    return true;
+  });
+};
+
 // Helper: Generate unique ticket ID (e.g., SOM-2024-ABC12)
 const generateTicketId = () => {
   const prefix = "SOM";
@@ -885,6 +899,10 @@ const getComplaints = async (req, res, next) => {
       { $sort: { _sortWeight: -1, createdAt: -1 } },
     ]);
 
+    complaints.forEach((complaint) => {
+      complaint.history = removeDuplicateAutoEscalationHistory(complaint.history);
+    });
+
     if (mineOnly && complaints.length > 0) {
       const complaintIds = complaints.map((complaint) => complaint._id);
       const feedbacks = await Feedback.find({
@@ -967,6 +985,7 @@ const getComplaint = async (req, res, next) => {
 
     complaint.hasVoted = votedUserIds.includes(req.user._id.toString());
     complaint.isOwnComplaint = Boolean(isOwner);
+    complaint.history = removeDuplicateAutoEscalationHistory(complaint.history);
     complaint.canVote =
       req.user.role !== "mayor" &&
       !complaint.isOwnComplaint &&

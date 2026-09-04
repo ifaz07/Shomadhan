@@ -222,6 +222,11 @@ const ComplaintCard = ({ complaint, index, onClick }) => {
 
         <div className="flex flex-col items-center gap-0.5 flex-shrink-0 pt-1">
           <span className="text-base font-bold text-gray-800 leading-tight">{complaint.voteCount ?? 0}</span>
+          <span className="text-[10px] text-gray-400 leading-tight text-center">
+            Public
+            <br />
+            Support
+          </span>
         </div>
       </div>
     </motion.div>
