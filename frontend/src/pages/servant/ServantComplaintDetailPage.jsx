@@ -202,6 +202,7 @@ const ServantComplaintDetailPage = () => {
 
   const isClosed = complaint?.status === "resolved" || complaint?.status === "rejected";
   const isResolved = complaint?.status === "resolved";
+  const canManage = complaint?.canManage !== false;
   const hasActiveDeadline = Boolean(
     complaint?.slaDeadline && new Date(complaint.slaDeadline).getTime() > Date.now()
   );
@@ -459,7 +460,7 @@ const ServantComplaintDetailPage = () => {
               )}
 
               {/* ── Officer Action Buttons (inside card) ── */}
-              {!isClosed ? (
+              {!isClosed && canManage ? (
                 <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
                   <button
                     onClick={() => setStatusOpen(true)}
@@ -768,7 +769,7 @@ const ServantComplaintDetailPage = () => {
 
       {/* ══ Status Update Modal ══════════════════════════════════ */}
       <AnimatePresence>
-        {statusOpen && (
+        {statusOpen && canManage && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -848,7 +849,7 @@ const ServantComplaintDetailPage = () => {
 
       {/* ══ SLA Modal ════════════════════════════════════════════ */}
       <AnimatePresence>
-        {slaOpen && !hasActiveDeadline && (
+        {slaOpen && canManage && !hasActiveDeadline && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
