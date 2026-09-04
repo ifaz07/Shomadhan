@@ -316,6 +316,13 @@ const analyzeComplaint = async (req, res, next) => {
 // @access  Private
 const voteComplaint = async (req, res, next) => {
   try {
+    if (req.user.role === "mayor") {
+      return res.status(403).json({
+        success: false,
+        message: "Mayors can view vote counts but cannot vote on complaints",
+      });
+    }
+
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) {
       return res
@@ -523,6 +530,7 @@ const getNearbyComplaints = async (req, res, next) => {
       const isOwnComplaint =
         Boolean(currentUserId) && complaintOwnerId === currentUserId;
       const canVote =
+        req.user.role !== "mayor" &&
         !isOwnComplaint &&
         complaint.status !== "resolved" &&
         complaint.status !== "rejected";
@@ -960,6 +968,7 @@ const getComplaint = async (req, res, next) => {
     complaint.hasVoted = votedUserIds.includes(req.user._id.toString());
     complaint.isOwnComplaint = Boolean(isOwner);
     complaint.canVote =
+      req.user.role !== "mayor" &&
       !complaint.isOwnComplaint &&
       complaint.status !== "resolved" &&
       complaint.status !== "rejected";

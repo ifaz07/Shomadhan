@@ -126,7 +126,7 @@ exports.getChatBriefing = async (req, res, next) => {
           Please generate a 3-sentence summary that explicitly states the total count, describes the primary nature/categories of these complaints in detail, and names the top voted issues.`
         }
       ],
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       temperature: 0.3,
       max_tokens: 300,
     });
@@ -141,7 +141,7 @@ exports.getChatBriefing = async (req, res, next) => {
     console.error('Groq Error:', error);
     res.status(500).json({ 
       success: false, 
-      message: `AI Error: ${error.message || 'Unknown error'}` 
+      message: `AI Error: ${error.message || 'Unknown error'}`
     });
   }
 };
