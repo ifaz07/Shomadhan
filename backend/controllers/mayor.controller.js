@@ -56,14 +56,6 @@ const getGroqClient = () => {
  */
 exports.getChatBriefing = async (req, res, next) => {
   try {
-    const groq = getGroqClient();
-    if (!groq) {
-      return res.status(503).json({
-        success: false,
-        message: 'Mayor briefing AI is not configured. Set GROQ_API_KEY to enable this feature.',
-      });
-    }
-
     const { timeframe } = req.body;
     
     // 1. Calculate Date Math
@@ -96,6 +88,18 @@ exports.getChatBriefing = async (req, res, next) => {
 
     // Identify top voted cases
     const topVoted = complaints.slice(0, 3).map(c => `"${c.title}" (${c.voteCount} votes)`).join(', ');
+    const periodLabel = timeframe === 'yesterday' ? 'yesterday' : `this ${timeframe}`;
+    const countBy = (field) => Object.entries(
+      complaints.reduce((acc, c) => {
+        const key = c[field] || 'Unknown';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {})
+    )
+      .sort((a, b) => b[1] - a[1])
+      .map(([key, count]) => `${key} (${count})`)
+      .join(', ');
+    const localSummary = `During ${periodLabel}, ${totalCount} complaint${totalCount === 1 ? ' was' : 's were'} reported. Main categories: ${countBy('category')}. Current statuses: ${countBy('status')}. Top supported cases: ${topVoted || 'No votes yet'}.`;
 
     // 3. Format data for LLM
     let dataString = complaints.map(c => 
@@ -109,46 +113,50 @@ exports.getChatBriefing = async (req, res, next) => {
       dataString = dataString.substring(0, 2000) + "... [truncated]";
     }
 
-    // 4. Groq API Call
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: "You are a professional Civic Data Analyst for the City Mayor's Office. Your goal is to provide specific, data-driven executive summaries. Always include the exact total number of complaints and provide a detailed analysis of the nature and content of the complaints. Mention the titles of the top voted cases specifically. Do not mention geographical areas or locations."
-        },
-        {
-          role: "user",
-          content: `Analysis Request for: ${timeframe}
-          Total Complaints in this period: ${totalCount}
-          Top Voted Cases: ${topVoted}
-          Raw Data (Sample of 50): ${dataString}
-          
-          Please generate a 3-sentence summary that explicitly states the total count, describes the primary nature/categories of these complaints in detail, and names the top voted issues.`
-        }
-      ],
-      model: "openai/gpt-oss-120b",
-      temperature: 0.3,
-      max_tokens: 300,
-    });
+    const groq = getGroqClient();
+    if (!groq) {
+      return res.status(200).json({ success: true, summary: localSummary });
+    }
 
-    const summary = chatCompletion.choices[0]?.message?.content || "I'm sorry Mayor, I couldn't generate a summary at this moment.";
+    // 4. Groq API Call
+    let summary;
+    try {
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are a professional Civic Data Analyst for the City Mayor's Office. Your goal is to provide specific, data-driven executive summaries. Always include the exact total number of complaints and provide a detailed analysis of the nature and content of the complaints. Mention the titles of the top voted cases specifically. Do not mention geographical areas or locations."
+          },
+          {
+            role: "user",
+            content: `Analysis Request for: ${timeframe}
+            Total Complaints in this period: ${totalCount}
+            Top Voted Cases: ${topVoted}
+            Raw Data (Sample of 50): ${dataString}
+
+            Please generate a 3-sentence summary that explicitly states the total count, describes the primary nature/categories of these complaints in detail, and names the top voted issues.`
+          }
+        ],
+        model: "openai/gpt-oss-120b",
+        temperature: 0.3,
+        max_tokens: 300,
+      });
+
+      summary = chatCompletion.choices[0]?.message?.content || localSummary;
+    } catch (error) {
+      console.error('Groq Error:', error);
+      summary = localSummary;
+    }
 
     res.status(200).json({
       success: true,
       summary
     });
   } catch (error) {
-    console.error('Groq Error:', error);
-    if (error.status === 401 || error.error?.error?.code === 'invalid_api_key') {
-      return res.status(503).json({
-        success: false,
-        message: 'Mayor briefing AI is not available because the Groq API key is invalid. Please update GROQ_API_KEY in the backend environment.',
-      });
-    }
-
+    console.error('Mayor Briefing Error:', error);
     res.status(500).json({ 
       success: false, 
-      message: `AI Error: ${error.message || 'Unknown error'}`
+      message: `Mayor briefing error: ${error.message || 'Unknown error'}`
     });
   }
 };
