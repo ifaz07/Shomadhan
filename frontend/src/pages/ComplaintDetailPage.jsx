@@ -285,6 +285,7 @@ const ComplaintDetailPage = () => {
   const sCfg = STATUS_CONFIG[complaint.status] || STATUS_CONFIG.pending;
   const sla = getSlaInfo(complaint.slaDeadline, complaint.slaDurationHours);
   const isResolved = complaint.status === "resolved";
+  const isMayor = user?.role === "mayor";
   const headerBorder = isResolved ? "border-gray-200" : pCfg.border;
   const evidence = Array.isArray(complaint.evidence) ? complaint.evidence : [];
   const voiceDescriptionItem =
@@ -342,37 +343,48 @@ const ComplaintDetailPage = () => {
                 )}
               </div>
 
-              <button
-                onClick={handleVote}
-                disabled={complaint.canVote === false}
-                className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border transition-all ${
-                  complaint.canVote === false
-                    ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-                    : hasVoted
-                    ? "bg-teal-50 border-teal-300 text-teal-700"
-                    : "border-gray-200 text-gray-500 hover:bg-gray-50"
-                }`}
-                title={
-                  complaint.isOwnComplaint
-                    ? "You cannot vote on your own complaint"
-                    : isResolved || complaint.status === "rejected"
-                    ? "Closed complaints can no longer receive public support"
-                    : hasVoted
-                    ? "Remove vote"
-                    : "Show public support"
-                }
-              >
-                <ThumbsUp
-                  size={16}
-                  className={complaint.canVote === false ? "text-gray-300" : hasVoted ? "text-teal-600" : "text-gray-400"}
-                />
-                <span className="text-base font-bold leading-none">
-                  {voteCount}
-                </span>
-                <span className="text-[11px] text-gray-400 leading-none">
-                  <T en={isResolved || complaint.status === "rejected" ? "rejected" : "Upvotes"} />
-                </span>
-              </button>
+              {isMayor ? (
+                <div className="flex flex-col items-center gap-1 px-3 py-2">
+                  <span className="text-base font-bold leading-none text-gray-800">
+                    {voteCount}
+                  </span>
+                  <span className="text-[11px] text-gray-400 leading-none">
+                    public support
+                  </span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleVote}
+                  disabled={complaint.canVote === false}
+                  className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border transition-all ${
+                    complaint.canVote === false
+                      ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                      : hasVoted
+                      ? "bg-teal-50 border-teal-300 text-teal-700"
+                      : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                  }`}
+                  title={
+                    complaint.isOwnComplaint
+                      ? "You cannot vote on your own complaint"
+                      : isResolved || complaint.status === "rejected"
+                      ? "Closed complaints can no longer receive public support"
+                      : hasVoted
+                      ? "Remove vote"
+                      : "Show public support"
+                  }
+                >
+                  <ThumbsUp
+                    size={16}
+                    className={complaint.canVote === false ? "text-gray-300" : hasVoted ? "text-teal-600" : "text-gray-400"}
+                  />
+                  <span className="text-base font-bold leading-none">
+                    {voteCount}
+                  </span>
+                  <span className="text-[11px] text-gray-400 leading-none">
+                    <T en={isResolved || complaint.status === "rejected" ? "rejected" : "Upvotes"} />
+                  </span>
+                </button>
+              )}
             </div>
 
             {/* Title */}
@@ -474,7 +486,7 @@ const ComplaintDetailPage = () => {
                   </>
                 ) : (
                   <p className="text-xs text-gray-400 italic">
-                    No resolution deadline assigned yet â€” department review
+                    No resolution deadline assigned yet - {departmentLabel} review
                     pending
                   </p>
                 )}
