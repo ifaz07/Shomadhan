@@ -139,6 +139,13 @@ exports.getChatBriefing = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Groq Error:', error);
+    if (error.status === 401 || error.error?.error?.code === 'invalid_api_key') {
+      return res.status(503).json({
+        success: false,
+        message: 'Mayor briefing AI is not available because the Groq API key is invalid. Please update GROQ_API_KEY in the backend environment.',
+      });
+    }
+
     res.status(500).json({ 
       success: false, 
       message: `AI Error: ${error.message || 'Unknown error'}`
