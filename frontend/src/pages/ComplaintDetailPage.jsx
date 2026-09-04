@@ -64,29 +64,31 @@ const CATEGORY_LABEL = {
   Environment: "Environment",
   "Law Enforcement": "Law Enforcement",
   Other: "Other",
-  public_works: "Public Works",
+  civil_works: "Civil Works",
+  public_works: "Civil Works",
   water_authority: "Water Authority",
-  electricity: "Electricity Dept",
-  sanitation: "Sanitation Dept",
-  public_safety: "Public Safety Dept",
+  electricity: "Electricity Department",
+  sanitation: "Sanitation Department",
   animal_control: "Animal Control",
-  health: "Health Dept",
-  transport: "Transport Dept",
-  environment: "Environment Dept",
+  health: "Health Department",
+  transport: "Transport Department",
+  environment: "Environment Department",
   police: "Police Department",
+  fire_service: "Fire Service",
 };
 
 const DEPT_LABEL = {
-  public_works: "Public Works",
+  civil_works: "Civil Works",
+  public_works: "Civil Works",
   water_authority: "Water Authority",
-  electricity: "Electricity Dept",
-  sanitation: "Sanitation Dept",
-  public_safety: "Public Safety Dept",
+  electricity: "Electricity Department",
+  sanitation: "Sanitation Department",
   animal_control: "Animal Control",
-  health: "Health Dept",
-  transport: "Transport Dept",
-  environment: "Environment Dept",
+  health: "Health Department",
+  transport: "Transport Department",
+  environment: "Environment Department",
   police: "Police Department",
+  fire_service: "Fire Service",
 };
 
 // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -392,6 +394,26 @@ const ComplaintDetailPage = () => {
               {complaint.title}
             </h1>
 
+            {/* Prank Rejection Notice */}
+            {complaint.is_prank && complaint.status === "rejected" && (
+              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 flex gap-3">
+                <AlertCircle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-red-700 mb-1">
+                    Rejected by AI Prank Detection
+                  </p>
+                  <p className="text-sm text-red-600 leading-relaxed">
+                    This complaint was automatically flagged and rejected because it appears to be a prank, joke, or non-civic issue
+                    {complaint.ai_confidence_score > 0
+                      ? ` (AI Confidence: ${(complaint.ai_confidence_score * 100).toFixed(1)}%)`
+                      : ""
+                    }.
+                    If you believe this is a mistake, please resubmit with a more detailed and clear description.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Description */}
             {complaint.description && (
               <div className="mb-4">
@@ -473,13 +495,12 @@ const ComplaintDetailPage = () => {
                     </div>
                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${
-                          sla.isOverdue
+                        className={`h-full rounded-full transition-all ${sla.isOverdue
                             ? "bg-red-500"
                             : sla.hoursLeft <= 24
                               ? "bg-orange-500"
                               : "bg-teal-600"
-                        }`}
+                          }`}
                         style={{ width: `${sla.progress}%` }}
                       />
                     </div>

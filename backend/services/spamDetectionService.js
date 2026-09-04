@@ -295,6 +295,70 @@ async function findSimilarComplaints({
     }));
 }
 
+/**
+ * Detects gibberish / random keysmashing text.
+ * Handles English, Bangla script, and Banglish (Bangla written in Latin).
+ */
+function isGibberish(text) {
+  const hasBanglaScript = /[\u0980-\u09FF]/.test(text);
+
+  // ── Bangla Script gibberish detection ────────────────────────────────────
+  // In real Bangla, each syllable has a vowel matra or independent vowel.
+  // Pure consonant smashing (e.g. কখগঘঙ with no matras) is gibberish.
+  if (hasBanglaScript) {
+    const banglaChars = text.replace(/[^\u0980-\u09FF]/g, "");
+    if (banglaChars.length >= 6) {
+      const independentVowels = (banglaChars.match(/[\u0985-\u0994]/g) || []).length; // অ-ঔ
+      const matras = (banglaChars.match(/[\u09BE-\u09CC]/g) || []).length;            // া-ৌ
+      const consonants = (banglaChars.match(/[\u0995-\u09B9]/g) || []).length;        // ক-হ
+      const totalVowels = independentVowels + matras;
+      const totalMeaningful = totalVowels + consonants;
+      if (totalMeaningful > 0) {
+        const banglaVowelRatio = totalVowels / totalMeaningful;
+        // Real Bangla: vowel indicators ~20-50% of meaningful chars
+        // Consonant keysmash: near 0%
+        if (banglaVowelRatio < 0.08) return true;
+      }
+    }
+  }
+
+  // ── Latin (English / Banglish) gibberish detection ───────────────────────
+  const latinOnly = text.toLowerCase().replace(/[^a-z\s]/g, "").trim();
+  if (latinOnly.length < 5) return false;
+
+  const letters = latinOnly.replace(/\s+/g, "");
+  if (letters.length < 4) return false;
+
+  const vowelCount = (letters.match(/[aeiou]/g) || []).length;
+  const vowelRatio = vowelCount / letters.length;
+
+  const words = latinOnly.split(/\s+/).filter((w) => w.length > 1);
+  if (words.length === 0) return false;
+  const noVowelWords = words.filter((w) => w.length > 2 && !/[aeiou]/.test(w));
+  const noVowelRatio = noVowelWords.length / words.length;
+
+  const maxConsonantCluster = words.reduce((max, w) => {
+    const clusters = w.match(/[^aeiou]+/g) || [];
+    const longest = Math.max(0, ...clusters.map((c) => c.length));
+    return Math.max(max, longest);
+  }, 0);
+
+  const avgWordLen = words.reduce((s, w) => s + w.length, 0) / words.length;
+
+  // For Banglish text (mix of Bangla meaning + Latin letters),
+  // be slightly more lenient since transliterations can be vowel-sparse
+  const isLikelyBanglish = hasBanglaScript && latinOnly.length > 0;
+  const vowelThreshold = isLikelyBanglish ? 0.08 : 0.12;
+  const clusterThreshold = isLikelyBanglish ? 6 : 5;
+
+  return (
+    vowelRatio < vowelThreshold ||
+    noVowelRatio > 0.6 ||
+    maxConsonantCluster > clusterThreshold ||
+    (avgWordLen > 8 && vowelRatio < 0.2)
+  );
+}
+
 async function analyzePrankPotential(title, description) {
   const text = `${title} ${description}`.toLowerCase();
   const normalizedText = normalizeText(text);
@@ -302,7 +366,14 @@ async function analyzePrankPotential(title, description) {
   const titleText = normalizeText(title);
   const descriptionText = normalizeText(description);
 
+  // ── Early exit: gibberish / random keysmashing ──────────────────────────
+  if (isGibberish(`${title} ${description}`)) {
+    console.log(`[AI Prank Check] Gibberish detected: "${title}"`);
+    return { is_prank: true, confidence_score: 0.96 };
+  }
+
   const prankPatterns = [
+    // ── English ──
     { words: ["alien", "ufo", "space", "mars", "galaxy"], score: 0.95 },
     { words: ["ghost", "zombie", "vampire", "magic", "supernatural", "monster"], score: 0.9 },
     { words: ["superman", "batman", "spiderman", "avengers", "marvel", "superhero"], score: 0.95 },
@@ -313,11 +384,84 @@ async function analyzePrankPotential(title, description) {
     { words: ["dragon", "dinosaur", "mermaid", "wizard", "fairy", "time travel"], score: 0.95 },
     { words: ["flying car", "teleport", "invisible", "laser eyes", "flying man"], score: 0.95 },
     { words: ["haha", "hahaha", "lol", "lmao", "brooo", "funny"], score: 0.75 },
+    { words: ["chicken fight", "dog fight", "cat fight", "animal fight", "fight between"], score: 0.75 },
+    { words: ["chicken vs", "dog vs", "cat vs", "monkey vs", "animal vs"], score: 0.72 },
+    { words: ["talking dog", "talking cat", "talking cow", "talking chicken", "talking animal"], score: 0.9 },
+    { words: ["unicorn", "phoenix", "werewolf", "demon"], score: 0.95 },
+    { words: ["i am bored", "nothing to do", "just testing", "random complaint"], score: 0.88 },
+    { words: ["abc", "xyz", "abcd", "qwerty", "asdf"], score: 0.9 },
+    { words: ["blah blah", "yada yada", "whatever", "idk", "idc"], score: 0.8 },
+    // ── Bangla Script supernatural/absurd words ──
+    { words: ["ভূত", "জিন", "পরী", "ডাইনি", "শয়তান", "অলৌকিক"], score: 0.9 },
+    { words: ["যাদু", "জাদু", "জাদুকর", "ভেল্কি", "তান্ত্রিক"], score: 0.88 },
+    { words: ["ড্রাগন", "ডাইনোসর", "ইউনিকর্ন", "দানব", "রাক্ষস", "পিশাচ"], score: 0.95 },
+    { words: ["উড়ন্ত মানুষ", "অদৃশ্য", "টেলিপোর্ট"], score: 0.95 },
+    { words: ["হাহাহা", "হিহিহি", "লোল", "ফানি", "মজার", "ইয়ার্কি", "ধাপ্পা"], score: 0.75 },
+    { words: ["পরীক্ষামূলক", "টেস্ট অভিযোগ", "নকল অভিযোগ", "মিথ্যা অভিযোগ"], score: 0.9 },
+    // Bangla transformation phrases ("became a dog", "turned into ghost")
+    { words: ["কুকুর হয়ে গেছে", "বিড়াল হয়ে গেছে", "ভূত হয়ে গেছে", "পশু হয়ে গেছে"], score: 0.95 },
+    { words: ["কুকুর হয়ে গেল", "বিড়াল হয়ে গেল", "ভূত হয়ে গেল", "জানোয়ার হয়ে গেল"], score: 0.95 },
+    { words: ["মানুষ কুকুর", "মানুষ ভূত", "মানুষ পশু", "মানুষ জানোয়ার"], score: 0.88 },
+    // ── Banglish (Bangla meaning written in Latin) ──
+    { words: ["bhut", "bhuut", "bhoot", "bhoote", "jin", "jinn"], score: 0.88 },
+    { words: ["jadu", "jaadu", "jadugori", "daini", "pori", "rakkhosh", "danob"], score: 0.88 },
+    { words: ["kukur hoye", "kukur hoyeche", "kukur holo", "biral hoye", "pashu hoye"], score: 0.95 },
+    { words: ["manush kukur", "manush biral", "manush bhut", "manush pashu"], score: 0.92 },
+    { words: ["hoyeche kukur", "hoyeche bhut", "hoye gelo", "hoye geche"], score: 0.85 },
+    { words: ["uronto manush", "udonte manush", "adrisho manush", "teleport korlo"], score: 0.93 },
+    { words: ["hahaha", "hihi", "hehe", "lol re", "kire bhai test"], score: 0.75 },
+  ];
+
+  const ANIMALS = [
+    "dog","cat","cow","goat","fish","bird","frog","snake","lion","tiger","wolf",
+    "bear","monkey","horse","sheep","pig","chicken","duck","rabbit","elephant",
+    "crocodile","dinosaur","dragon","unicorn","phoenix","werewolf","demon",
+  ];
+
+  const SURREAL_REGEXES = [
+    // English: "a man became a dog", "she transformed into a wolf"
+    /\b(became?|become|turned?\s+into|transform(?:ed)?\s+into|converted?\s+into|changed?\s+into|morphed?\s+into|shapeshifted?\s+into)\s+(a\s+|an\s+)?(\w+)/i,
+    // English: "dog talked", "cat spoke"
+    /\b(dog|cat|cow|goat|fish|bird|frog|snake|lion|tiger|wolf|monkey|chicken|duck|elephant)\s+(talk(?:ed|ing)?|spoke|speak(?:ing)?|walk(?:ed|ing)?\s+on|said|cried|scream(?:ed|ing)?|fight(?:ing)?|fought)/i,
+    // English: "people are flying/invisible"
+    /\bpeople\s+(are\s+)?(flying|floating|disappear(?:ing)?|vanish(?:ing)?|teleport(?:ing)?|invisible|invincible)\b/i,
+    // English: "the road is alive/talking"
+    /\b(road|street|sky|wall|building|house|drain|bridge)\s+(is\s+)?(alive|talk(?:ing)?|walk(?:ing)?|scream(?:ing)?|moving\s+on\s+its\s+own|fly(?:ing)?)\b/i,
+    // English: "man is now a dog", "neighbor has become a ghost"
+    /\b(man|woman|person|human|boy|girl|child|neighbor|uncle|aunt|bhai|apu)\b.{0,50}?\b(is\s+now|has\s+become|has\s+turned\s+into)\b.{0,30}?\b(dog|cat|cow|ghost|alien|zombie|vampire|wolf|beast|animal|monster|demon|witch|robot|fish|bird)\b/i,
+    // Banglish: "ekjon manush kukur hoye gelo", "se biral hoye geche"
+    /\b(manush|lok|manus|bachcha|meye|chele|poros|mahila)\b.{0,40}?\b(kukur|biral|pashu|bhut|bhuut|jin|jinn|rakkhosh|danob)\b/i,
+    /\b(kukur|biral|pashu|bhut|bhuut|jin)\b.{0,30}?\b(hoye|hoyeche|holo|hoye\s+gelo|hoye\s+geche|hoye\s+jay)\b/i,
+    // Bangla script: "মানুষ কুকুর হয়ে গেছে" / "[person] [animal] hoye geche"
+    /[\u09AE\u09BE\u09A8\u09C1\u09B7].{0,30}?[\u0995\u09C1\u0995\u09C1\u09B0\u09AC\u09BF\u09DC\u09BE\u09B2]/,
+    // Bangla script transformation: হয়ে গেছে / হয়ে গেল after animal noun
+    /[\u0995\u09C1\u0995\u09C1\u09B0\u09AD\u09C2\u09A4\u09AA\u09B6\u09C1].{0,20}?\u09B9\u09AF\u09BC\u09C7/,
   ];
 
   let localScore = 0;
-  if (text.includes("cow") && text.includes("eating")) localScore = 0.9;
-  if (text.includes("flying") && text.includes("man")) localScore = 0.85;
+
+  // ── Regex-based structural absurdity detection ─────────────────────────────
+  for (const regex of SURREAL_REGEXES) {
+    const match = regex.exec(text);
+    if (match) {
+      // For transform regex: check if the target noun is an animal/impossible thing
+      if (regex.source.includes("became?|become")) {
+        const targetWord = match[3];
+        if (ANIMALS.includes(targetWord)) {
+          localScore = Math.max(localScore, 0.95);
+        } else {
+          localScore = Math.max(localScore, 0.75);
+        }
+      } else {
+        localScore = Math.max(localScore, 0.92);
+      }
+      break;
+    }
+  }
+
+  // Legacy specific combos
+  if (text.includes("cow") && text.includes("eating")) localScore = Math.max(localScore, 0.9);
+  if (text.includes("flying") && text.includes("man")) localScore = Math.max(localScore, 0.88);
   if (text.includes("ghost") && text.includes("road")) localScore = Math.max(localScore, 0.92);
   if (text.includes("alien") && text.includes("drain")) localScore = Math.max(localScore, 0.95);
   if (/(.)\1{4,}/.test(text)) localScore = Math.max(localScore, 0.72);
@@ -338,7 +482,9 @@ async function analyzePrankPotential(title, description) {
     }
   });
 
-  if (localScore >= 0.85) {
+  // Only short-circuit to avoid HF call for extremely obvious cases (score >= 0.92)
+  // Lower scores (0.6-0.91) still go through HF NLP for a smarter decision
+  if (localScore >= 0.92) {
     console.log(
       `[AI Prank Check] Local Rules detected prank (${localScore}): "${title}"`,
     );
@@ -348,10 +494,13 @@ async function analyzePrankPotential(title, description) {
   const HF_TOKEN = process.env.HUGGINGFACE_API_KEY;
   if (HF_TOKEN && HF_TOKEN !== "your_huggingface_api_key_here") {
     try {
-      console.log(`[AI Prank Check] Attempting HF Analysis: "${title}"`);
+      console.log(`[AI Prank Check] Attempting HF BART Analysis: "${title}"`);
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20000); // 20-second timeout
 
       const response = await fetch(
-        "https://router.huggingface.co/hf-inference/models/facebook/bart-large-mnli",
+        "https://api-inference.huggingface.co/models/facebook/bart-large-mnli",
         {
           method: "POST",
           headers: {
@@ -365,8 +514,10 @@ async function analyzePrankPotential(title, description) {
               wait_for_model: true,
             },
           }),
+          signal: controller.signal,
         },
       );
+      clearTimeout(timeout);
 
       if (response.ok) {
         const result = await response.json();
@@ -395,8 +546,9 @@ async function analyzePrankPotential(title, description) {
     }
   }
 
+  // HF unavailable — use local score with a lower threshold to still catch borderline absurd content
   return {
-    is_prank: localScore > 0.6,
+    is_prank: localScore > 0.5,
     confidence_score: localScore,
   };
 }
