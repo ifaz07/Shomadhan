@@ -17,6 +17,20 @@ const haversineKm = (lat1, lon1, lat2, lon2) => {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
+const isAutoEscalationHistory = (item = {}) =>
+  item.message?.includes("System auto-escalated this ticket") ||
+  item.action === "SLA breached: Auto-escalated";
+
+const removeDuplicateAutoEscalationHistory = (history = []) => {
+  let hasAutoEscalation = false;
+  return history.filter((item) => {
+    if (!isAutoEscalationHistory(item)) return true;
+    if (hasAutoEscalation) return false;
+    hasAutoEscalation = true;
+    return true;
+  });
+};
+
 // Maps priority and status to a numeric value for "always on top" sorting
 const PRIORITY_SORT_STAGE = {
   $addFields: {
@@ -173,7 +187,7 @@ const getDepartmentComplaints = async (req, res, next) => {
   }
 };
 
-// @desc    Get a single complaint for the officer's department with reporter details
+// @desc    Get a single complaint with reporter details
 // @route   GET /api/v1/servant/complaints/:id
 // @access  Private (department_officer only)
 const getDepartmentComplaintById = async (req, res, next) => {
@@ -181,7 +195,7 @@ const getDepartmentComplaintById = async (req, res, next) => {
     const complaint = await Complaint.findById(req.params.id).populate({
       path: "user",
       select: "name email phone avatar presentAddress isVerified",
-    });
+    }).lean();
 
     if (!complaint) {
       return res
@@ -190,11 +204,13 @@ const getDepartmentComplaintById = async (req, res, next) => {
     }
 
     const categories = getDepartmentComplaintValues(req.user.department);
-    if (!categories.includes(complaint.category)) {
-      return res.status(403).json({
-        success: false,
-        message: "This complaint does not belong to your department.",
-      });
+    complaint.canManage = categories.includes(complaint.category);
+    complaint.history = removeDuplicateAutoEscalationHistory(complaint.history);
+
+    if (!complaint.canManage && complaint.user) {
+      delete complaint.user.email;
+      delete complaint.user.phone;
+      delete complaint.user.presentAddress;
     }
 
     res.status(200).json({ success: true, data: complaint });

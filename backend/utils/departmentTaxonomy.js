@@ -1,14 +1,14 @@
 const DEPARTMENT_OPTIONS = [
-  { key: "public_works", label: "Public Works" },
-  { key: "water_authority", label: "Water Authority" },
-  { key: "electricity", label: "Electricity Dept" },
-  { key: "sanitation", label: "Sanitation Dept" },
-  { key: "public_safety", label: "Public Safety Dept" },
   { key: "animal_control", label: "Animal Control" },
-  { key: "health", label: "Health Dept" },
-  { key: "transport", label: "Transport Dept" },
-  { key: "environment", label: "Environment Dept" },
+  { key: "civil_works", label: "Civil Works" },
+  { key: "electricity", label: "Electricity Department" },
+  { key: "environment", label: "Environment Department" },
+  { key: "fire_service", label: "Fire Service" },
+  { key: "health", label: "Health Department" },
   { key: "police", label: "Police Department" },
+  { key: "sanitation", label: "Sanitation Department" },
+  { key: "transport", label: "Transport Department" },
+  { key: "water_authority", label: "Water Authority" },
 ];
 
 const DEPARTMENT_KEYS = DEPARTMENT_OPTIONS.map((item) => item.key);
@@ -19,27 +19,27 @@ const DEPARTMENT_LABELS = DEPARTMENT_OPTIONS.reduce((acc, item) => {
 }, {});
 
 const LEGACY_CATEGORY_TO_DEPARTMENT = {
-  Road: "public_works",
+  Road: "civil_works",
   Waste: "sanitation",
   Electricity: "electricity",
   Water: "water_authority",
-  Safety: "public_safety",
+  Safety: "police",
   Environment: "environment",
   "Law Enforcement": "police",
   Other: null,
 };
 
 const DEPARTMENT_COMPATIBILITY = {
-  public_works: ["public_works", "Road"],
+  civil_works: ["civil_works", "public_works", "Road"],
   water_authority: ["water_authority", "Water"],
   electricity: ["electricity", "Electricity"],
   sanitation: ["sanitation", "Waste"],
-  public_safety: ["public_safety", "Safety"],
   animal_control: ["animal_control"],
   health: ["health", "Other"],
   transport: ["transport"],
   environment: ["environment", "Environment"],
-  police: ["police", "Law Enforcement"],
+  police: ["police", "Law Enforcement", "Safety"],
+  fire_service: ["fire_service"],
 };
 
 const normalizeDepartmentKey = (value) => {

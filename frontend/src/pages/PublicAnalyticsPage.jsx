@@ -55,8 +55,17 @@ const resolveAvatar = (url) => {
 
 // ─── Config ───────────────────────────────────────────────────────────
 const DEPT_CONFIG = {
+  civil_works: {
+    label: "Civil Works",
+    icon: Hammer,
+    color: "text-orange-600",
+    bg: "bg-orange-50",
+    border: "border-orange-100",
+    bar: "bg-orange-500",
+    chart: "#f97316",
+  },
   public_works: {
-    label: "Public Works",
+    label: "Civil Works",
     icon: Hammer,
     color: "text-orange-600",
     bg: "bg-orange-50",
@@ -74,7 +83,7 @@ const DEPT_CONFIG = {
     chart: "#3b82f6",
   },
   electricity: {
-    label: "Electricity Dept",
+    label: "Electricity Department",
     icon: Zap,
     color: "text-yellow-600",
     bg: "bg-yellow-50",
@@ -83,22 +92,13 @@ const DEPT_CONFIG = {
     chart: "#eab308",
   },
   sanitation: {
-    label: "Sanitation Dept",
+    label: "Sanitation Department",
     icon: Trash2,
     color: "text-green-600",
     bg: "bg-green-50",
     border: "border-green-100",
     bar: "bg-green-500",
     chart: "#22c55e",
-  },
-  public_safety: {
-    label: "Public Safety Dept",
-    icon: Shield,
-    color: "text-red-600",
-    bg: "bg-red-50",
-    border: "border-red-100",
-    bar: "bg-red-500",
-    chart: "#ef4444",
   },
   animal_control: {
     label: "Animal Control",
@@ -110,7 +110,7 @@ const DEPT_CONFIG = {
     chart: "#0d9488",
   },
   health: {
-    label: "Health Dept",
+    label: "Health Department",
     icon: Activity,
     color: "text-pink-600",
     bg: "bg-pink-50",
@@ -119,7 +119,7 @@ const DEPT_CONFIG = {
     chart: "#ec4899",
   },
   transport: {
-    label: "Transport Dept",
+    label: "Transport Department",
     icon: MapPin,
     color: "text-sky-600",
     bg: "bg-sky-50",
@@ -128,7 +128,7 @@ const DEPT_CONFIG = {
     chart: "#0ea5e9",
   },
   environment: {
-    label: "Environment Dept",
+    label: "Environment Department",
     icon: Leaf,
     color: "text-emerald-600",
     bg: "bg-emerald-50",
@@ -144,6 +144,15 @@ const DEPT_CONFIG = {
     border: "border-slate-100",
     bar: "bg-slate-600",
     chart: "#475569",
+  },
+  fire_service: {
+    label: "Fire Service",
+    icon: AlertTriangle,
+    color: "text-red-600",
+    bg: "bg-red-50",
+    border: "border-red-100",
+    bar: "bg-red-500",
+    chart: "#ef4444",
   },
 };
 
@@ -201,24 +210,25 @@ const PRIORITY_COLORS = {
 };
 
 const CATEGORY_TO_DEPT_LABEL = {
-  Road: "Public Works",
-  Waste: "Sanitation Dept",
-  Electricity: "Electricity Dept",
+  Road: "Civil Works",
+  Waste: "Sanitation Department",
+  Electricity: "Electricity Department",
   Water: "Water Authority",
-  Safety: "Public Safety Dept",
+  Safety: "Police Department",
   "Law Enforcement": "Police Department",
-  Environment: "Environment Dept",
-  Other: "Health Dept",
-  public_works: "Public Works",
+  Environment: "Environment Department",
+  Other: "Health Department",
+  civil_works: "Civil Works",
+  public_works: "Civil Works",
   water_authority: "Water Authority",
-  electricity: "Electricity Dept",
-  sanitation: "Sanitation Dept",
-  public_safety: "Public Safety Dept",
+  electricity: "Electricity Department",
+  sanitation: "Sanitation Department",
   animal_control: "Animal Control",
-  health: "Health Dept",
-  transport: "Transport Dept",
-  environment: "Environment Dept",
+  health: "Health Department",
+  transport: "Transport Department",
+  environment: "Environment Department",
   police: "Police Department",
+  fire_service: "Fire Service",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────

@@ -28,6 +28,20 @@ const getCurrentAwardPeriod = (date = new Date()) => ({
   awardYear: date.getFullYear(),
 });
 
+const isAutoEscalationHistory = (item = {}) =>
+  item.message?.includes("System auto-escalated this ticket") ||
+  item.action === "SLA breached: Auto-escalated";
+
+const removeDuplicateAutoEscalationHistory = (history = []) => {
+  let hasAutoEscalation = false;
+  return history.filter((item) => {
+    if (!isAutoEscalationHistory(item)) return true;
+    if (hasAutoEscalation) return false;
+    hasAutoEscalation = true;
+    return true;
+  });
+};
+
 // Helper: Generate unique ticket ID (e.g., SOM-2024-ABC12)
 const generateTicketId = () => {
   const prefix = "SOM";
@@ -243,12 +257,22 @@ const createComplaint = async (req, res, next) => {
 
     // Trigger Notification
     if (complaint.user) {
-      await sendNotification(complaint.user, {
-        subject: "Complaint Received: " + complaint.ticketId,
-        message: `Your complaint "${complaint.title}" has been received and is currently pending review. Ticket ID: ${complaint.ticketId}`,
-        type: "info",
-        relatedTicket: complaint._id,
-      });
+      if (finalStatus === "rejected") {
+        // Prank rejection notification
+        await sendNotification(complaint.user, {
+          subject: "Complaint Rejected: " + complaint.ticketId,
+          message: `Your complaint "${complaint.title}" was automatically rejected by our AI system as it appears to be a prank or non-civic issue (Confidence: ${(aiStatus.confidence_score * 100).toFixed(1)}%). If you believe this is an error, please resubmit with a clearer and more detailed description. Ticket ID: ${complaint.ticketId}`,
+          type: "warning",
+          relatedTicket: complaint._id,
+        });
+      } else {
+        await sendNotification(complaint.user, {
+          subject: "Complaint Received: " + complaint.ticketId,
+          message: `Your complaint "${complaint.title}" has been received and is currently pending review. Ticket ID: ${complaint.ticketId}`,
+          type: "info",
+          relatedTicket: complaint._id,
+        });
+      }
     }
 
     // ─── Emergency Broadcast ───────────────────────────────────────
@@ -316,6 +340,13 @@ const analyzeComplaint = async (req, res, next) => {
 // @access  Private
 const voteComplaint = async (req, res, next) => {
   try {
+    if (req.user.role === "mayor") {
+      return res.status(403).json({
+        success: false,
+        message: "Mayors can view vote counts but cannot vote on complaints",
+      });
+    }
+
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) {
       return res
@@ -523,6 +554,7 @@ const getNearbyComplaints = async (req, res, next) => {
       const isOwnComplaint =
         Boolean(currentUserId) && complaintOwnerId === currentUserId;
       const canVote =
+        req.user.role !== "mayor" &&
         !isOwnComplaint &&
         complaint.status !== "resolved" &&
         complaint.status !== "rejected";
@@ -877,6 +909,10 @@ const getComplaints = async (req, res, next) => {
       { $sort: { _sortWeight: -1, createdAt: -1 } },
     ]);
 
+    complaints.forEach((complaint) => {
+      complaint.history = removeDuplicateAutoEscalationHistory(complaint.history);
+    });
+
     if (mineOnly && complaints.length > 0) {
       const complaintIds = complaints.map((complaint) => complaint._id);
       const feedbacks = await Feedback.find({
@@ -959,7 +995,9 @@ const getComplaint = async (req, res, next) => {
 
     complaint.hasVoted = votedUserIds.includes(req.user._id.toString());
     complaint.isOwnComplaint = Boolean(isOwner);
+    complaint.history = removeDuplicateAutoEscalationHistory(complaint.history);
     complaint.canVote =
+      req.user.role !== "mayor" &&
       !complaint.isOwnComplaint &&
       complaint.status !== "resolved" &&
       complaint.status !== "rejected";

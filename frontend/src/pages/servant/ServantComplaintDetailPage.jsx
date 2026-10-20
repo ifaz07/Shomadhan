@@ -49,37 +49,40 @@ const CATEGORY_LABEL = {
   Environment:       "Environment",
   "Law Enforcement": "Law Enforcement",
   Other:             "Other",
-  public_works:      "Public Works",
+  civil_works:       "Civil Works",
+  public_works:      "Civil Works",
   water_authority:   "Water Authority",
-  sanitation:        "Sanitation Dept",
-  public_safety:     "Public Safety Dept",
+  electricity:       "Electricity Department",
+  sanitation:        "Sanitation Department",
   animal_control:    "Animal Control",
-  health:            "Health Dept",
-  transport:         "Transport Dept",
-  environment:       "Environment Dept",
+  health:            "Health Department",
+  transport:         "Transport Department",
+  environment:       "Environment Department",
   police:            "Police Department",
+  fire_service:      "Fire Service",
 };
 
 // Derive department name from category (complaints don't store department)
 const CATEGORY_TO_DEPT = {
-  Road:              "Public Works / Transport",
-  Waste:             "Sanitation Dept",
-  Electricity:       "Electricity Dept",
+  Road:              "Civil Works / Transport",
+  Waste:             "Sanitation Department",
+  Electricity:       "Electricity Department",
   Water:             "Water Authority",
-  Safety:            "Public Safety",
+  Safety:            "Police Department",
   Environment:       "Environment / Animal Control",
   "Law Enforcement": "Police Department",
   Other:             "General Administration",
-  public_works:      "Public Works",
+  civil_works:       "Civil Works",
+  public_works:      "Civil Works",
   water_authority:   "Water Authority",
-  electricity:       "Electricity Dept",
-  sanitation:        "Sanitation Dept",
-  public_safety:     "Public Safety Dept",
+  electricity:       "Electricity Department",
+  sanitation:        "Sanitation Department",
   animal_control:    "Animal Control",
-  health:            "Health Dept",
-  transport:         "Transport Dept",
-  environment:       "Environment Dept",
+  health:            "Health Department",
+  transport:         "Transport Department",
+  environment:       "Environment Department",
   police:            "Police Department",
+  fire_service:      "Fire Service",
 };
 
 const SLA_PRESETS = [
@@ -199,6 +202,7 @@ const ServantComplaintDetailPage = () => {
 
   const isClosed = complaint?.status === "resolved" || complaint?.status === "rejected";
   const isResolved = complaint?.status === "resolved";
+  const canManage = complaint?.canManage !== false;
   const hasActiveDeadline = Boolean(
     complaint?.slaDeadline && new Date(complaint.slaDeadline).getTime() > Date.now()
   );
@@ -456,7 +460,7 @@ const ServantComplaintDetailPage = () => {
               )}
 
               {/* ── Officer Action Buttons (inside card) ── */}
-              {!isClosed ? (
+              {!isClosed && canManage ? (
                 <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
                   <button
                     onClick={() => setStatusOpen(true)}
@@ -765,7 +769,7 @@ const ServantComplaintDetailPage = () => {
 
       {/* ══ Status Update Modal ══════════════════════════════════ */}
       <AnimatePresence>
-        {statusOpen && (
+        {statusOpen && canManage && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -845,7 +849,7 @@ const ServantComplaintDetailPage = () => {
 
       {/* ══ SLA Modal ════════════════════════════════════════════ */}
       <AnimatePresence>
-        {slaOpen && !hasActiveDeadline && (
+        {slaOpen && canManage && !hasActiveDeadline && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

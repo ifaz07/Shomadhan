@@ -51,7 +51,7 @@ const MayorChatbot = () => {
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         type: 'bot',
-        text: "I'm sorry Mayor, I encountered an error while analyzing the city data. Please try again later.",
+        text: error.response?.data?.message || "I'm sorry Mayor, I encountered an error while analyzing the city data. Please try again later.",
         showActions: true
       }]);
     } finally {
@@ -171,7 +171,7 @@ const MayorChatbot = () => {
             {/* Footer */}
             <div className="p-4 border-t bg-white">
               <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-xl text-gray-400 italic text-[11px]">
-                Note: This AI uses Llama 3 to summarize the latest 50 complaints within the selected timeframe.
+                Note: This AI summarizes the latest 50 complaints within the selected timeframe.
               </div>
             </div>
           </motion.div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText, AlertTriangle, Clock, CheckCircle2,
-  Users, Megaphone, Calendar, MapPin, Tag, ThumbsUp,
+  Users, Megaphone, Calendar, MapPin, Tag,
   Target, Loader2, Upload, Plus, ChevronRight, X, User
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +14,7 @@ import { complaintAPI, mayorAPI, volunteerAPI } from '../services/api';
 import MayorChatbot from '../components/MayorChatbot';
 import GoodCitizenStar from '../components/GoodCitizenStar';
 import { getAssetBaseUrl } from '../utils/apiBase';
+import { getDepartmentLabel, normalizeDepartmentValue } from '../constants/departments';
 
 // ─── Helpers ──────────────────────────────────
 const timeAgo = (date) => {
@@ -220,9 +221,12 @@ const ComplaintCard = ({ complaint, index, onClick }) => {
         </div>
 
         <div className="flex flex-col items-center gap-0.5 flex-shrink-0 pt-1">
-          <ThumbsUp size={18} className="text-gray-400" />
           <span className="text-base font-bold text-gray-800 leading-tight">{complaint.voteCount ?? 0}</span>
-          <span className="text-xs text-gray-400">Upvotes</span>
+          <span className="text-[10px] text-gray-400 leading-tight text-center">
+            Public
+            <br />
+            Support
+          </span>
         </div>
       </div>
     </motion.div>

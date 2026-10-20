@@ -11,7 +11,7 @@ const CATEGORY_LABELS = [
   "water authority or drainage issue",
   "electricity or power outage issue",
   "sanitation or garbage or sewage issue",
-  "public safety or fire or emergency issue",
+  "fire or emergency or rescue issue",
   "animal control or stray animal issue",
   "public health or hospital or clinic issue",
   "transport or traffic or parking issue",
@@ -20,11 +20,11 @@ const CATEGORY_LABELS = [
 ];
 
 const LABEL_TO_CATEGORY = {
-  "public works or infrastructure issue": "public_works",
+  "public works or infrastructure issue": "civil_works",
   "water authority or drainage issue": "water_authority",
   "electricity or power outage issue": "electricity",
   "sanitation or garbage or sewage issue": "sanitation",
-  "public safety or fire or emergency issue": "public_safety",
+  "fire or emergency or rescue issue": "fire_service",
   "animal control or stray animal issue": "animal_control",
   "public health or hospital or clinic issue": "health",
   "transport or traffic or parking issue": "transport",
@@ -85,7 +85,7 @@ function ruleBasedClassify(text) {
   const lower = text.toLowerCase();
   const rules = [
     {
-      category: "public_works",
+      category: "civil_works",
       keywords: [
         "road", "pothole", "pavement", "sidewalk", "footpath", "bridge", "crack", "construction",
         "street light", "streetlight", "culvert", "asphalt", "hole", "broken road",
@@ -129,12 +129,12 @@ function ruleBasedClassify(text) {
       ],
     },
     {
-      category: "public_safety",
+      category: "fire_service",
       keywords: [
-        "fire", "danger", "dangerous", "unsafe", "accident", "emergency", "hazard", "security",
+        "fire", "danger", "dangerous", "unsafe", "accident", "emergency", "hazard",
         "collapse", "rescue", "blast", "gas leak",
         // Bangla
-        "আগুন", "বিপদ", "বিজ্জনক", "দুর্ঘটনা", "জরুরি", "গ্যাস লিক", "ধস", "উদ্ধার", "নিরাপত্তা", "বিস্ফোরণ",
+        "আগুন", "বিপদ", "বিজ্জনক", "দুর্ঘটনা", "জরুরি", "গ্যাস লিক", "ধস", "উদ্ধার", "বিস্ফোরণ",
         // Banglish
         "agun", "fire", "bipod", "bipodjonok", "accident", "emergency", "gas leak", "gas", "dhos", "blast"
       ],
@@ -272,7 +272,7 @@ async function callHuggingFaceAPI(text) {
       }));
 
   const top2 = sorted.slice(0, 2).map((item) => ({
-    category: LABEL_TO_CATEGORY[item.label] || "public_works",
+    category: LABEL_TO_CATEGORY[item.label] || "civil_works",
     confidence: item.score,
   }));
 
@@ -360,7 +360,7 @@ async function classifyComplaint(title, description) {
   }
 
   const { category, confidence, top2, source, isLowConfidence, needsManualReview, manualReviewMessage } = classificationResult;
-  const department = category ? CATEGORY_TO_DEPARTMENT[category] || CATEGORY_TO_DEPARTMENT.public_works : null;
+  const department = category ? CATEGORY_TO_DEPARTMENT[category] || CATEGORY_TO_DEPARTMENT.civil_works : null;
   const hasMeaningfulSuggestion = Boolean(category && department);
   const confidenceScore = hasMeaningfulSuggestion
     ? calculateConfidence(confidence, keywords.length, context.hasTitle, context.hasTextDetails)
@@ -385,7 +385,7 @@ async function classifyComplaint(title, description) {
     topCategories: top2.map((item) => ({
       category: item.category,
       confidence: Math.round(Math.min(item.confidence, 0.95) * 100) / 100,
-      department: CATEGORY_TO_DEPARTMENT[item.category] || CATEGORY_TO_DEPARTMENT.public_works,
+      department: CATEGORY_TO_DEPARTMENT[item.category] || CATEGORY_TO_DEPARTMENT.civil_works,
     })),
     evidence: {
       hasTitle: context.hasTitle,

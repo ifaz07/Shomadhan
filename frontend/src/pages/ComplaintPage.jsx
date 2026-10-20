@@ -235,6 +235,21 @@ const ComplaintPage = () => {
                 }
               />
             </Link>
+
+            {/* Emergency notice */}
+            <div className="mt-6 flex items-center justify-center gap-2.5 rounded-xl border border-red-200 bg-red-50 px-5 py-3">
+              <AlertCircle size={17} className="text-red-500 flex-shrink-0" />
+              <p className="text-sm font-semibold text-red-600">
+                <T en="For emergencies, call" />{" "}
+                <a
+                  href="tel:999"
+                  className="text-red-700 underline underline-offset-2 font-black tracking-wide hover:text-red-800 transition-colors"
+                >
+                  999
+                </a>{" "}
+                <T en="immediately." />
+              </p>
+            </div>
           </motion.div>
         </div>
       </DashboardLayout>
@@ -435,10 +450,10 @@ const ComplaintPage = () => {
         prev.map((c) =>
           c._id === id
             ? {
-                ...c,
-                voteCount: res.data.voteCount,
-                _userVoted: res.data.voted,
-              }
+              ...c,
+              voteCount: res.data.voteCount,
+              _userVoted: res.data.voted,
+            }
             : c,
         ),
       );
@@ -453,7 +468,7 @@ const ComplaintPage = () => {
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
     const maxFiles = audioBlob ? 4 : 5;
-    
+
     if (files.length + selectedFiles.length > maxFiles) {
       toast.error(`Maximum ${maxFiles} additional files allowed when using voice message`);
       return;
@@ -499,14 +514,14 @@ const ComplaintPage = () => {
     data.append('emergencyFlag', formData.emergencyFlag);
 
     if (descriptionType === 'text') {
-        data.append('description', formData.description);
+      data.append('description', formData.description);
     } else if (descriptionType === 'voice' && descriptionAudioBlob) {
-        data.append('description', formData.description || "[Voice Message Submitted]");
-        const audioFile = new File([descriptionAudioBlob], `voice-description-${Date.now()}.webm`, { type: 'audio/webm' });
-        data.append('voiceDescription', audioFile);
+      data.append('description', formData.description || "[Voice Message Submitted]");
+      const audioFile = new File([descriptionAudioBlob], `voice-description-${Date.now()}.webm`, { type: 'audio/webm' });
+      data.append('voiceDescription', audioFile);
     } else {
-        // Fallback for safety, though validation should prevent this
-        data.append('description', formData.description);
+      // Fallback for safety, though validation should prevent this
+      data.append('description', formData.description);
     }
 
     if (mapPosition) {
@@ -520,26 +535,26 @@ const ComplaintPage = () => {
       const response = await complaintAPI.create(data);
 
       if (response.data.success) {
-          toast.success("Complaint submitted successfully!");
-          setFormData({
-            title: "",
-            category: "",
-            description: "",
-            location: "",
-            isAnonymous: false,
-            emergencyFlag: false,
-          });
-          setFiles([]);
-          setPreviews([]);
-          setAudioBlob(null);
-          setDescriptionAudioBlob(null);
-          setDescriptionType("text");
-          setMapPosition(null);
-          setNlpSuggestion(null);
-          setSpamWarning(null);
-          setShowSubmitConfirm(false);
+        toast.success("Complaint submitted successfully!");
+        setFormData({
+          title: "",
+          category: "",
+          description: "",
+          location: "",
+          isAnonymous: false,
+          emergencyFlag: false,
+        });
+        setFiles([]);
+        setPreviews([]);
+        setAudioBlob(null);
+        setDescriptionAudioBlob(null);
+        setDescriptionType("text");
+        setMapPosition(null);
+        setNlpSuggestion(null);
+        setSpamWarning(null);
+        setShowSubmitConfirm(false);
       }
-    }catch (error) {
+    } catch (error) {
       if (error.response?.status === 409 && error.response.data?.duplicate) {
         setSpamWarning(error.response.data.duplicate);
       } else {
@@ -582,12 +597,12 @@ const ComplaintPage = () => {
       ? nlpSuggestion.topCategories
       : nlpSuggestion?.category && nlpSuggestion?.department && !nlpSuggestion?.needsManualReview
         ? [
-            {
-              category: nlpSuggestion.category,
-              confidence: nlpSuggestion.confidence,
-              department: nlpSuggestion.department,
-            },
-          ]
+          {
+            category: nlpSuggestion.category,
+            confidence: nlpSuggestion.confidence,
+            department: nlpSuggestion.department,
+          },
+        ]
         : [];
   const hasSuggestions = topSuggestions.length > 0;
   const defaultNlpMessage =
@@ -744,10 +759,10 @@ const ComplaintPage = () => {
                   </button>
                 </div>
               </div>
-              
+
               {descriptionType === 'text' ? (
-                <SmartInputWrapper value={formData.description} onValueChange={(val) => setFormData(prev => ({...prev, description: val}))} onAudioRecorded={(audio) => setAudioBlob(audio)} context="civic complaint description">
-                  <textarea required name="description" rows={4} value={formData.description} onChange={handleInputChange} placeholder="Explain the issue in detail or use the mic to record..." className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none resize-none shadow-sm placeholder:text-slate-400"/>
+                <SmartInputWrapper value={formData.description} onValueChange={(val) => setFormData(prev => ({ ...prev, description: val }))} onAudioRecorded={(audio) => setAudioBlob(audio)} context="civic complaint description">
+                  <textarea required name="description" rows={4} value={formData.description} onChange={handleInputChange} placeholder="Explain the issue in detail or use the mic to record..." className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none resize-none shadow-sm placeholder:text-slate-400" />
                 </SmartInputWrapper>
               ) : (
                 <div className="relative group">
@@ -784,16 +799,16 @@ const ComplaintPage = () => {
                     </div>
                   ) : (
                     <div className="min-h-[128px] border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center gap-4 text-center p-4">
-                        <div className="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center">
-                            <Mic size={32} className="text-teal-500" />
-                        </div>
-                        <div>
-                            <p className="font-semibold text-slate-600">Record a voice message</p>
-                            <p className="text-sm text-slate-400 mt-1">Submit your complaint using a voice recording instead of typing.</p>
-                        </div>
-                        <button type="button" onClick={startRecording} className="px-5 py-2 rounded-full bg-teal-500 text-white font-bold text-sm hover:bg-teal-600 transition-all shadow-lg shadow-teal-500/20">
-                            Start Recording
-                        </button>
+                      <div className="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center">
+                        <Mic size={32} className="text-teal-500" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-600">Record a voice message</p>
+                        <p className="text-sm text-slate-400 mt-1">Submit your complaint using a voice recording instead of typing.</p>
+                      </div>
+                      <button type="button" onClick={startRecording} className="px-5 py-2 rounded-full bg-teal-500 text-white font-bold text-sm hover:bg-teal-600 transition-all shadow-lg shadow-teal-500/20">
+                        Start Recording
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1184,7 +1199,7 @@ const ComplaintPage = () => {
                                     color: c.priority === 'Critical' ? '#dc2626' : c.priority === 'High' ? '#ea580c' : c.priority === 'Medium' ? '#ca8a04' : '#16a34a',
                                   }}
                                 >
-                                  â€¢ {c.priority}
+                                  {c.priority}
                                 </span>
                                 <span className="text-[10px] text-slate-400 font-medium">{getDepartmentLabel(c.category)}</span>
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${c.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{c.status}</span>
@@ -1201,19 +1216,18 @@ const ComplaintPage = () => {
                               type="button"
                               onClick={() => handleVote(c._id)}
                               disabled={votingId === c._id || c.canVote === false}
-                              className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all disabled:opacity-50 ${
-                                c.canVote === false
-                                  ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
-                                  : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
-                              }`}
+                              className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl border transition-all disabled:opacity-50 ${c.canVote === false
+                                ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
+                                : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                                }`}
                               title={
                                 c.isOwnComplaint
                                   ? 'You cannot vote on your own complaint'
                                   : c.canVote === false
-                                  ? 'Closed complaints can no longer receive public support'
-                                  : c._userVoted
-                                  ? 'Remove vote'
-                                  : 'Vote for this complaint'
+                                    ? 'Closed complaints can no longer receive public support'
+                                    : c._userVoted
+                                      ? 'Remove vote'
+                                      : 'Vote for this complaint'
                               }
                             >
                               {votingId === c._id ? (
@@ -1274,7 +1288,7 @@ const ComplaintPage = () => {
                         </button>
                       </div>
                       <span className="text-xs text-red-600 font-medium bg-red-100 px-2 py-1 rounded-full">
-                        {Math.round(spamWarning.similarity * 100)}% similar Â·{" "}
+                        {Math.round(spamWarning.similarity * 100)}% similar {" "}
                         {spamWarning.method}
                       </span>
                     </div>
@@ -1296,11 +1310,10 @@ const ComplaintPage = () => {
             <button
               type="submit"
               disabled={isSubmitBlocked}
-              className={`flex w-full min-w-0 items-center justify-center gap-2 rounded-[1.6rem] py-4 text-lg font-bold text-white shadow-[0_22px_45px_-20px_rgba(13,148,136,0.45)] transition-all ${
-                isSubmitBlocked
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-600 hover:scale-[1.01] active:scale-[0.99]"
-              }`}
+              className={`flex w-full min-w-0 items-center justify-center gap-2 rounded-[1.6rem] py-4 text-lg font-bold text-white shadow-[0_22px_45px_-20px_rgba(13,148,136,0.45)] transition-all ${isSubmitBlocked
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-600 hover:scale-[1.01] active:scale-[0.99]"
+                }`}
             >
               {isSubmitting ? (
                 <>
@@ -1406,11 +1419,10 @@ const ComplaintPage = () => {
                           isAnonymous: !prev.isAnonymous,
                         }))
                       }
-                      className={`rounded-2xl border p-4 text-left transition-all min-w-0 ${
-                        formData.isAnonymous
-                          ? "border-teal-200 bg-teal-50 shadow-sm"
-                          : "border-gray-200 bg-gray-50 hover:border-teal-200 hover:bg-teal-50/60"
-                      }`}
+                      className={`rounded-2xl border p-4 text-left transition-all min-w-0 ${formData.isAnonymous
+                        ? "border-teal-200 bg-teal-50 shadow-sm"
+                        : "border-gray-200 bg-gray-50 hover:border-teal-200 hover:bg-teal-50/60"
+                        }`}
                     >
                       <div className="flex flex-col gap-3">
                         <div className="flex items-start justify-between gap-3">
@@ -1433,11 +1445,10 @@ const ComplaintPage = () => {
                             className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${formData.isAnonymous ? "bg-teal-500" : "bg-gray-200"}`}
                           >
                             <span
-                              className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                                formData.isAnonymous
-                                  ? "translate-x-5"
-                                  : "translate-x-0.5"
-                              }`}
+                              className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${formData.isAnonymous
+                                ? "translate-x-5"
+                                : "translate-x-0.5"
+                                }`}
                             />
                           </div>
                         </div>
@@ -1463,11 +1474,10 @@ const ComplaintPage = () => {
                           emergencyFlag: !prev.emergencyFlag,
                         }))
                       }
-                      className={`rounded-2xl border p-4 text-left transition-all min-w-0 ${
-                        formData.emergencyFlag
-                          ? "border-red-200 bg-red-50 shadow-sm"
-                          : "border-gray-200 bg-gray-50 hover:border-red-200 hover:bg-red-50/60"
-                      }`}
+                      className={`rounded-2xl border p-4 text-left transition-all min-w-0 ${formData.emergencyFlag
+                        ? "border-red-200 bg-red-50 shadow-sm"
+                        : "border-gray-200 bg-gray-50 hover:border-red-200 hover:bg-red-50/60"
+                        }`}
                     >
                       <div className="flex flex-col gap-3">
                         <div className="flex items-start justify-between gap-3">
@@ -1490,11 +1500,10 @@ const ComplaintPage = () => {
                             className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${formData.emergencyFlag ? "bg-red-500" : "bg-gray-200"}`}
                           >
                             <span
-                              className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                                formData.emergencyFlag
-                                  ? "translate-x-5"
-                                  : "translate-x-0.5"
-                              }`}
+                              className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${formData.emergencyFlag
+                                ? "translate-x-5"
+                                : "translate-x-0.5"
+                                }`}
                             />
                           </div>
                         </div>
@@ -1527,11 +1536,10 @@ const ComplaintPage = () => {
                     type="button"
                     onClick={performSubmit}
                     disabled={isSubmitBlocked}
-                    className={`sm:flex-1 py-3 rounded-2xl text-white font-semibold transition-all shadow-lg ${
-                      formData.emergencyFlag
-                        ? "bg-gradient-to-r from-red-500 to-orange-500 shadow-red-500/20 hover:scale-[1.01]"
-                        : "bg-gradient-to-r from-teal-500 to-blue-600 shadow-teal-500/20 hover:scale-[1.01]"
-                    } disabled:opacity-60 disabled:cursor-not-allowed`}
+                    className={`sm:flex-1 py-3 rounded-2xl text-white font-semibold transition-all shadow-lg ${formData.emergencyFlag
+                      ? "bg-gradient-to-r from-red-500 to-orange-500 shadow-red-500/20 hover:scale-[1.01]"
+                      : "bg-gradient-to-r from-teal-500 to-blue-600 shadow-teal-500/20 hover:scale-[1.01]"
+                      } disabled:opacity-60 disabled:cursor-not-allowed`}
                   >
                     {isSubmitting ? (
                       <span className="inline-flex items-center gap-2">

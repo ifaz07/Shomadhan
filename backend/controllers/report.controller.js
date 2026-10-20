@@ -310,13 +310,17 @@ exports.getSummaryReport = async (req, res, next) => {
       headerSubtitle = `Personal Impact Metrics — ${req.user.name}`;
     } else if (req.user.role === 'department_officer') {
       const catMapping = {
-        'public_works': ['Road', 'Public Works'],
+        'civil_works': ['Road', 'Civil Works', 'Public Works'],
+        'public_works': ['Road', 'Civil Works', 'Public Works'],
         'water_authority': ['Water', 'Water Authority'],
-        'electricity': ['Electricity', 'Electricity Dept'],
-        'sanitation': ['Waste', 'Sanitation Dept'],
-        'public_safety': ['Safety', 'Public Safety Dept'],
-        'environment': ['Environment', 'Environment Dept'],
-        'police': ['Law Enforcement', 'Police Department']
+        'electricity': ['Electricity', 'Electricity Department'],
+        'sanitation': ['Waste', 'Sanitation Department'],
+        'fire_service': ['Fire Service'],
+        'environment': ['Environment', 'Environment Department'],
+        'police': ['Law Enforcement', 'Police Department'],
+        'health': ['Other', 'Health Department'],
+        'animal_control': ['Animal Control'],
+        'transport': ['Transport Department'],
       };
       const mappedCats = catMapping[req.user.department] || [req.user.department];
       query.category = { $in: mappedCats };
