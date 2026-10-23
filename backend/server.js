@@ -7,6 +7,7 @@ const session = require('express-session');
 const passport = require('passport');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
+require('./config/env').assertEnv();
 require('./config/passport');
 
 const authRoutes = require('./routes/auth.routes');
@@ -29,18 +30,23 @@ const app = express();
 const allowedOrigins = getAllowedOrigins();
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Behind Render/Vercel the client IP arrives via X-Forwarded-For; without this
+// every user shares the proxy's IP and rate limits apply to everyone at once.
+if (isProduction) {
+  app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS || 1));
+}
+
 app.use(
   helmet({
     crossOriginResourcePolicy: false,
   })
 );
-app.use(morgan('dev'));
+app.use(morgan(isProduction ? 'combined' : 'dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use('/uploads/evidence', express.static(getUploadDir('evidence')));
-app.use('/uploads/verification', express.static(getUploadDir('verification')));
 app.use('/uploads/avatars', express.static(getUploadDir('avatars')));
 app.use('/uploads/volunteer', express.static(getUploadDir('volunteer')));
 
@@ -59,7 +65,7 @@ app.use(
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'dev-session-secret',
+    secret: process.env.SESSION_SECRET || process.env.JWT_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {

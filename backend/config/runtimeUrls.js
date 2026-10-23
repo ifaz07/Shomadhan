@@ -17,9 +17,20 @@ const getDeploymentOrigin = () => {
 const isLocalhostUrl = (value = "") => /localhost|127\.0\.0\.1/i.test(value);
 const isVercelPreviewOrigin = (value = "") => /^https?:\/\/([a-z0-9-]+\.)*vercel\.app$/i.test(value);
 const isNetlifyOrigin = (value = "") => /^https?:\/\/([a-z0-9-]+\.)*netlify\.app$/i.test(value);
+const isLocalOrigin = (value = "") =>
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(value);
+
+// Wildcard preview hosts (any *.vercel.app / *.netlify.app) are open to
+// anyone, so they are only trusted when explicitly enabled.
+const arePreviewOriginsEnabled = () => process.env.ALLOW_PREVIEW_ORIGINS === "true";
+
 const isAllowedRuntimeOrigin = (value = "") => {
   if (!value) return true;
-  return isLocalhostUrl(value) || isVercelPreviewOrigin(value) || isNetlifyOrigin(value);
+  if (process.env.NODE_ENV !== "production" && isLocalOrigin(value)) return true;
+  return (
+    arePreviewOriginsEnabled() &&
+    (isVercelPreviewOrigin(value) || isNetlifyOrigin(value))
+  );
 };
 
 const LOCAL_CLIENT_ORIGINS = [

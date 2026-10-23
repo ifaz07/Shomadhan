@@ -14,6 +14,11 @@ const storage = new CloudinaryStorage({
 });
 
 const fileFilter = (req, file, cb) => {
+  // SVG can carry scripts, so it is never accepted as an image.
+  if (file.mimetype === 'image/svg+xml') {
+    return cb(new Error('Invalid file type. SVG images are not allowed.'), false);
+  }
+
   const allowedMimeTypes = [
     'image/jpeg', 'image/png', 'image/webp',
     'video/mp4', 'video/quicktime',

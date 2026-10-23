@@ -1,4 +1,37 @@
+const { Readable } = require('stream');
 const User = require('../models/User.model');
+const { getCloudinaryDownloadUrl } = require('../utils/cloudinaryAssets');
+
+/**
+ * @desc    Stream a user's identity document to the admin reviewing it
+ * @route   GET /api/v1/admin/verification-document/:id
+ * @access  Private/Admin
+ */
+exports.getVerificationDocument = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id).select('verificationDoc');
+    const downloadUrl = getCloudinaryDownloadUrl(user?.verificationDoc?.fileUrl);
+
+    if (!downloadUrl) {
+      return res.status(404).json({ success: false, message: 'Document not found' });
+    }
+
+    const upstream = await fetch(downloadUrl);
+    if (!upstream.ok || !upstream.body) {
+      return res.status(502).json({ success: false, message: 'Could not retrieve the document' });
+    }
+
+    res.set({
+      'Content-Type': upstream.headers.get('content-type') || 'application/octet-stream',
+      'Content-Disposition': 'inline',
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    Readable.fromWeb(upstream.body).pipe(res);
+  } catch (error) {
+    next(error);
+  }
+};
 
 /**
  * @desc    Get users filtered by role
