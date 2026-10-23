@@ -14,12 +14,15 @@ const OAuthCompletionPage = () => {
   const { loginWithToken } = useAuth();
   const handled = useRef(false);
 
-  const token = searchParams.get("token");
-  const isNew = searchParams.get("isNew") === "true";
+  const code = searchParams.get("code");
   const error = searchParams.get("error");
 
+  // The JWT is never placed in the URL; it is fetched with the one-time code.
+  const [token, setToken] = useState(null);
+  const [isNew, setIsNew] = useState(false);
+
   // Verification form state
-  const [step, setStep] = useState(isNew ? "verify" : "completing");
+  const [step, setStep] = useState("completing");
   const [formData, setFormData] = useState({
     docType: "nid",
     documentNumber: "",
@@ -35,25 +38,41 @@ const OAuthCompletionPage = () => {
     if (handled.current) return;
     handled.current = true;
 
-    if (error || !token) {
+    if (error || !code) {
       toast.error("Social login failed. Please try again.");
       navigate("/login", { replace: true });
       return;
     }
 
-    // For returning users, directly log them in
-    if (!isNew) {
-      setStep("completing");
-      loginWithToken(token)
-        .then((user) => {
-          toast.success("Welcome back!");
-          navigate(getDefaultDashboardRoute(user?.role), { replace: true });
-        })
-        .catch(() => {
-          toast.error("Failed to sign in. Please try again.");
-          navigate("/login", { replace: true });
-        });
-    }
+    const completeSignIn = async () => {
+      const response = await fetch(`${getApiBaseUrl()}/auth/oauth/exchange`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      if (!response.ok) throw new Error("Code exchange failed");
+
+      const { data } = await response.json();
+      setToken(data.token);
+      setIsNew(Boolean(data.isNew));
+
+      // New users must submit verification documents first
+      if (data.isNew) {
+        setStep("verify");
+        setIsLoading(false);
+        return;
+      }
+
+      // Returning users are logged in directly
+      const user = await loginWithToken(data.token);
+      toast.success("Welcome back!");
+      navigate(getDefaultDashboardRoute(user?.role), { replace: true });
+    };
+
+    completeSignIn().catch(() => {
+      toast.error("Failed to sign in. Please try again.");
+      navigate("/login", { replace: true });
+    });
   }, []);
 
   // ─── Validate form ───────────────────────────────────────────────

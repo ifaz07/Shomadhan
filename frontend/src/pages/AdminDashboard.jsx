@@ -99,6 +99,8 @@ const AdminDashboard = () => {
   const [verificationActionLoading, setVerificationActionLoading] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [documentPreviewFailed, setDocumentPreviewFailed] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const tabs = [
     { id: 'citizens', label: 'Citizens', icon: Users, role: 'citizen' },
@@ -297,7 +299,42 @@ const AdminDashboard = () => {
 
   const fileUrl = resolveFileUrl(reviewItem?.verificationDoc?.fileUrl);
   const isPdf = fileUrl?.toLowerCase().endsWith('.pdf');
+  // Cloudinary can render a PDF's first page as an image even when direct PDF
+  // delivery is restricted on the account, so preview that instead of embedding.
+  const pdfPreviewUrl =
+    isPdf && /res\.cloudinary\.com/i.test(fileUrl)
+      ? fileUrl.replace(/\.pdf(\?.*)?$/i, '.jpg')
+      : null;
   const isCitizenReview = reviewType === 'citizen';
+
+  // Load PDFs through the backend (admin-only) so they do not depend on public
+  // Cloudinary PDF delivery. Falls back to the page-1 image if this fails.
+  const reviewUserId = reviewItem?._id;
+  useEffect(() => {
+    setPdfBlobUrl(null);
+    if (!isPdf || !isCitizenReview || !reviewUserId) return undefined;
+
+    let objectUrl = null;
+    let cancelled = false;
+    setPdfLoading(true);
+
+    adminAPI
+      .getVerificationDocument(reviewUserId)
+      .then(({ data }) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
+        setPdfBlobUrl(objectUrl);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setPdfLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [reviewUserId, isPdf, isCitizenReview]);
 
   return (
     <DashboardLayout>
@@ -581,8 +618,22 @@ const AdminDashboard = () => {
                     <div className="bg-white p-2 rounded-2xl shadow-inner border border-gray-200">
                       {isPdf ? (
                         <div className="space-y-3">
-                          <iframe src={fileUrl} title="Verification document" className="w-full h-[480px] rounded-xl" />
-                          <a href={fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-semibold text-teal-600 hover:text-teal-700">
+                          {pdfBlobUrl ? (
+                            <iframe src={pdfBlobUrl} title="Verification document" className="w-full h-[480px] rounded-xl" />
+                          ) : pdfLoading ? (
+                            <div className="flex h-48 items-center justify-center text-sm text-slate-500">
+                              <Loader2 size={18} className="mr-2 animate-spin" />
+                              Loading document...
+                            </div>
+                          ) : pdfPreviewUrl ? (
+                            <>
+                              <img src={pdfPreviewUrl} alt="Document (page 1)" className="w-full h-auto rounded-xl" />
+                              <p className="text-xs text-slate-500">Showing page 1 of the uploaded PDF.</p>
+                            </>
+                          ) : (
+                            <iframe src={fileUrl} title="Verification document" className="w-full h-[480px] rounded-xl" />
+                          )}
+                          <a href={pdfBlobUrl || fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-semibold text-teal-600 hover:text-teal-700">
                             <ExternalLink size={16} />
                             Open document in new tab
                           </a>
