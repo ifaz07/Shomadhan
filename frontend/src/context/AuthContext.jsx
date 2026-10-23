@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  // Used by OAuthCallbackPage after Google/Facebook login
+  // Used by OAuthCompletionPage after Google/Facebook login
   const loginWithToken = async (token) => {
     localStorage.setItem('token', token);
     localStorage.setItem('loginTime', new Date().toISOString());

@@ -7,7 +7,6 @@ import ComplaintPage from "./pages/ComplaintPage";
 import VerificationPage from "./pages/VerificationPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
-import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import OAuthCompletionPage from "./pages/OAuthCompletionPage";
 import HeatmapPage from "./pages/HeatmapPage";
 import NotificationsPage from "./pages/NotificationsPage";
@@ -168,7 +167,6 @@ function App() {
           }
         />
 
-        <Route path="/auth/callback" element={<OAuthCallbackPage />} />
         <Route
           path="/auth/oauth-completion"
           element={<OAuthCompletionPage />}

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth.middleware');
 const upload = require('../middleware/upload.middleware');
+const { aiLimiter } = require('../middleware/rateLimit.middleware');
 const {
   createComplaint,
   analyzeComplaint,
@@ -37,7 +38,7 @@ const uploadOptionalAudio = (req, res, next) => {
 
 // ── Protected routes ──────────────────────────────────────────────────────
 router.get('/stats', protect, getPublicStats);
-router.post('/analyze', protect, uploadOptionalAudio, analyzeComplaint);
+router.post('/analyze', protect, aiLimiter, uploadOptionalAudio, analyzeComplaint);
 router.post('/', protect, upload.fields([{ name: 'evidence', maxCount: 5 }, { name: 'voiceDescription', maxCount: 1 }]), createComplaint);
 router.get('/', protect, getComplaints);
 router.post('/:id/vote', protect, voteComplaint);

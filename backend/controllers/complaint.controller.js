@@ -2,6 +2,8 @@ const Complaint = require("../models/Complaint.model");
 const User = require("../models/User.model");
 const mongoose = require("mongoose");
 const crypto = require("crypto");
+const { escapeRegex } = require("../utils/escapeRegex");
+const { destroyCloudinaryAsset } = require("../utils/cloudinaryAssets");
 const { classifyComplaint } = require("../services/nlpService");
 const { transcribeAudio } = require("../services/transcriptionService");
 const {
@@ -185,7 +187,7 @@ const createComplaint = async (req, res, next) => {
     
     if (voiceDescriptionFile) {
       complaintData.voiceDescription = {
-        url: `/uploads/evidence/${voiceDescriptionFile.filename}`,
+        url: voiceDescriptionFile.path,
       };
     }
 
@@ -695,22 +697,28 @@ const deleteComplaint = async (req, res, next) => {
     // 2. Delete associated notifications
     await Notification.deleteMany({ relatedTicket: complaint._id });
 
-    // 3. Delete evidence files from disk
-    if (complaint.evidence && complaint.evidence.length > 0) {
-      complaint.evidence.forEach((ev) => {
-        if (ev.url) {
-          // url is like /uploads/evidence/filename.jpg
-          const filePath = path.join(__dirname, "..", ev.url);
-          if (fs.existsSync(filePath)) {
-            try {
-              fs.unlinkSync(filePath);
-            } catch (err) {
-              console.warn(`[File Cleanup] Failed to delete ${filePath}:`, err.message);
-            }
+    // 3. Delete evidence files (Cloudinary assets, or legacy files on local disk)
+    const storedFileUrls = [
+      ...(complaint.evidence || []).map((ev) => ev.url),
+      complaint.voiceDescription?.url,
+    ].filter(Boolean);
+
+    await Promise.all(
+      storedFileUrls.map(async (url) => {
+        if (await destroyCloudinaryAsset(url)) return;
+
+        // Legacy url like /uploads/evidence/filename.jpg
+        if (!url.startsWith("/uploads/")) return;
+        const filePath = path.join(__dirname, "..", url);
+        if (fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+          } catch (err) {
+            console.warn(`[File Cleanup] Failed to delete ${filePath}:`, err.message);
           }
         }
-      });
-    }
+      }),
+    );
 
     await complaint.deleteOne();
     res
@@ -887,7 +895,7 @@ const getComplaints = async (req, res, next) => {
 
     // Optional server-side text filter on location field
     if (req.query.location) {
-      query.location = { $regex: req.query.location, $options: "i" };
+      query.location = { $regex: escapeRegex(req.query.location), $options: "i" };
     }
 
     // Keep the public dashboard stats and list aligned by default.

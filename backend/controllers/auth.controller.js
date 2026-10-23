@@ -1,5 +1,6 @@
 const { validationResult } = require("express-validator");
 const crypto = require("crypto");
+const { createOAuthCode, consumeOAuthCode } = require("../services/oauthCodeStore");
 const User = require("../models/User.model");
 const { getClientUrl } = require("../config/runtimeUrls");
 const { sendEmail } = require("../services/emailService");
@@ -376,10 +377,24 @@ const oauthCallback = (req, res) => {
   // Check if user is new and needs verification
   const isNewOAuthUser = req.user.isNewOAuthUser || false;
 
-  // Redirect to completion page - let frontend decide verification flow
-  res.redirect(
-    `${clientUrl}/auth/oauth-completion?token=${token}&isNew=${isNewOAuthUser}`,
-  );
+  // Redirect with a short-lived one-time code (never the JWT itself); the
+  // frontend swaps it for the token via POST /auth/oauth/exchange.
+  const code = createOAuthCode({ token, isNew: isNewOAuthUser });
+  res.redirect(`${clientUrl}/auth/oauth-completion?code=${code}`);
+};
+
+// ─── POST /api/v1/auth/oauth/exchange ────────────────────────────────
+const exchangeOAuthCode = (req, res) => {
+  const session = consumeOAuthCode(String(req.body?.code || ""));
+
+  if (!session) {
+    return res.status(400).json({
+      success: false,
+      message: "Sign-in link is invalid or has expired. Please try again.",
+    });
+  }
+
+  res.json({ success: true, data: session });
 };
 
 // ─── POST /api/v1/auth/forgot-password ───────────────────────────────
@@ -693,6 +708,7 @@ module.exports = {
   verifyAccount,
   verifyOAuthAccount,
   oauthCallback,
+  exchangeOAuthCode,
   forgotPassword,
   resetPassword,
   updatePhone,

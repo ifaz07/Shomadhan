@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const passport = require("passport");
-const rateLimit = require("express-rate-limit");
 const {
   register,
   login,
@@ -11,6 +10,7 @@ const {
   verifyAccount,
   verifyOAuthAccount,
   oauthCallback,
+  exchangeOAuthCode,
   forgotPassword,
   resetPassword,
   updatePhone,
@@ -23,19 +23,12 @@ const {
   loginValidator,
 } = require("../validators/auth.validator");
 const { protect } = require("../middleware/auth.middleware");
+const { authAttemptLimiter } = require("../middleware/rateLimit.middleware");
 const verifyUpload = require("../middleware/verifyUpload.middleware");
 const avatarUpload = require("../middleware/avatarUpload.middleware");
 const { getClientUrl } = require("../config/runtimeUrls");
 
 const clientUrl = getClientUrl();
-
-const authAttemptLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: "Too many requests. Try again later." },
-});
 
 const ensureOAuthConfigured = (provider) => (req, res, next) => {
   const configByProvider = {
@@ -82,6 +75,8 @@ router.post(
 // ─── Password reset ───────────────────────────────────────────────────
 router.post("/forgot-password", authAttemptLimiter, forgotPassword);
 router.put("/reset-password/:token", authAttemptLimiter, resetPassword);
+
+router.post("/oauth/exchange", authAttemptLimiter, exchangeOAuthCode);
 
 // ─── Google OAuth ─────────────────────────────────────────────────────
 router.get(

@@ -160,6 +160,8 @@ export const adminAPI = {
   approveVerification: (id, status, rejectionReason) =>
     api.put(`/admin/approve-verification/${id}`, { status, rejectionReason }),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  getVerificationDocument: (id) =>
+    api.get(`/admin/verification-document/${id}`, { responseType: "blob" }),
 };
 
 // ─── Volunteer API calls ──────────────────────────────────────────────

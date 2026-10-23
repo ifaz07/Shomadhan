@@ -8,8 +8,9 @@ const {
   getUsersByRole, 
   deleteUser,
   getPendingVerifications,
-  approveVerification
-} = require('../controllers/admin.controller');
+  approveVerification,
+  getVerificationDocument
+} =require('../controllers/admin.controller');
 const { protect, authorize } = require('../middleware/auth.middleware');
 
 router.use(protect);
@@ -21,6 +22,7 @@ router.put('/approve-mayor/:id', approveMayor);
 router.put('/approve-servant/:id', approveServant);
 router.get('/pending-verifications', getPendingVerifications);
 router.put('/approve-verification/:id', approveVerification);
+router.get('/verification-document/:id', getVerificationDocument);
 router.get('/users', getUsersByRole);
 router.delete('/users/:id', deleteUser);
 

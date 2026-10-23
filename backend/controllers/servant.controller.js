@@ -1,5 +1,6 @@
 const Complaint = require("../models/Complaint.model");
 const User = require("../models/User.model");
+const { escapeRegex } = require("../utils/escapeRegex");
 const { sendNotification } = require("../services/notificationService");
 const {
   getDepartmentComplaintValues,
@@ -99,7 +100,7 @@ const getDepartmentComplaints = async (req, res, next) => {
 
     if (location && String(location).trim()) {
       matchStage.location = {
-        $regex: String(location).trim(),
+        $regex: escapeRegex(String(location).trim()),
         $options: "i",
       };
     }
