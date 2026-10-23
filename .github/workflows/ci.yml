@@ -1,0 +1,120 @@
+name: CI/CD
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch/PR cancels the older run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (syntax + tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 22: `node --test "<glob>"` needs Node 21 or newer.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      - name: Syntax check
+        run: find . -name node_modules -prune -o -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: Unit tests
+        run: npm test
+        env:
+          NODE_ENV: test
+
+  frontend:
+    name: Frontend (build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_URL: https://example.invalid/api/v1
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-audit:
+    name: Dependency audit (report only)
+    runs-on: ubuntu-latest
+    # Reports known vulnerabilities in production dependencies without blocking
+    # merges. Remove `continue-on-error` once `npm audit` is clean.
+    continue-on-error: true
+    strategy:
+      matrix:
+        project: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: npm audit (${{ matrix.project }})
+        working-directory: ${{ matrix.project }}
+        run: npm audit --omit=dev --audit-level=high
+
+  # Render and Vercel already deploy from `main` on their own. This job only
+  # does something if you add deploy-hook secrets (and turn off their
+  # auto-deploy), which makes deploys wait for every check above to pass.
+  deploy:
+    name: Deploy (optional hooks)
+    needs: [backend, frontend, secret-scan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+      VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+    steps:
+      - name: Deploy backend to Render
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
+
+      - name: Deploy frontend to Vercel
+        if: env.VERCEL_DEPLOY_HOOK_URL != ''
+        run: curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL"
+
+      - name: No deploy hooks configured
+        if: env.RENDER_DEPLOY_HOOK_URL == '' && env.VERCEL_DEPLOY_HOOK_URL == ''
+        run: echo "No deploy hooks configured. Render and Vercel deploy from main on their own."
